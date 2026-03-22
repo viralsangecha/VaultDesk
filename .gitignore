@@ -2,3 +2,7 @@
 *.db
 target/
 *.iml
+.idea/
+*.db
+target/
+*.iml
