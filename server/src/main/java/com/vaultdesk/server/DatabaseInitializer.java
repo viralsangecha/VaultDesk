@@ -23,7 +23,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 username      TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 full_name     TEXT,
-                role          TEXT DEFAULT 'CONTRACT',
+                role          TEXT DEFAULT 'ENGINEER',
                 active        INTEGER DEFAULT 1,
                 created_at    TEXT
             )
