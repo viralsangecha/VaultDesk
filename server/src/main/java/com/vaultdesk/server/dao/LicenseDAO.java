@@ -11,35 +11,25 @@ import java.util.Map;
 
 @Component
 public class LicenseDAO {
-    public final JdbcTemplate jdbc;
+    private final JdbcTemplate jdbc;
 
     public LicenseDAO(JdbcTemplate jdbc)
     {
         this.jdbc=jdbc;
     }
 
-    public List<License> getAllLicenses()
-    {
-        try {
-            List<Map<String,Object>> rows = jdbc.queryForList(
-                    "SELECT * FROM licenses");
-
-            List<License> licenses = new ArrayList<>();
-
-            for (Map<String,Object> row : rows) {
-                licenses.add(mapRowToLicense(row));
-            }
-            return licenses;
+    public List<License> getAllLicenses() {
+        List<Map<String,Object>> rows = jdbc.queryForList("SELECT * FROM licenses");
+        List<License> licenses = new ArrayList<>();
+        for (Map<String,Object> row : rows) {
+            licenses.add(mapRowToLicense(row));
         }
-        catch (EmptyResultDataAccessException e)
-        {
-            return null;
-        }
+        return licenses;
     }
 
     public List<License> getExpiringLicenses(int days)
     {
-        try {
+
             List<Map<String,Object>> rows = jdbc.queryForList(
                     "SELECT * FROM licenses WHERE expiry_date <= date('now', '+' || ? || ' days') " +
                             "AND expiry_date >= date('now') ORDER BY expiry_date ASC",
@@ -51,11 +41,6 @@ public class LicenseDAO {
                 licenses.add(mapRowToLicense(row));
             }
             return licenses;
-        }
-        catch (EmptyResultDataAccessException e)
-        {
-            return null;
-        }
     }
 
 

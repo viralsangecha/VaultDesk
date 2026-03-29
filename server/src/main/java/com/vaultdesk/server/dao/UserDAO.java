@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Component
 public class UserDAO {
-    public final JdbcTemplate jdbc;
+    private final JdbcTemplate jdbc;
 
     public UserDAO(JdbcTemplate jdbc) {
         this.jdbc = jdbc;

@@ -13,7 +13,7 @@ import java.util.Map;
 
 @Component
 public class TicketDAO {
-    public final JdbcTemplate jdbc;
+    private final JdbcTemplate jdbc;
 
     public TicketDAO(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
