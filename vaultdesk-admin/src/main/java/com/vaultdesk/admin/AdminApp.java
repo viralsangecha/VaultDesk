@@ -2,10 +2,13 @@ package com.vaultdesk.admin;
 
 import javafx.application.Application;
 import javafx.stage.Stage;
+import atlantafx.base.theme.PrimerDark;
 
 public class AdminApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
+
+        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
 
         LoginView loginView=new LoginView();
 
