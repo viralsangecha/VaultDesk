@@ -48,7 +48,7 @@ public class DashboardView {
 
         tickets.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new Label("tickets Content"));
+            contentArea.getChildren().add(new TicketView().getView());
         });
 
         assets.setOnAction(e -> {
