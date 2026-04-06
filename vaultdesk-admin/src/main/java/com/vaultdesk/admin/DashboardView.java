@@ -63,12 +63,12 @@ public class DashboardView {
 
         departments.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new Label("departments Content"));
+            contentArea.getChildren().add(new DepartmentView().getView());
         });
 
         licenses.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new Label("licenses Content"));
+            contentArea.getChildren().add(new LicenseView().getView());
         });
 
 
