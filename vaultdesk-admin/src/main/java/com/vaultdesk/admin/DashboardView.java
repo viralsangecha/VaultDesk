@@ -18,7 +18,6 @@ public class DashboardView {
     public Scene getScene(Stage stage) {
         Label welcomeLabel = new Label("Welcome, " + fullName);
         Label roleLabel = new Label("Role: " + role);
-        Label co=new Label("select menu....");
 
         Button dashboard=new Button("Dashboard");
         Button tickets=new Button("Tickets");
@@ -38,12 +37,14 @@ public class DashboardView {
         sidebar.getChildren().addAll(dashboard,tickets,assets,employees,departments,licenses);
 
         HBox.setHgrow(contentArea, Priority.ALWAYS);
-        contentArea.getChildren().addAll(welcomeLabel, roleLabel,co);
+        contentArea.getChildren().addAll(welcomeLabel, roleLabel);
 
         mainlayout.getChildren().addAll(sidebar,contentArea);
+        contentArea.getChildren().add(new DashboardStatsView().getView());
+
         dashboard.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new Label("Dashboard Content"));
+            contentArea.getChildren().add(new DashboardStatsView().getView());
         });
 
         tickets.setOnAction(e -> {

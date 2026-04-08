@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 import java.net.URI;
@@ -12,20 +13,25 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-public class TicketView {
-
+public class DashboardStatsView {
     public VBox getView() {
         // 1. Title label
-        Label title = new Label("Tickets");
+        Label title = new Label("Dashboard");
 
+        Label totalAssets = new Label("Total Assets");
+        Label openTickets = new Label("Open Tickets");
+        Label expiringLicenses = new Label("Expiring Licenses");
+        Label activeEmployees = new Label("Active Employees");
+
+
+        Label recentTickets = new Label("Recent Tickets");
+
+        HBox hBox=new HBox();
+        hBox.getChildren().addAll(totalAssets,openTickets,expiringLicenses,activeEmployees);
         // 2. Create the TableView
         TableView<Ticket> table = new TableView<>();
 
         // 3. Define columns
-        TableColumn<Ticket, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(data ->
-                new SimpleIntegerProperty(data.getValue().getId()).asObject());
-
         TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("Ticket No");
         ticketNoCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue().getTicketNo()));
@@ -47,12 +53,31 @@ public class TicketView {
                 new SimpleStringProperty(data.getValue().getCreatedAt()));
 
         // 4. Add columns to table
-        table.getColumns().addAll(idCol, ticketNoCol, titleCol, priorityCol, statusCol, createdCol);
+        table.getColumns().addAll(ticketNoCol, titleCol, priorityCol, statusCol, createdCol);
+
+        try {
+            HttpClient client2 = HttpClient.newHttpClient();
+            HttpRequest statsRequest = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/dashboard/stats"))
+                    .GET()
+                    .build();
+            HttpResponse<String> statsResponse = client2.send(statsRequest, HttpResponse.BodyHandlers.ofString());
+
+            String statsBody = statsResponse.body().trim();
+
+            totalAssets.setText(" Total Assets: " + extractInt(statsBody, "totalAssets"));
+            openTickets.setText(" Open Tickets: " + extractInt(statsBody, "openTickets"));
+            expiringLicenses.setText(" Expiring Licenses: " + extractInt(statsBody, "expiringLicenses"));
+            activeEmployees.setText(" Active Employees: " + extractInt(statsBody, "totalEmployees"));
+
+        } catch (Exception ex) {
+            System.out.println("Error loading stats: " + ex.getMessage());
+        }
 
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/tickets"))
+                    .uri(URI.create("http://localhost:8080/api/dashboard/recent-activity"))
                     .GET()
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -68,25 +93,22 @@ public class TicketView {
             }
             else
             {
+            // split into individual objects
+            String[] objects = body.split("\\},\\{");
 
-                // split into individual objects
-                String[] objects = body.split("\\},\\{");
+            for (String obj : objects) {
+                // clean up leftover { or }
+                obj = obj.replace("{", "").replace("}", "");
 
-                for (String obj : objects) {
-                    // clean up leftover { or }
-                    obj = obj.replace("{", "").replace("}", "");
+                int id = extractInt(obj, "id");
+                String ticketNo = extractValue(obj, "ticketNo");
+                String ticketTitle = extractValue(obj, "title");
+                String priority = extractValue(obj, "priority");
+                String status = extractValue(obj, "status");
+                String createdAt = extractValue(obj, "createdAt");
 
-                    int id = extractInt(obj, "id");
-                    String ticketNo = extractValue(obj, "ticketNo");
-                    String ticketTitle = extractValue(obj, "title");
-                    String priority = extractValue(obj, "priority");
-                    String status = extractValue(obj, "status");
-                    String createdAt = extractValue(obj, "createdAt");
-
-                    table.getItems().add(new Ticket(id, ticketNo, ticketTitle, priority, status, createdAt));
+                table.getItems().add(new Ticket(id, ticketNo, ticketTitle, priority, status, createdAt));
             }
-
-
             }
         } catch (Exception ex) {
             System.out.println("Error loading tickets: " + ex.getMessage());
@@ -94,7 +116,7 @@ public class TicketView {
 
         // 6. Build and return VBox
         VBox root = new VBox(10);
-        root.getChildren().addAll(title, table);
+        root.getChildren().addAll(title,hBox,recentTickets, table);
         return root;
 
 
