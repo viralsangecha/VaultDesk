@@ -134,6 +134,8 @@ public class DashboardStatsView {
         int start = json.indexOf(search) + search.length();
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
-        return Integer.parseInt(json.substring(start, end).trim());
+        String value = json.substring(start, end).trim();
+        value = value.replace("}", "").trim(); // ← add this line
+        return Integer.parseInt(value);
     }
 }
