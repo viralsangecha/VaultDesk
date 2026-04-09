@@ -25,6 +25,10 @@ public class DashboardView {
         Button employees=new Button("Employees");
         Button departments=new Button("Departments");
         Button licenses=new Button("Licenses");
+        Button vendor=new Button("Vendor");
+        Button consumableStock=new Button("Consumable Stock");
+        Button maintenance=new Button("Maintenance");
+        Button report=new Button("Report");
         HBox mainlayout = new HBox();
 
         VBox sidebar = new VBox();
@@ -34,7 +38,7 @@ public class DashboardView {
 
 
 
-        sidebar.getChildren().addAll(dashboard,tickets,assets,employees,departments,licenses);
+        sidebar.getChildren().addAll(dashboard,tickets,assets,employees,departments,licenses,vendor,consumableStock,maintenance,report);
 
         HBox.setHgrow(contentArea, Priority.ALWAYS);
         contentArea.getChildren().addAll(welcomeLabel, roleLabel);
@@ -70,6 +74,26 @@ public class DashboardView {
         licenses.setOnAction(e -> {
             contentArea.getChildren().clear();
             contentArea.getChildren().add(new LicenseView().getView());
+        });
+
+        vendor.setOnAction(e -> {
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(new VendorView().);
+        });
+
+        consumableStock.setOnAction(e -> {
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(new  ConsumableView().);
+        });
+
+        maintenance.setOnAction(e -> {
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(new MaintenanceView().);
+        });
+
+        report.setOnAction(e -> {
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(new ReportView().);
         });
 
 
