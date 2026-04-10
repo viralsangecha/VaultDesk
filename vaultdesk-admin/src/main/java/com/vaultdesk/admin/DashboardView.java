@@ -78,22 +78,22 @@ public class DashboardView {
 
         vendor.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new VendorView().);
+            contentArea.getChildren().add(new VendorView().getView());
         });
 
         consumableStock.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new  ConsumableView().);
+            contentArea.getChildren().add(new  ConsumableView().getView());
         });
 
         maintenance.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new MaintenanceView().);
+            contentArea.getChildren().add(new MaintenanceView().getView());
         });
 
         report.setOnAction(e -> {
             contentArea.getChildren().clear();
-            contentArea.getChildren().add(new ReportView().);
+            contentArea.getChildren().add(new ReportView().getView());
         });
 
 
