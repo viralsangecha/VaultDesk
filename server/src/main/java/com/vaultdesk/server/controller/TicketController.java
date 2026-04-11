@@ -63,4 +63,11 @@ public class TicketController {
         if (rows== 0) return ResponseEntity.notFound().build();
         return ResponseEntity.ok("Ticket Status Updated !");
     }
+
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<?> assignticket(@PathVariable int id, @RequestParam int userId) {
+        int rows = ticketDAO.assignTicket(id, userId);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("Ticket assigned");
+    }
 }

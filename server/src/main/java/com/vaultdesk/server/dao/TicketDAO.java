@@ -114,4 +114,11 @@ public class TicketDAO {
                 (String) row.get("resolution")
         );
     }
+    public int assignTicket(int id, int userId) {
+        return jdbc.update(
+                "UPDATE tickets SET assigned_to = ?, updated_at = datetime('now') WHERE id = ?",
+                userId, id
+        );
+    }
+
 }
