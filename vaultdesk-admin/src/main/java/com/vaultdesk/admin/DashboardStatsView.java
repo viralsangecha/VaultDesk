@@ -106,8 +106,9 @@ public class DashboardStatsView {
                 String priority = extractValue(obj, "priority");
                 String status = extractValue(obj, "status");
                 String createdAt = extractValue(obj, "createdAt");
+                int assignedTo = extractInt(obj, " assignedTo");
 
-                table.getItems().add(new Ticket(id, ticketNo, ticketTitle, priority, status, createdAt));
+                table.getItems().add(new Ticket(id, ticketNo, ticketTitle, priority, status,assignedTo ,createdAt));
             }
             }
         } catch (Exception ex) {
