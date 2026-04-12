@@ -1,127 +1,142 @@
 package com.vaultdesk.admin;
 
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.http.*;
 
 public class DashboardStatsView {
+
     public VBox getView() {
-        // 1. Title label
-        Label title = new Label("Dashboard");
+        Label pageTitle = new Label("Dashboard Overview");
+        pageTitle.getStyleClass().add("page-title");
 
-        Label totalAssets = new Label("Total Assets");
-        Label openTickets = new Label("Open Tickets");
-        Label expiringLicenses = new Label("Expiring Licenses");
-        Label activeEmployees = new Label("Active Employees");
+        Label pageSub = new Label("Here's what's happening today.");
+        pageSub.getStyleClass().add("page-subtitle");
 
+        // ── Stat cards ───────────────────────────────────
+        VBox cardAssets    = statCard("0", "Total Assets",         "stat-card-blue");
+        VBox cardTickets   = statCard("0", "Open Tickets",         "stat-card-red");
+        VBox cardLicenses  = statCard("0", "Expiring Licenses",    "stat-card-orange");
+        VBox cardEmployees = statCard("0", "Active Employees",     "stat-card-green");
 
-        Label recentTickets = new Label("Recent Tickets");
+        HBox statsRow = new HBox(16,
+                cardAssets, cardTickets, cardLicenses, cardEmployees);
+        statsRow.setPadding(new Insets(8, 0, 8, 0));
 
-        HBox hBox=new HBox();
-        hBox.getChildren().addAll(totalAssets,openTickets,expiringLicenses,activeEmployees);
-        // 2. Create the TableView
+        // ── Recent tickets ───────────────────────────────
+        Label recentLabel = new Label("Recent Support Tickets");
+        recentLabel.getStyleClass().add("section-title");
+
         TableView<Ticket> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // 3. Define columns
-        TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("Ticket No");
+        javafx.scene.control.TableColumn<Ticket, String> ticketNoCol =
+                new javafx.scene.control.TableColumn<>("Ticket No");
         ticketNoCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getTicketNo()));
+                new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().getTicketNo()));
 
-        TableColumn<Ticket, String> titleCol = new TableColumn<>("Title");
+        javafx.scene.control.TableColumn<Ticket, String> titleCol =
+                new javafx.scene.control.TableColumn<>("Title");
         titleCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getTitle()));
+                new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().getTitle()));
 
-        TableColumn<Ticket, String> priorityCol = new TableColumn<>("Priority");
+        javafx.scene.control.TableColumn<Ticket, String> priorityCol =
+                new javafx.scene.control.TableColumn<>("Priority");
         priorityCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getPriority()));
+                new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().getPriority()));
 
-        TableColumn<Ticket, String> statusCol = new TableColumn<>("Status");
+        javafx.scene.control.TableColumn<Ticket, String> statusCol =
+                new javafx.scene.control.TableColumn<>("Status");
         statusCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getStatus()));
+                new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().getStatus()));
 
-        TableColumn<Ticket, String> createdCol = new TableColumn<>("Created");
+        javafx.scene.control.TableColumn<Ticket, String> createdCol =
+                new javafx.scene.control.TableColumn<>("Created");
         createdCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getCreatedAt()));
+                new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().getCreatedAt()));
 
-        // 4. Add columns to table
-        table.getColumns().addAll(ticketNoCol, titleCol, priorityCol, statusCol, createdCol);
+        table.getColumns().addAll(ticketNoCol, titleCol,
+                priorityCol, statusCol, createdCol);
 
+        // ── Load stats ───────────────────────────────────
         try {
-            HttpClient client2 = HttpClient.newHttpClient();
-            HttpRequest statsRequest = HttpRequest.newBuilder()
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/dashboard/stats"))
-                    .GET()
-                    .build();
-            HttpResponse<String> statsResponse = client2.send(statsRequest, HttpResponse.BodyHandlers.ofString());
+                    .GET().build();
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = response.body().trim();
 
-            String statsBody = statsResponse.body().trim();
-
-            totalAssets.setText(" Total Assets: " + extractInt(statsBody, "totalAssets"));
-            openTickets.setText(" Open Tickets: " + extractInt(statsBody, "openTickets"));
-            expiringLicenses.setText(" Expiring Licenses: " + extractInt(statsBody, "expiringLicenses"));
-            activeEmployees.setText(" Active Employees: " + extractInt(statsBody, "totalEmployees"));
+            setStatNumber(cardAssets,    extractInt(body, "totalAssets"));
+            setStatNumber(cardTickets,   extractInt(body, "openTickets"));
+            setStatNumber(cardLicenses,  extractInt(body, "expiringLicenses"));
+            setStatNumber(cardEmployees, extractInt(body, "totalEmployees"));
 
         } catch (Exception ex) {
             System.out.println("Error loading stats: " + ex.getMessage());
         }
 
+        // ── Load recent tickets ──────────────────────────
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/dashboard/recent-activity"))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-
+                    .GET().build();
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString());
             String body = response.body().trim();
-            // strip outer [ and ]
             body = body.substring(1, body.length() - 1);
 
-            if (body.isEmpty()) {
-                System.out.println("No tickets found.");
-                // just leave the table empty and return
-            }
-            else
-            {
-            // split into individual objects
-            String[] objects = body.split("\\},\\{");
-
-            for (String obj : objects) {
-                // clean up leftover { or }
-                obj = obj.replace("{", "").replace("}", "");
-
-                int id = extractInt(obj, "id");
-                String ticketNo = extractValue(obj, "ticketNo");
-                String ticketTitle = extractValue(obj, "title");
-                String priority = extractValue(obj, "priority");
-                String status = extractValue(obj, "status");
-                String createdAt = extractValue(obj, "createdAt");
-                int assignedTo = extractInt(obj, " assignedTo");
-
-                table.getItems().add(new Ticket(id, ticketNo, ticketTitle, priority, status,assignedTo ,createdAt));
-            }
+            if (!body.isEmpty()) {
+                for (String obj : body.split("\\},\\{")) {
+                    obj = obj.replace("{", "").replace("}", "");
+                    table.getItems().add(new Ticket(
+                            extractInt(obj, "id"),
+                            extractValue(obj, "ticketNo"),
+                            extractValue(obj, "title"),
+                            extractValue(obj, "priority"),
+                            extractValue(obj, "status"),
+                            extractInt(obj, "assignedTo"),
+                            extractValue(obj, "createdAt")
+                    ));
+                }
             }
         } catch (Exception ex) {
             System.out.println("Error loading tickets: " + ex.getMessage());
         }
 
-        // 6. Build and return VBox
-        VBox root = new VBox(10);
-        root.getChildren().addAll(title,hBox,recentTickets, table);
+        VBox root = new VBox(12,
+                pageTitle, pageSub, statsRow, recentLabel, table);
         return root;
-
-
     }
+
+    private VBox statCard(String number, String label, String colorClass) {
+        Label numLabel = new Label(number);
+        numLabel.getStyleClass().add("stat-number");
+
+        Label txtLabel = new Label(label);
+        txtLabel.getStyleClass().add("stat-label");
+
+        VBox card = new VBox(6, numLabel, txtLabel);
+        card.getStyleClass().addAll("stat-card", colorClass);
+        return card;
+    }
+
+    private void setStatNumber(VBox card, int value) {
+        Label numLabel = (Label) card.getChildren().get(0);
+        numLabel.setText(String.valueOf(value));
+    }
+
     private String extractValue(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
@@ -130,13 +145,15 @@ public class DashboardStatsView {
         int end = json.indexOf("\"", start);
         return json.substring(start, end);
     }
+
     private int extractInt(String json, String key) {
         String search = "\"" + key + "\":";
         int start = json.indexOf(search) + search.length();
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
-        String value = json.substring(start, end).trim();
-        value = value.replace("}", "").trim(); // ← add this line
-        return Integer.parseInt(value);
+        try {
+            return Integer.parseInt(
+                    json.substring(start, end).trim().replace("}", ""));
+        } catch (NumberFormatException e) { return 0; }
     }
 }

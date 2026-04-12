@@ -15,6 +15,7 @@ public class ConsumableView {
 
     public VBox getView() {
         Label title = new Label("Consumables");
+        title.getStyleClass().add("section-title");
         TableView<Consumable> table = new TableView<>();
 
         TableColumn<Consumable, Integer> idCol = new TableColumn<>("ID");
@@ -45,6 +46,7 @@ public class ConsumableView {
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateQtyBtn = new Button("Update Qty");
             {
+                updateQtyBtn.getStyleClass().add("btn-warning");
                 updateQtyBtn.setOnAction(e -> {
                     Consumable c = getTableView().getItems().get(getIndex());
                     showUpdateQtyDialog(c, getTableView());
@@ -61,6 +63,7 @@ public class ConsumableView {
                 unitCol, stockCol, reorderCol, actionCol);
 
         Button addBtn = new Button("Add Consumable");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);

@@ -19,6 +19,7 @@ public class TicketView {
 
     public VBox getView() {
         Label title = new Label("Tickets");
+        title.getStyleClass().add("section-title");
         TableView<Ticket> table = new TableView<>();
 
         TableColumn<Ticket, Integer> idCol = new TableColumn<>("ID");
@@ -55,10 +56,12 @@ public class TicketView {
             private final Button assignBtn = new Button("Assign");
 
             {
+                updateBtn.getStyleClass().add("btn-warning");
                 updateBtn.setOnAction(e -> {
                     Ticket ticket = getTableView().getItems().get(getIndex());
                     showUpdateStatusDialog(ticket, getTableView());
                 });
+                assignBtn.getStyleClass().add("btn-warning");
                 assignBtn.setOnAction(e -> {
                     Ticket ticket = getTableView().getItems().get(getIndex());
                     showAssignDialog(ticket, getTableView());

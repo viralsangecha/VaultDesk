@@ -15,6 +15,7 @@ public class LicenseView {
 
     public VBox getView() {
         Label title = new Label("Licenses");
+        title.getStyleClass().add("section-title");
         TableView<License> table = new TableView<>();
 
         TableColumn<License, Integer> idCol = new TableColumn<>("ID");
@@ -49,6 +50,7 @@ public class LicenseView {
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateSeatsBtn = new Button("Update Seats");
             {
+                updateSeatsBtn.getStyleClass().add("btn-warning");
                 updateSeatsBtn.setOnAction(e -> {
                     License license = getTableView().getItems().get(getIndex());
                     showUpdateSeatsDialog(license, getTableView());
@@ -65,6 +67,7 @@ public class LicenseView {
                 vendorCol, expiryCol, seatsTotalCol, seatsUsedCol, actionCol);
 
         Button addBtn = new Button("Add License");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);

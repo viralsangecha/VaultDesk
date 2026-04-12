@@ -15,6 +15,7 @@ public class DepartmentView {
 
     public VBox getView() {
         Label title = new Label("Departments");
+        title.getStyleClass().add("section-title");
         TableView<Department> table = new TableView<>();
 
         TableColumn<Department, Integer> idCol = new TableColumn<>("ID");
@@ -32,6 +33,7 @@ public class DepartmentView {
         table.getColumns().addAll(idCol, nameCol, locationCol);
 
         Button addBtn = new Button("Add Department");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
@@ -72,6 +74,7 @@ public class DepartmentView {
     private void showAddDialog(TableView<Department> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Add Department");
+
         dialog.setHeaderText("Enter department details");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 

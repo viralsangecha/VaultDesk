@@ -15,6 +15,7 @@ public class EmployeeView {
 
     public VBox getView() {
         Label title = new Label("Employees");
+        title.getStyleClass().add("section-title");
         TableView<Employee> table = new TableView<>();
 
         TableColumn<Employee, Integer> idCol = new TableColumn<>("ID");
@@ -46,10 +47,12 @@ public class EmployeeView {
             private final Button editBtn = new Button("Edit");
             private final Button deactivateBtn = new Button("Deactivate");
             {
+                editBtn.getStyleClass().add("btn-warning");
                 editBtn.setOnAction(e -> {
                     Employee emp = getTableView().getItems().get(getIndex());
                     showEditDialog(emp, getTableView());
                 });
+                deactivateBtn.getStyleClass().add("btn-danger");
                 deactivateBtn.setOnAction(e -> {
                     Employee emp = getTableView().getItems().get(getIndex());
                     showDeactivateConfirm(emp, getTableView());
@@ -66,6 +69,7 @@ public class EmployeeView {
                 designationCol, emailCol, phoneCol, actionCol);
 
         Button addBtn = new Button("Add Employee");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
 
         TextField searchField = new TextField();

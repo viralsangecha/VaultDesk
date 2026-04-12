@@ -16,6 +16,7 @@ public class MaintenanceView {
 
     public VBox getView() {
         Label title = new Label("Maintenance");
+        title.getStyleClass().add("section-title");
         TableView<Maintenance> table = new TableView<>();
 
         TableColumn<Maintenance, Integer> idCol = new TableColumn<>("ID");
@@ -50,6 +51,7 @@ public class MaintenanceView {
                 descCol, costCol, dateCol, statusCol);
 
         Button addBtn = new Button("Add Maintenance Log");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);

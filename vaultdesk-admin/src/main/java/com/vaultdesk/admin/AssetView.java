@@ -17,6 +17,7 @@ public class AssetView {
 
     public VBox getView() {
         Label title = new Label("Assets");
+        title.getStyleClass().add("section-title");
         TableView<Asset> table = new TableView<>();
 
         TableColumn<Asset, Integer> idCol = new TableColumn<>("ID");
@@ -51,11 +52,13 @@ public class AssetView {
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button editBtn = new Button("Edit Status");
             {
+                editBtn.getStyleClass().setAll("btn-warning");
                 editBtn.setOnAction(e -> {
                     Asset asset = getTableView().getItems().get(getIndex());
                     showEditStatusDialog(asset, getTableView());
                 });
             }
+
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
@@ -66,7 +69,9 @@ public class AssetView {
         table.getColumns().addAll(idCol, assetTagCol, nameCol, categoryCol,
                 brandCol, statusCol, locationCol, actionCol);
 
+
         Button addBtn = new Button("Add Asset");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);

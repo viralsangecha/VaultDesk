@@ -15,6 +15,7 @@ public class VendorView {
 
     public VBox getView() {
         Label title = new Label("Vendors");
+        title.getStyleClass().add("section-title");
         TableView<Vendor> table = new TableView<>();
 
         TableColumn<Vendor, Integer> idCol = new TableColumn<>("ID");
@@ -45,6 +46,7 @@ public class VendorView {
                 phoneCol, emailCol, categoryCol);
 
         Button addBtn = new Button("Add Vendor");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
