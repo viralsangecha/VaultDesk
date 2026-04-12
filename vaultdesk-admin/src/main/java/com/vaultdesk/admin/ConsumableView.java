@@ -45,8 +45,11 @@ public class ConsumableView {
         TableColumn<Consumable, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateQtyBtn = new Button("Update Qty");
+            private final HBox box = new HBox(5, updateQtyBtn);
             {
-                updateQtyBtn.getStyleClass().add("btn-warning");
+                updateQtyBtn.getStyleClass().setAll("btn-warning");
+                updateQtyBtn.setStyle("-fx-background-color: #b45309; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
                 updateQtyBtn.setOnAction(e -> {
                     Consumable c = getTableView().getItems().get(getIndex());
                     showUpdateQtyDialog(c, getTableView());
@@ -55,15 +58,17 @@ public class ConsumableView {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : new HBox(5, updateQtyBtn));
+                setGraphic(empty ? null : box);
             }
         });
 
         table.getColumns().addAll(idCol, nameCol, categoryCol,
                 unitCol, stockCol, reorderCol, actionCol);
 
-        Button addBtn = new Button("Add Consumable");
-        addBtn.getStyleClass().add("btn-primary");
+        Button addBtn = new Button("+ Add Consumable");
+        addBtn.getStyleClass().setAll("btn-primary");
+        addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
+                "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
@@ -110,36 +115,59 @@ public class ConsumableView {
         dialog.setHeaderText("Enter consumable details");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField nameField = new TextField();
+        TextField nameField       = new TextField();
         ComboBox<String> categoryBox = new ComboBox<>();
         categoryBox.getItems().addAll("Toner", "Ink", "Cable", "Paper",
                 "Battery", "Cleaning Kit", "Other");
         categoryBox.setValue("Toner");
         TextField compatibleField = new TextField();
-        TextField qtyField = new TextField();
+        TextField qtyField        = new TextField();
         qtyField.setPromptText("0");
-        TextField reorderField = new TextField();
+        TextField reorderField    = new TextField();
         reorderField.setPromptText("0");
-        ComboBox<String> unitBox = new ComboBox<>();
+        ComboBox<String> unitBox  = new ComboBox<>();
         unitBox.getItems().addAll("pieces", "boxes", "reams", "meters");
         unitBox.setValue("pieces");
-        TextField costField = new TextField();
+        TextField costField       = new TextField();
         costField.setPromptText("0.0");
-        TextField locationField = new TextField();
-        TextField notesField = new TextField();
+        TextField locationField   = new TextField();
+        TextField notesField      = new TextField();
+        Label errorLabel          = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Name:"),             0, 0); grid.add(nameField,       1, 0);
-        grid.add(new Label("Category:"),         0, 1); grid.add(categoryBox,     1, 1);
-        grid.add(new Label("Compatible Models:"),0, 2); grid.add(compatibleField, 1, 2);
-        grid.add(new Label("Quantity:"),         0, 3); grid.add(qtyField,        1, 3);
-        grid.add(new Label("Reorder Level:"),    0, 4); grid.add(reorderField,    1, 4);
-        grid.add(new Label("Unit:"),             0, 5); grid.add(unitBox,         1, 5);
-        grid.add(new Label("Unit Cost:"),        0, 6); grid.add(costField,       1, 6);
-        grid.add(new Label("Storage Location:"), 0, 7); grid.add(locationField,   1, 7);
-        grid.add(new Label("Notes:"),            0, 8); grid.add(notesField,      1, 8);
+        grid.add(new Label("Name *:"),              0, 0); grid.add(nameField,       1, 0);
+        grid.add(new Label("Category:"),            0, 1); grid.add(categoryBox,     1, 1);
+        grid.add(new Label("Compatible Models:"),   0, 2); grid.add(compatibleField, 1, 2);
+        grid.add(new Label("Quantity:"),            0, 3); grid.add(qtyField,        1, 3);
+        grid.add(new Label("Reorder Level:"),       0, 4); grid.add(reorderField,    1, 4);
+        grid.add(new Label("Unit:"),                0, 5); grid.add(unitBox,         1, 5);
+        grid.add(new Label("Unit Cost:"),           0, 6); grid.add(costField,       1, 6);
+        grid.add(new Label("Storage Location:"),    0, 7); grid.add(locationField,   1, 7);
+        grid.add(new Label("Notes:"),               0, 8); grid.add(notesField,      1, 8);
+        grid.add(errorLabel,                        1, 9);
         dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+
+        nameField.textProperty().addListener((o, ov, nv) ->
+                okButton.setDisable(nv.trim().isEmpty()));
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String error = validateConsumable(
+                    nameField.getText(),
+                    qtyField.getText(),
+                    reorderField.getText(),
+                    costField.getText()
+            );
+            if (error != null) {
+                errorLabel.setText(error);
+                event.consume();
+            }
+        });
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -176,12 +204,36 @@ public class ConsumableView {
                 } else {
                     showAlert("Error", "Server returned: " + response.statusCode());
                 }
-            } catch (NumberFormatException ex) {
-                showAlert("Error", "Quantity, Reorder Level and Cost must be numbers.");
             } catch (Exception ex) {
                 showAlert("Error", "Cannot connect: " + ex.getMessage());
             }
         }
+    }
+
+    private String validateConsumable(String name, String qty,
+                                      String reorder, String cost) {
+        if (name.trim().isEmpty()) return "Consumable Name is required.";
+        if (!qty.trim().isEmpty()) {
+            try {
+                if (Integer.parseInt(qty.trim()) < 0)
+                    return "Quantity cannot be negative.";
+            } catch (NumberFormatException e) {
+                return "Quantity must be a number.";
+            }
+        }
+        if (!reorder.trim().isEmpty()) {
+            try {
+                if (Integer.parseInt(reorder.trim()) < 0)
+                    return "Reorder Level cannot be negative.";
+            } catch (NumberFormatException e) {
+                return "Reorder Level must be a number.";
+            }
+        }
+        if (!cost.trim().isEmpty()) {
+            try { Double.parseDouble(cost.trim()); }
+            catch (NumberFormatException e) { return "Cost must be a valid number."; }
+        }
+        return null;
     }
 
     private void showUpdateQtyDialog(Consumable c, TableView<Consumable> table) {
@@ -191,12 +243,30 @@ public class ConsumableView {
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         TextField qtyField = new TextField(String.valueOf(c.getQuantityInStock()));
+        Label errorLabel   = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
         grid.add(new Label("New Quantity:"), 0, 0);
         grid.add(qtyField, 1, 0);
+        grid.add(errorLabel, 1, 1);
         dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            try {
+                if (Integer.parseInt(qtyField.getText().trim()) < 0) {
+                    errorLabel.setText("Quantity cannot be negative.");
+                    event.consume();
+                }
+            } catch (NumberFormatException e) {
+                errorLabel.setText("Must be a valid number.");
+                event.consume();
+            }
+        });
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -216,8 +286,6 @@ public class ConsumableView {
                 } else {
                     showAlert("Error", "Server returned: " + response.statusCode());
                 }
-            } catch (NumberFormatException ex) {
-                showAlert("Error", "Quantity must be a number.");
             } catch (Exception ex) {
                 showAlert("Error", "Cannot connect: " + ex.getMessage());
             }
@@ -246,7 +314,8 @@ public class ConsumableView {
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
         try {
-            return Integer.parseInt(json.substring(start, end).trim().replace("}", ""));
+            return Integer.parseInt(
+                    json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0; }
     }
 }

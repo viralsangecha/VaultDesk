@@ -45,8 +45,10 @@ public class VendorView {
         table.getColumns().addAll(idCol, nameCol, contactCol,
                 phoneCol, emailCol, categoryCol);
 
-        Button addBtn = new Button("Add Vendor");
-        addBtn.getStyleClass().add("btn-primary");
+        Button addBtn = new Button("+ Add Vendor");
+        addBtn.getStyleClass().setAll("btn-primary");
+        addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
+                "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
@@ -93,26 +95,50 @@ public class VendorView {
         dialog.setHeaderText("Enter vendor details");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField nameField = new TextField();
+        TextField nameField    = new TextField();
         TextField contactField = new TextField();
-        TextField phoneField = new TextField();
-        TextField emailField = new TextField();
+        TextField phoneField   = new TextField();
+        TextField emailField   = new TextField();
         ComboBox<String> categoryBox = new ComboBox<>();
         categoryBox.getItems().addAll("Hardware", "Software", "AMC", "Service", "Other");
         categoryBox.setValue("Hardware");
         TextField addressField = new TextField();
-        TextField notesField = new TextField();
+        TextField notesField   = new TextField();
+        Label errorLabel       = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Name:"),           0, 0); grid.add(nameField,    1, 0);
-        grid.add(new Label("Contact Person:"), 0, 1); grid.add(contactField, 1, 1);
-        grid.add(new Label("Phone:"),          0, 2); grid.add(phoneField,   1, 2);
-        grid.add(new Label("Email:"),          0, 3); grid.add(emailField,   1, 3);
-        grid.add(new Label("Category:"),       0, 4); grid.add(categoryBox,  1, 4);
-        grid.add(new Label("Address:"),        0, 5); grid.add(addressField, 1, 5);
-        grid.add(new Label("Notes:"),          0, 6); grid.add(notesField,   1, 6);
+        grid.add(new Label("Name *:"),           0, 0); grid.add(nameField,    1, 0);
+        grid.add(new Label("Contact Person:"),   0, 1); grid.add(contactField, 1, 1);
+        grid.add(new Label("Phone *:"),          0, 2); grid.add(phoneField,   1, 2);
+        grid.add(new Label("Email:"),            0, 3); grid.add(emailField,   1, 3);
+        grid.add(new Label("Category:"),         0, 4); grid.add(categoryBox,  1, 4);
+        grid.add(new Label("Address:"),          0, 5); grid.add(addressField, 1, 5);
+        grid.add(new Label("Notes:"),            0, 6); grid.add(notesField,   1, 6);
+        grid.add(errorLabel,                     1, 7);
         dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+
+        Runnable checkFields = () -> {
+            boolean valid = !nameField.getText().trim().isEmpty()
+                    && !phoneField.getText().trim().isEmpty();
+            okButton.setDisable(!valid);
+        };
+
+        nameField.textProperty().addListener((o, ov, nv) -> checkFields.run());
+        phoneField.textProperty().addListener((o, ov, nv) -> checkFields.run());
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String error = validateVendor(nameField.getText(), phoneField.getText());
+            if (error != null) {
+                errorLabel.setText(error);
+                event.consume();
+            }
+        });
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -146,6 +172,12 @@ public class VendorView {
         }
     }
 
+    private String validateVendor(String name, String phone) {
+        if (name.trim().isEmpty())  return "Vendor Name is required.";
+        if (phone.trim().isEmpty()) return "Phone number is required.";
+        return null;
+    }
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -168,7 +200,8 @@ public class VendorView {
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
         try {
-            return Integer.parseInt(json.substring(start, end).trim().replace("}", ""));
+            return Integer.parseInt(
+                    json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0; }
     }
 }

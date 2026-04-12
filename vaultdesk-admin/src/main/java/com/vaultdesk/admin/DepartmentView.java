@@ -32,8 +32,10 @@ public class DepartmentView {
 
         table.getColumns().addAll(idCol, nameCol, locationCol);
 
-        Button addBtn = new Button("Add Department");
-        addBtn.getStyleClass().add("btn-primary");
+        Button addBtn = new Button("+ Add Department");
+        addBtn.getStyleClass().setAll("btn-primary");
+        addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
+                "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
@@ -74,18 +76,34 @@ public class DepartmentView {
     private void showAddDialog(TableView<Department> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Add Department");
-
         dialog.setHeaderText("Enter department details");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField nameField = new TextField();
+        TextField nameField     = new TextField();
         TextField locationField = new TextField();
+        Label errorLabel        = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Name:"),     0, 0); grid.add(nameField,     1, 0);
-        grid.add(new Label("Location:"), 0, 1); grid.add(locationField, 1, 1);
+        grid.add(new Label("Name *:"),     0, 0); grid.add(nameField,     1, 0);
+        grid.add(new Label("Location:"),   0, 1); grid.add(locationField, 1, 1);
+        grid.add(errorLabel,               1, 2);
         dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+
+        nameField.textProperty().addListener((o, ov, nv) ->
+                okButton.setDisable(nv.trim().isEmpty()));
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (nameField.getText().trim().isEmpty()) {
+                errorLabel.setText("Department Name is required.");
+                event.consume();
+            }
+        });
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -136,7 +154,8 @@ public class DepartmentView {
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
         try {
-            return Integer.parseInt(json.substring(start, end).trim().replace("}", ""));
+            return Integer.parseInt(
+                    json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0; }
     }
 }

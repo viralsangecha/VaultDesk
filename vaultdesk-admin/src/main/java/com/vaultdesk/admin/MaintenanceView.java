@@ -50,8 +50,10 @@ public class MaintenanceView {
         table.getColumns().addAll(idCol, assetIdCol, typeCol,
                 descCol, costCol, dateCol, statusCol);
 
-        Button addBtn = new Button("Add Maintenance Log");
-        addBtn.getStyleClass().add("btn-primary");
+        Button addBtn = new Button("+ Add Maintenance Log");
+        addBtn.getStyleClass().setAll("btn-primary");
+        addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
+                "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
@@ -99,34 +101,63 @@ public class MaintenanceView {
         dialog.setHeaderText("Enter maintenance details");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField assetIdField = new TextField();
-        ComboBox<String> typeBox = new ComboBox<>();
+        TextField assetIdField     = new TextField();
+        ComboBox<String> typeBox   = new ComboBox<>();
         typeBox.getItems().addAll("Repair", "AMC Visit", "Preventive",
                 "Upgrade", "Cleaning", "Other");
         typeBox.setValue("Repair");
-        TextField descField = new TextField();
-        TextField costField = new TextField();
+        TextField descField        = new TextField();
+        TextField costField        = new TextField();
         costField.setPromptText("0.0");
-        TextField dateField = new TextField();
+        TextField dateField        = new TextField();
         dateField.setPromptText("YYYY-MM-DD");
         TextField nextDueDateField = new TextField();
         nextDueDateField.setPromptText("YYYY-MM-DD");
         ComboBox<String> statusBox = new ComboBox<>();
         statusBox.getItems().addAll("Completed", "Pending", "In Progress");
         statusBox.setValue("Completed");
-        TextField notesField = new TextField();
+        TextField notesField       = new TextField();
+        Label errorLabel           = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Asset ID:"),      0, 0); grid.add(assetIdField,    1, 0);
+        grid.add(new Label("Asset ID *:"),    0, 0); grid.add(assetIdField,    1, 0);
         grid.add(new Label("Type:"),          0, 1); grid.add(typeBox,         1, 1);
         grid.add(new Label("Description:"),   0, 2); grid.add(descField,       1, 2);
         grid.add(new Label("Cost:"),          0, 3); grid.add(costField,       1, 3);
-        grid.add(new Label("Date:"),          0, 4); grid.add(dateField,       1, 4);
+        grid.add(new Label("Date *:"),        0, 4); grid.add(dateField,       1, 4);
         grid.add(new Label("Next Due Date:"), 0, 5); grid.add(nextDueDateField,1, 5);
         grid.add(new Label("Status:"),        0, 6); grid.add(statusBox,       1, 6);
         grid.add(new Label("Notes:"),         0, 7); grid.add(notesField,      1, 7);
+        grid.add(errorLabel,                  1, 8);
         dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+
+        Runnable checkFields = () -> {
+            boolean valid = !assetIdField.getText().trim().isEmpty()
+                    && !dateField.getText().trim().isEmpty();
+            okButton.setDisable(!valid);
+        };
+
+        assetIdField.textProperty().addListener((o, ov, nv) -> checkFields.run());
+        dateField.textProperty().addListener((o, ov, nv) -> checkFields.run());
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String error = validateMaintenance(
+                    assetIdField.getText(),
+                    dateField.getText(),
+                    nextDueDateField.getText(),
+                    costField.getText()
+            );
+            if (error != null) {
+                errorLabel.setText(error);
+                event.consume();
+            }
+        });
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -161,12 +192,32 @@ public class MaintenanceView {
                 } else {
                     showAlert("Error", "Server returned: " + response.statusCode());
                 }
-            } catch (NumberFormatException ex) {
-                showAlert("Error", "Asset ID and Cost must be numbers.");
             } catch (Exception ex) {
                 showAlert("Error", "Cannot connect: " + ex.getMessage());
             }
         }
+    }
+
+    private String validateMaintenance(String assetId, String date,
+                                       String nextDate, String cost) {
+        if (assetId.trim().isEmpty()) return "Asset ID is required.";
+        try {
+            if (Integer.parseInt(assetId.trim()) <= 0)
+                return "Asset ID must be greater than 0.";
+        } catch (NumberFormatException e) {
+            return "Asset ID must be a number.";
+        }
+        if (date.trim().isEmpty()) return "Maintenance Date is required.";
+        if (!date.trim().matches("\\d{4}-\\d{2}-\\d{2}"))
+            return "Date must be YYYY-MM-DD format.";
+        if (!nextDate.trim().isEmpty() &&
+                !nextDate.trim().matches("\\d{4}-\\d{2}-\\d{2}"))
+            return "Next Due Date must be YYYY-MM-DD format.";
+        if (!cost.trim().isEmpty()) {
+            try { Double.parseDouble(cost.trim()); }
+            catch (NumberFormatException e) { return "Cost must be a valid number."; }
+        }
+        return null;
     }
 
     private void showAlert(String title, String message) {
@@ -191,7 +242,8 @@ public class MaintenanceView {
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
         try {
-            return Integer.parseInt(json.substring(start, end).trim().replace("}", ""));
+            return Integer.parseInt(
+                    json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0; }
     }
 
@@ -201,7 +253,8 @@ public class MaintenanceView {
         int end = json.indexOf(",", start);
         if (end == -1) end = json.length();
         try {
-            return Double.parseDouble(json.substring(start, end).trim().replace("}", ""));
+            return Double.parseDouble(
+                    json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0.0; }
     }
 }
