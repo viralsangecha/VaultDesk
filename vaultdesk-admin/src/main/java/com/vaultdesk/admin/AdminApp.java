@@ -8,8 +8,6 @@ public class AdminApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
-        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
-
         LoginView loginView=new LoginView();
 
         stage.setScene(loginView.getScene(stage));
