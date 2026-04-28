@@ -18,6 +18,7 @@ public class MaintenanceView {
         Label title = new Label("Maintenance");
         title.getStyleClass().add("section-title");
         TableView<Maintenance> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Maintenance, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -46,6 +47,20 @@ public class MaintenanceView {
         TableColumn<Maintenance, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue().getStatus()));
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item) {
+                    case "Completed"   -> setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
+                    case "In Progress" -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "Pending"     -> setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                    default            -> setStyle("-fx-text-fill: #8b949e;");
+                }
+            }
+        });
 
         table.getColumns().addAll(idCol, assetIdCol, typeCol,
                 descCol, costCol, dateCol, statusCol);

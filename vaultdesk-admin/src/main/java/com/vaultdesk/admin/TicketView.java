@@ -21,6 +21,7 @@ public class TicketView {
         Label title = new Label("Tickets");
         title.getStyleClass().add("section-title");
         TableView<Ticket> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Ticket, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->

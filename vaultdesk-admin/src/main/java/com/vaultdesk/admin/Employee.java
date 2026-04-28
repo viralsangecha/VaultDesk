@@ -7,38 +7,24 @@ public class Employee {
     private String designation;
     private String email;
     private String phone;
+    private int active;
 
-    public Employee(int id,String name,String empCode,String designation,String email,String phone)
-    {
-        this.id=id;
-        this.name=name;
-        this.empCode=empCode;
-        this.designation=designation;
-        this.email=email;
-        this.phone=phone;
+    public Employee(int id, String name, String empCode, String designation,
+                    String email, String phone, int active) {
+        this.id = id;
+        this.name = name;
+        this.empCode = empCode;
+        this.designation = designation;
+        this.email = email;
+        this.phone = phone;
+        this.active = active;
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getEmpCode() {
-        return empCode;
-    }
-
-    public String getDesignation() {
-        return designation;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
+    public int getId()           { return id; }
+    public String getName()      { return name; }
+    public String getEmpCode()   { return empCode; }
+    public String getDesignation() { return designation; }
+    public String getEmail()     { return email; }
+    public String getPhone()     { return phone; }
+    public boolean isActive()    { return active == 1; }
 }

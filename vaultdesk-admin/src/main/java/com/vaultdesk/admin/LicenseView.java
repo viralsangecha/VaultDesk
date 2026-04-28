@@ -17,6 +17,7 @@ public class LicenseView {
         Label title = new Label("Licenses");
         title.getStyleClass().add("section-title");
         TableView<License> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<License, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -46,6 +47,35 @@ public class LicenseView {
         seatsUsedCol.setCellValueFactory(data ->
                 new SimpleIntegerProperty(data.getValue().getSeatsUsed()).asObject());
 
+        // ── Seat usage status — colored text ──────────────────
+        TableColumn<License, String> usageCol = new TableColumn<>("Usage");
+        usageCol.setCellValueFactory(data -> {
+            License l = data.getValue();
+            int pct = l.getSeatsTotal() == 0 ? 0
+                    : (l.getSeatsUsed() * 100 / l.getSeatsTotal());
+            String label = pct >= 100 ? "Full"
+                    : pct >= 80 ? "High"
+                    : pct >= 50 ? "Medium"
+                    : "Low";
+            return new SimpleStringProperty(label + " (" + pct + "%)");
+        });
+        usageCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                if (item.startsWith("Full"))
+                    setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                else if (item.startsWith("High"))
+                    setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                else if (item.startsWith("Medium"))
+                    setStyle("-fx-text-fill: #58a6ff;");
+                else
+                    setStyle("-fx-text-fill: #3fb950;");
+            }
+        });
+
         TableColumn<License, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateSeatsBtn = new Button("Update Seats");
@@ -67,7 +97,7 @@ public class LicenseView {
         });
 
         table.getColumns().addAll(idCol, softwareNameCol, licenseTypeCol,
-                vendorCol, expiryCol, seatsTotalCol, seatsUsedCol, actionCol);
+                vendorCol, expiryCol, seatsTotalCol, seatsUsedCol,usageCol, actionCol);
 
         Button addBtn = new Button("+ Add License");
         addBtn.getStyleClass().setAll("btn-primary");

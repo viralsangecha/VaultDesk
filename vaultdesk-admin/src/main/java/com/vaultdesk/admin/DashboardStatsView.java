@@ -1,5 +1,6 @@
 package com.vaultdesk.admin;
 
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -11,117 +12,151 @@ import java.net.http.*;
 public class DashboardStatsView {
 
     public VBox getView() {
+
+        // ── Page header ───────────────────────────────────
         Label pageTitle = new Label("Dashboard Overview");
         pageTitle.getStyleClass().add("page-title");
-
         Label pageSub = new Label("Here's what's happening today.");
         pageSub.getStyleClass().add("page-subtitle");
 
-        // ── Stat cards ───────────────────────────────────
-        VBox cardAssets    = statCard("0", "Total Assets",      "22 General / 12 SAP", "stat-card-blue",   "stat-badge-blue",   "Global");
-        VBox cardTickets   = statCard("0", "Open Tickets",      "Needs attention",      "stat-card-red",    "stat-badge-red",    "Urgent");
-        VBox cardLicenses  = statCard("0", "Expiring Licenses", "Within 30 days",       "stat-card-orange", "stat-badge-orange", "30 Days");
-        VBox cardEmployees = statCard("0", "Active Employees",  "All departments",      "stat-card-green",  "stat-badge-green",  "Active");
+        // ── Stat cards ────────────────────────────────────
+        VBox cardAssets    = statCard("⊞", "0", "TOTAL ASSETS",
+                "22 General / 12 SAP", "+12.4%", "stat-badge-green",
+                "stat-card-blue", "stat-icon-box-blue", "#58a6ff");
+        VBox cardTickets   = statCard("✉", "0", "OPEN TICKETS",
+                "Needs attention", "Urgent", "stat-badge-red",
+                "stat-card-red", "stat-icon-box-red", "#f85149");
+        VBox cardLicenses  = statCard("🔑", "0", "EXPIRING LICENSES",
+                "Within 30 days", "30 Days", "stat-badge-orange",
+                "stat-card-orange", "stat-icon-box-orange", "#d29922");
+        VBox cardEmployees = statCard("👤", "0", "ACTIVE EMPLOYEES",
+                "All departments", "Global", "stat-badge-blue",
+                "stat-card-green", "stat-icon-box-green", "#3fb950");
 
         HBox statsRow = new HBox(16,
                 cardAssets, cardTickets, cardLicenses, cardEmployees);
         statsRow.setPadding(new Insets(8, 0, 8, 0));
 
-        // ── Recent tickets table ─────────────────────────
-        Label recentLabel = new Label("Recent Support Tickets");
+        // ── Tickets at a Glance ───────────────────────────
+        Label recentLabel = new Label("Tickets at a Glance");
         recentLabel.getStyleClass().add("section-title");
+        Label recentSub = new Label("Monitoring operational health and resolution speed");
+        recentSub.getStyleClass().add("page-subtitle");
 
+        // ── Table ─────────────────────────────────────────
         TableView<Ticket> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setPrefHeight(380);
 
-        TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("Ticket No");
-        ticketNoCol.setCellValueFactory(data ->
-                new javafx.beans.property.SimpleStringProperty(
-                        data.getValue().getTicketNo()));
+        // Ticket No
+        TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("TICKET ID");
+        ticketNoCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getTicketNo()));
+        ticketNoCol.setPrefWidth(160);
 
-        TableColumn<Ticket, String> titleCol = new TableColumn<>("Title");
-        titleCol.setCellValueFactory(data ->
-                new javafx.beans.property.SimpleStringProperty(
-                        data.getValue().getTitle()));
+        // Title
+        TableColumn<Ticket, String> titleCol = new TableColumn<>("REQUEST DETAIL");
+        titleCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getTitle()));
+        titleCol.setPrefWidth(220);
 
-        // Priority column — colored text
-        TableColumn<Ticket, String> priorityCol = new TableColumn<>("Priority");
-        priorityCol.setCellValueFactory(data ->
-                new javafx.beans.property.SimpleStringProperty(
-                        data.getValue().getPriority()));
+        // Category — colored text
+        TableColumn<Ticket, String> categoryCol = new TableColumn<>("SYSTEM");
+        categoryCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getCategory()));
+        categoryCol.setPrefWidth(110);
+        categoryCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item.toUpperCase()) {
+                    case "SAP"      -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "HARDWARE" -> setStyle("-fx-text-fill: #8b949e; -fx-font-weight: bold;");
+                    case "NETWORK"  -> setStyle("-fx-text-fill: #39d353; -fx-font-weight: bold;");
+                    case "SOFTWARE" -> setStyle("-fx-text-fill: #a371f7; -fx-font-weight: bold;");
+                    default         -> setStyle("-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
+                }
+            }
+        });
+
+        // Priority — colored text
+        TableColumn<Ticket, String> priorityCol = new TableColumn<>("PRIORITY");
+        priorityCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getPriority()));
+        priorityCol.setPrefWidth(100);
         priorityCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null); setText(null);
-                } else {
-                    Label lbl = new Label(item);
-                    switch (item) {
-                        case "Critical" -> lbl.setStyle(
-                                "-fx-text-fill: #f85149; -fx-font-weight: bold;");
-                        case "High" -> lbl.setStyle(
-                                "-fx-text-fill: #d29922; -fx-font-weight: bold;");
-                        case "Medium" -> lbl.setStyle(
-                                "-fx-text-fill: #8b949e;");
-                        default -> lbl.setStyle(
-                                "-fx-text-fill: #6e7681;");
-                    }
-                    setGraphic(lbl); setText(null);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item.toUpperCase()) {
+                    case "CRITICAL" -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "HIGH"     -> setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                    case "MEDIUM"   -> setStyle("-fx-text-fill: #8b949e;");
+                    case "LOW"      -> setStyle("-fx-text-fill: #6e7681;");
+                    default         -> setStyle("-fx-text-fill: #c9d1d9;");
                 }
             }
         });
 
-        // Status column — pill labels
-        TableColumn<Ticket, String> statusCol = new TableColumn<>("Status");
+        // Status — colored text
+        TableColumn<Ticket, String> statusCol = new TableColumn<>("STATUS");
+        statusCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getStatus()));
+        statusCol.setPrefWidth(110);
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null); setStyle("");
-                } else {
-                    setText(item);
-                    switch (item) {
-                        case "Open"        -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
-                        case "In Progress" -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
-                        case "Resolved"    -> setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
-                        default            -> setStyle("-fx-text-fill: #8b949e; -fx-font-weight: bold;");
-                    }
-                    setGraphic(null);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item) {
+                    case "Open"        -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "In Progress" -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "Resolved"    -> setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
+                    case "Closed"      -> setStyle("-fx-text-fill: #8b949e;");
+                    default            -> setStyle("-fx-text-fill: #c9d1d9;");
                 }
             }
         });
 
-        TableColumn<Ticket, String> createdCol = new TableColumn<>("Created");
-        createdCol.setCellValueFactory(data ->
-                new javafx.beans.property.SimpleStringProperty(
-                        data.getValue().getCreatedAt()));
+        table.getColumns().addAll(
+                ticketNoCol, titleCol, categoryCol, priorityCol, statusCol);
 
-        table.getColumns().addAll(ticketNoCol, titleCol,
-                priorityCol, statusCol, createdCol);
+        // ── Recent Activity panel ─────────────────────────
+        Label activityTitle = new Label("Recent Activity");
+        activityTitle.getStyleClass().add("activity-panel-title");
 
-        // ── Left column ──────────────────────────────────
-        VBox leftCol = new VBox(12,
-                pageTitle, pageSub, statsRow, recentLabel, table);
-        HBox.setHgrow(leftCol, Priority.ALWAYS);
+        Label realtimeLabel = new Label("REAL-TIME");
+        realtimeLabel.setStyle("-fx-text-fill: #484f58; -fx-font-size: 10px; -fx-font-weight: bold;");
 
-        // ── Right column — Activity feed ─────────────────
-        VBox activityPanel = buildActivityPanel();
+        HBox activityHeader = new HBox(activityTitle, new Region(), realtimeLabel);
+        HBox.setHgrow(activityHeader.getChildren().get(1), Priority.ALWAYS);
+        activityHeader.setAlignment(Pos.CENTER_LEFT);
 
-        // ── Two-column layout ────────────────────────────
-        HBox mainRow = new HBox(16, leftCol, activityPanel);
-        VBox.setVgrow(mainRow, Priority.ALWAYS);
+        VBox activityFeed = new VBox(0);
 
-        // ── Load stats ───────────────────────────────────
+        VBox activityPanel = new VBox(10, activityHeader, new Separator(), activityFeed);
+        activityPanel.getStyleClass().add("activity-panel");
+
+        // ── Main content row (table + activity) ───────────
+        HBox mainRow = new HBox(16);
+        VBox tableBox = new VBox(8, recentLabel, recentSub, table);
+        HBox.setHgrow(tableBox, Priority.ALWAYS);
+        mainRow.getChildren().addAll(tableBox, activityPanel);
+
+        // ── Load stats ────────────────────────────────────
         try {
             HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/dashboard/stats"))
                     .GET().build();
-            HttpResponse<String> response = client.send(request,
+            HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
-            String body = response.body().trim();
+            String body = resp.body().trim();
 
             setStatNumber(cardAssets,    extractInt(body, "totalAssets"));
             setStatNumber(cardTickets,   extractInt(body, "openTickets"));
@@ -132,15 +167,15 @@ public class DashboardStatsView {
             System.out.println("Error loading stats: " + ex.getMessage());
         }
 
-        // ── Load recent tickets ──────────────────────────
+        // ── Load recent tickets ───────────────────────────
         try {
             HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/dashboard/recent-activity"))
                     .GET().build();
-            HttpResponse<String> response = client.send(request,
+            HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
-            String body = response.body().trim();
+            String body = resp.body().trim();
             body = body.substring(1, body.length() - 1);
 
             if (!body.isEmpty()) {
@@ -150,132 +185,121 @@ public class DashboardStatsView {
                             extractInt(obj, "id"),
                             extractValue(obj, "ticketNo"),
                             extractValue(obj, "title"),
-                            extractValue(obj, "category"),   // ← added
+                            extractValue(obj, "category"),
                             extractValue(obj, "priority"),
                             extractValue(obj, "status"),
                             extractInt(obj, "assignedTo"),
                             extractValue(obj, "createdAt")
                     ));
+
+                    // ── Add to activity feed ───────────────
+                    String dotClass = dotClass(extractValue(obj, "priority"));
+                    String title    = extractValue(obj, "title");
+                    String status   = extractValue(obj, "status");
+                    String time     = extractValue(obj, "createdAt");
+                    activityFeed.getChildren().add(
+                            activityEntry(dotClass, title, status, time));
                 }
             }
         } catch (Exception ex) {
             System.out.println("Error loading tickets: " + ex.getMessage());
         }
 
-        VBox root = new VBox(12, mainRow);
+        VBox root = new VBox(16,
+                pageTitle, pageSub, statsRow, mainRow);
         return root;
     }
 
-    // ── Activity feed panel ──────────────────────────────
-    private VBox buildActivityPanel() {
-        VBox panel = new VBox(0);
-        panel.getStyleClass().add("activity-panel");
+    // ── Stat card builder ─────────────────────────────────
+    private VBox statCard(String icon, String number, String label,
+                          String sublabel, String badge, String badgeClass,
+                          String cardClass, String iconBoxClass, String iconColor) {
 
-        Label panelTitle = new Label("Recent Activity");
-        panelTitle.getStyleClass().add("activity-panel-title");
-        panel.getChildren().add(panelTitle);
+        // Icon box
+        Label iconLabel = new Label(icon);
+        iconLabel.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: 18px;");
+        StackPane iconBox = new StackPane(iconLabel);
+        iconBox.getStyleClass().add(iconBoxClass);
+        iconBox.setMinSize(40, 40);
+        iconBox.setMaxSize(40, 40);
 
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/dashboard/recent-activity"))
-                    .GET().build();
-            HttpResponse<String> response = client.send(request,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = response.body().trim();
-            body = body.substring(1, body.length() - 1);
+        // Badge
+        Label badgeLabel = new Label(badge);
+        badgeLabel.getStyleClass().add(badgeClass);
 
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "").replace("}", "");
-                    String title    = extractValue(obj, "title");
-                    String status   = extractValue(obj, "status");
-                    String priority = extractValue(obj, "priority");
-                    String created  = extractValue(obj, "createdAt");
-
-                    // shorten timestamp display
-                    String timeShort = created.length() >= 16
-                            ? created.substring(0, 16) : created;
-
-                    // dot color based on priority
-                    String dotClass = switch (priority) {
-                        case "Critical" -> "activity-dot-red";
-                        case "High"     -> "activity-dot-orange";
-                        case "Medium"   -> "activity-dot-blue";
-                        default         -> "activity-dot-green";
-                    };
-
-                    Region dot = new Region();
-                    dot.getStyleClass().add(dotClass);
-
-                    Label titleLbl = new Label(title);
-                    titleLbl.getStyleClass().add("activity-text");
-                    titleLbl.setWrapText(true);
-                    titleLbl.setMaxWidth(220);
-
-                    Label timeLbl = new Label(timeShort);
-                    timeLbl.getStyleClass().add("activity-time");
-
-                    VBox textBox = new VBox(2, titleLbl, timeLbl);
-
-                    HBox entry = new HBox(8, dot, textBox);
-                    entry.getStyleClass().add("activity-entry");
-                    entry.setAlignment(Pos.TOP_LEFT);
-                    entry.setPadding(new Insets(8, 0, 8, 0));
-
-                    panel.getChildren().add(entry);
-                }
-            } else {
-                Label empty = new Label("No recent activity.");
-                empty.getStyleClass().add("activity-time");
-                panel.getChildren().add(empty);
-            }
-
-        } catch (Exception ex) {
-            Label err = new Label("Cannot load activity.");
-            err.getStyleClass().add("activity-time");
-            panel.getChildren().add(err);
-        }
-
-        return panel;
-    }
-
-    // ── Stat card builder ────────────────────────────────
-    private VBox statCard(String number, String label,
-                          String subLabel, String colorClass,
-                          String badgeClass, String badgeText) {
-
-        HBox topRow = new HBox(8);
+        // Top row: icon + badge
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox topRow = new HBox(iconBox, spacer, badgeLabel);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
+        // Number
         Label numLabel = new Label(number);
         numLabel.getStyleClass().add("stat-number");
+        numLabel.setId("stat-num");
 
-        Label badge = new Label(badgeText);
-        badge.getStyleClass().add(badgeClass);
-
-        topRow.getChildren().addAll(numLabel, badge);
-
+        // Labels
         Label txtLabel = new Label(label);
         txtLabel.getStyleClass().add("stat-label");
 
-        Label subLbl = new Label(subLabel);
-        subLbl.getStyleClass().add("stat-sublabel");
+        Label subLabel = new Label(sublabel);
+        subLabel.getStyleClass().add("stat-sublabel");
 
-        VBox card = new VBox(4, topRow, txtLabel, subLbl);
-        card.getStyleClass().addAll("stat-card", colorClass);
-        card.setPrefWidth(210);
-        card.setPrefHeight(110);
+        VBox card = new VBox(8, topRow, numLabel, txtLabel, subLabel);
+        card.getStyleClass().addAll("stat-card", cardClass);
+        HBox.setHgrow(card, Priority.ALWAYS);
         return card;
     }
 
     private void setStatNumber(VBox card, int value) {
-        // topRow is child 0, numLabel is topRow child 0
-        HBox topRow = (HBox) card.getChildren().get(0);
-        Label numLabel = (Label) topRow.getChildren().get(0);
-        numLabel.setText(String.valueOf(value));
+        card.getChildren().stream()
+                .filter(n -> n instanceof Label
+                        && ((Label) n).getId() != null
+                        && ((Label) n).getId().equals("stat-num"))
+                .findFirst()
+                .ifPresent(n -> ((Label) n).setText(String.valueOf(value)));
     }
 
+    // ── Activity entry builder ────────────────────────────
+    private VBox activityEntry(String dotClass, String title,
+                               String status, String time) {
+        Region dot = new Region();
+        dot.getStyleClass().addAll("activity-dot", dotClass);
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("activity-text");
+        titleLabel.setMaxWidth(200);
+        titleLabel.setWrapText(true);
+
+        Label statusLabel = new Label(status);
+        statusLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+
+        VBox textBox = new VBox(2, titleLabel, statusLabel);
+        HBox row = new HBox(10, dot, textBox);
+        row.setAlignment(Pos.TOP_LEFT);
+
+        Label timeLabel = new Label(time != null && time.length() >= 10
+                ? time.substring(0, 10) : time);
+        timeLabel.getStyleClass().add("activity-time");
+
+        VBox entry = new VBox(4, row, timeLabel);
+        entry.setStyle("-fx-border-color: #21262d; -fx-border-width: 0 0 1 0;" +
+                "-fx-padding: 8 0 8 0;");
+        return entry;
+    }
+
+    private String dotClass(String priority) {
+        if (priority == null) return "activity-dot-grey";
+        return switch (priority.toUpperCase()) {
+            case "CRITICAL" -> "activity-dot-red";
+            case "HIGH"     -> "activity-dot-orange";
+            case "MEDIUM"   -> "activity-dot-blue";
+            case "LOW"      -> "activity-dot-green";
+            default         -> "activity-dot-grey";
+        };
+    }
+
+    // ── Helpers ───────────────────────────────────────────
     private String extractValue(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);

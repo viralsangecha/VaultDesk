@@ -17,6 +17,7 @@ public class EmployeeView {
         Label title = new Label("Employees");
         title.getStyleClass().add("section-title");
         TableView<Employee> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Employee, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -41,6 +42,23 @@ public class EmployeeView {
         TableColumn<Employee, String> phoneCol = new TableColumn<>("Phone");
         phoneCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue().getPhone()));
+
+        // ── Active status — colored text ──────────────────────
+        TableColumn<Employee, String> activeCol = new TableColumn<>("Status");
+        activeCol.setCellValueFactory(data ->
+                new SimpleStringProperty(data.getValue().isActive() ? "Active" : "Inactive"));
+        activeCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                if ("Active".equals(item))
+                    setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
+                else
+                    setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+            }
+        });
 
         TableColumn<Employee, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
@@ -71,7 +89,7 @@ public class EmployeeView {
         });
 
         table.getColumns().addAll(idCol, nameCol, empCodeCol,
-                designationCol, emailCol, phoneCol, actionCol);
+                designationCol, emailCol, phoneCol,activeCol, actionCol);
 
         Button addBtn = new Button("+ Add Employee");
         addBtn.getStyleClass().setAll("btn-primary");
@@ -124,7 +142,8 @@ public class EmployeeView {
                             extractValue(obj, "empCode"),
                             extractValue(obj, "designation"),
                             extractValue(obj, "email"),
-                            extractValue(obj, "phone")
+                            extractValue(obj, "phone"),
+                            extractInt(obj, "active")       // ← added
                     ));
                 }
             }

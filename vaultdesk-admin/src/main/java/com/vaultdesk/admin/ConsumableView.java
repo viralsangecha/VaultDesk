@@ -17,6 +17,7 @@ public class ConsumableView {
         Label title = new Label("Consumables");
         title.getStyleClass().add("section-title");
         TableView<Consumable> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Consumable, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -42,6 +43,33 @@ public class ConsumableView {
         reorderCol.setCellValueFactory(data ->
                 new SimpleIntegerProperty(data.getValue().getReorderLevel()).asObject());
 
+        // ── Stock level — colored text ─────────────────────────
+        TableColumn<Consumable, String> stockLevelCol = new TableColumn<>("Stock Level");
+        stockLevelCol.setCellValueFactory(data -> {
+            Consumable c = data.getValue();
+            String label;
+            if (c.getQuantityInStock() == 0)
+                label = "Out of Stock";
+            else if (c.getQuantityInStock() <= c.getReorderLevel())
+                label = "Low";
+            else
+                label = "OK";
+            return new SimpleStringProperty(label);
+        });
+        stockLevelCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item) {
+                    case "Out of Stock" -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "Low"          -> setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                    default             -> setStyle("-fx-text-fill: #3fb950;");
+                }
+            }
+        });
+
         TableColumn<Consumable, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateQtyBtn = new Button("Update Qty");
@@ -63,7 +91,7 @@ public class ConsumableView {
         });
 
         table.getColumns().addAll(idCol, nameCol, categoryCol,
-                unitCol, stockCol, reorderCol, actionCol);
+                unitCol, stockCol, reorderCol,stockLevelCol, actionCol);
 
         Button addBtn = new Button("+ Add Consumable");
         addBtn.getStyleClass().setAll("btn-primary");

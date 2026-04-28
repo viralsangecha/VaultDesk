@@ -17,6 +17,7 @@ public class VendorView {
         Label title = new Label("Vendors");
         title.getStyleClass().add("section-title");
         TableView<Vendor> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Vendor, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->

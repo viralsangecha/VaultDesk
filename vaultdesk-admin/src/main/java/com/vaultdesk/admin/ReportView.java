@@ -41,6 +41,7 @@ public class ReportView {
         Tab tab = new Tab("Assets by Category");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> catCol = new TableColumn<>("Category");
         catCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -101,6 +102,7 @@ public class ReportView {
         Tab tab = new Tab("Ticket Status");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -176,6 +178,7 @@ public class ReportView {
         Tab tab = new Tab("Expiring Licenses");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> nameCol = new TableColumn<>("Software");
         nameCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -241,6 +244,7 @@ public class ReportView {
         Tab tab = new Tab("Low Stock");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> nameCol = new TableColumn<>("Item");
         nameCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -313,6 +317,7 @@ public class ReportView {
         Tab tab = new Tab("Maintenance Cost");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> typeCol = new TableColumn<>("Type");
         typeCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -383,6 +388,7 @@ public class ReportView {
         Tab tab = new Tab("Dept Asset Load");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> deptCol = new TableColumn<>("Department ID");
         deptCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -455,6 +461,7 @@ public class ReportView {
         Tab tab = new Tab("Ticket Performance");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> priorityCol = new TableColumn<>("Priority");
         priorityCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));
@@ -543,6 +550,7 @@ public class ReportView {
         Tab tab = new Tab("Warranty Status");
 
         TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<String[], String> nameCol = new TableColumn<>("Asset");
         nameCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[0]));

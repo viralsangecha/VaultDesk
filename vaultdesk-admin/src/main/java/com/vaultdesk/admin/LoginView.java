@@ -14,7 +14,6 @@ public class LoginView {
 
     public Scene getScene(Stage stage) {
 
-        // ── Card contents ────────────────────────────────
         Label appTitle = new Label("VaultDesk");
         appTitle.getStyleClass().add("login-title");
 
@@ -34,14 +33,20 @@ public class LoginView {
         passwordField.getStyleClass().add("login-field");
 
         Button loginButton = new Button("Sign In to Dashboard →");
-        loginButton.getStyleClass().add("login-btn");
+        loginButton.getStyleClass().setAll("login-btn");
+        loginButton.setStyle(
+                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
+                        "-fx-pref-width: 324px; -fx-pref-height: 42px;" +
+                        "-fx-background-radius: 6; -fx-border-radius: 6; -fx-cursor: hand;");
 
         Label statusLabel = new Label("");
         statusLabel.getStyleClass().add("login-status-error");
 
-        VBox card = new VBox(12);
+        VBox card = new VBox(14);
         card.getStyleClass().add("login-card");
         card.setAlignment(Pos.CENTER_LEFT);
+        card.setMaxWidth(420);
         card.getChildren().addAll(
                 appTitle, appSubtitle,
                 new Label(""),
@@ -52,44 +57,39 @@ public class LoginView {
                 statusLabel
         );
 
-        // ── Full screen centered ─────────────────────────
         StackPane root = new StackPane(card);
+        StackPane.setAlignment(card, Pos.CENTER);
         root.getStyleClass().add("login-bg");
 
         Scene scene = new Scene(root, 1200, 800);
         scene.getStylesheets().add(
                 getClass().getResource("/styles.css").toExternalForm());
 
-        // ── Login action ─────────────────────────────────
         loginButton.setOnAction(e -> {
             String username = usernameField.getText();
             String password = passwordField.getText();
             String body = "{\"username\":\"" + username
                     + "\",\"password\":\"" + password + "\"}";
 
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/auth/login"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-
             try {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/auth/login"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
                 HttpResponse<String> response = client.send(request,
                         HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() == 200) {
                     String responseBody = response.body();
                     String fullName = extractValue(responseBody, "fullName");
-                    String role = extractValue(responseBody, "role");
-                    DashboardView dashboard = new DashboardView(fullName, role);
-                    stage.setScene(dashboard.getScene(stage));
+                    String role     = extractValue(responseBody, "role");
+                    stage.setScene(new DashboardView(fullName, role).getScene(stage));
                 } else {
                     statusLabel.setText("Invalid username or password.");
-                    statusLabel.getStyleClass().setAll("login-status-error");
                 }
             } catch (Exception ex) {
                 statusLabel.setText("Cannot connect to server.");
-                statusLabel.getStyleClass().setAll("login-status-error");
             }
         });
 
@@ -99,7 +99,7 @@ public class LoginView {
     private String extractValue(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search) + search.length();
-        int end = json.indexOf("\"", start);
+        int end   = json.indexOf("\"", start);
         return json.substring(start, end);
     }
 }

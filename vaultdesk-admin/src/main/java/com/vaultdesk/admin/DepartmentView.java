@@ -17,6 +17,7 @@ public class DepartmentView {
         Label title = new Label("Departments");
         title.getStyleClass().add("section-title");
         TableView<Department> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Department, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->

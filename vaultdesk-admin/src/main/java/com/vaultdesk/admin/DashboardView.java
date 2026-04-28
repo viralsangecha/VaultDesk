@@ -19,7 +19,7 @@ public class DashboardView {
 
     public Scene getScene(Stage stage) {
 
-        // ── Sidebar header ───────────────────────────────
+        // ── Sidebar header ────────────────────────────────
         Label sideTitle = new Label("VaultDesk");
         sideTitle.getStyleClass().add("sidebar-title");
         Label sideSub = new Label("IT Management");
@@ -27,7 +27,7 @@ public class DashboardView {
         VBox sideHeader = new VBox(2, sideTitle, sideSub);
         sideHeader.getStyleClass().add("sidebar-header");
 
-        // ── User card ────────────────────────────────────
+        // ── User card ─────────────────────────────────────
         Label nameLabel = new Label(fullName);
         nameLabel.getStyleClass().add("sidebar-user-name");
         Label roleLabel = new Label(role);
@@ -35,25 +35,44 @@ public class DashboardView {
         VBox userCard = new VBox(3, nameLabel, roleLabel);
         userCard.getStyleClass().add("sidebar-user-card");
 
-        // ── Nav buttons ──────────────────────────────────
-        Button btnDashboard   = sidebarBtn("  Dashboard");
-        Button btnAssets      = sidebarBtn("  Assets");
-        Button btnTickets     = sidebarBtn("  Tickets");
-        Button btnEmployees   = sidebarBtn("  Employees");
-        Button btnDepartments = sidebarBtn("  Departments");
-        Button btnLicenses    = sidebarBtn("  Licenses");
-        Button btnConsumables = sidebarBtn("  Consumables");
-        Button btnMaintenance = sidebarBtn("  Maintenance");
-        Button btnVendors     = sidebarBtn("  Vendors");
-        Button btnReports     = sidebarBtn("  Reports");
+        // ── Nav buttons with icons ────────────────────────
+        Button btnDashboard   = sidebarBtn("⊞  Dashboard");
+        Button btnAssets      = sidebarBtn("▣  Assets");
+        Button btnTickets     = sidebarBtn("✉  Tickets");
+        Button btnEmployees   = sidebarBtn("👤  Employees");
+        Button btnDepartments = sidebarBtn("🏢  Departments");
+        Button btnLicenses    = sidebarBtn("🔑  Licenses");
+        Button btnConsumables = sidebarBtn("📦  Consumables");
+        Button btnMaintenance = sidebarBtn("🔧  Maintenance");
+        Button btnVendors     = sidebarBtn("🤝  Vendors");
+        Button btnReports     = sidebarBtn("📊  Reports");
 
-        // ── Logout ───────────────────────────────────────
-        Button btnLogout = new Button("  Logout");
+        // ── New Asset button ──────────────────────────────
+        Button btnNewAsset = new Button("＋  New Asset");
+        btnNewAsset.getStyleClass().setAll("sidebar-new-asset");
+        btnNewAsset.setStyle(
+                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                        "-fx-font-weight: bold; -fx-font-size: 13px;" +
+                        "-fx-background-radius: 6; -fx-padding: 10 16 10 16;" +
+                        "-fx-pref-width: 188px; -fx-cursor: hand;");
+        VBox newAssetBox = new VBox(btnNewAsset);
+        newAssetBox.setPadding(new Insets(16));
+        btnNewAsset.setOnAction(e -> {
+            setActive(btnAssets);
+            contentArea.getChildren().setAll(new AssetView().getView());
+        });
+
+        // ── Logout ────────────────────────────────────────
+        Button btnLogout = new Button("⏻  Logout");
         btnLogout.getStyleClass().add("sidebar-logout");
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        // ── Sidebar VBox ─────────────────────────────────
+        // ── Settings + Support ────────────────────────────
+        Button btnSettings = sidebarBtn("⚙  Settings");
+        Button btnSupport  = sidebarBtn("？  Support");
+
+        // ── Sidebar VBox ──────────────────────────────────
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
         sidebar.getChildren().addAll(
@@ -62,22 +81,45 @@ public class DashboardView {
                 btnEmployees, btnDepartments, btnLicenses,
                 btnConsumables, btnMaintenance, btnVendors,
                 btnReports,
-                spacer, btnLogout
+                spacer,
+                newAssetBox,
+                btnSettings, btnSupport,
+                btnLogout
         );
 
-        // ── Content area ─────────────────────────────────
-        VBox contentArea = new VBox(10);
+        // ── Top bar with search ───────────────────────────
+        TextField searchField = new TextField();
+        searchField.setPromptText("🔍  Search assets, tickets, or serial numbers...");
+        searchField.getStyleClass().add("search-bar");
+        HBox topBar = new HBox(searchField);
+        topBar.getStyleClass().add("top-bar");
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+
+        // ── Content area ──────────────────────────────────
+        contentArea = new VBox(10);
         contentArea.getStyleClass().add("content-area");
         HBox.setHgrow(contentArea, Priority.ALWAYS);
 
-        // ── Main layout ──────────────────────────────────
-        HBox mainLayout = new HBox(sidebar, contentArea);
+        ScrollPane scrollPane = new ScrollPane(contentArea);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+        scrollPane.getStyleClass().add("content-scroll");
+        scrollPane.setStyle("-fx-background-color: #0d1117; -fx-background: #0d1117;");
+        HBox.setHgrow(scrollPane, Priority.ALWAYS);
 
-        // ── Default view ─────────────────────────────────
+        // ── Right side = topbar + content ─────────────────
+        VBox rightSide = new VBox(topBar, scrollPane);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        // ── Main layout ───────────────────────────────────
+        HBox mainLayout = new HBox(sidebar, rightSide);
+        HBox.setHgrow(rightSide, Priority.ALWAYS);
+
+        // ── Default view ──────────────────────────────────
         setActive(btnDashboard);
         contentArea.getChildren().add(new DashboardStatsView().getView());
 
-        // ── Nav actions ──────────────────────────────────
+        // ── Nav actions ───────────────────────────────────
         btnDashboard.setOnAction(e -> {
             setActive(btnDashboard);
             contentArea.getChildren().setAll(new DashboardStatsView().getView());
@@ -118,15 +160,16 @@ public class DashboardView {
             setActive(btnReports);
             contentArea.getChildren().setAll(new ReportView().getView());
         });
-        btnLogout.setOnAction(e -> {
-            stage.setScene(new LoginView().getScene(stage));
-        });
+        btnLogout.setOnAction(e ->
+                stage.setScene(new LoginView().getScene(stage)));
 
         Scene scene = new Scene(mainLayout, 1200, 800);
         scene.getStylesheets().add(
                 getClass().getResource("/styles.css").toExternalForm());
         return scene;
     }
+
+    private VBox contentArea;
 
     private Button sidebarBtn(String text) {
         Button btn = new Button(text);
@@ -135,9 +178,8 @@ public class DashboardView {
     }
 
     private void setActive(Button btn) {
-        if (activeBtn != null) {
+        if (activeBtn != null)
             activeBtn.getStyleClass().setAll("sidebar-btn");
-        }
         btn.getStyleClass().setAll("sidebar-btn-active");
         activeBtn = btn;
     }
