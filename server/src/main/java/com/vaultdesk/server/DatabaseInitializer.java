@@ -30,6 +30,13 @@ public class DatabaseInitializer implements CommandLineRunner {
                 created_at    TEXT
             )
         """);
+        // Add last_login column if it doesn't exist (safe migration)
+        try {
+            jdbc.execute("ALTER TABLE users ADD COLUMN last_login TEXT");
+            System.out.println("✔ last_login column added.");
+        } catch (Exception e) {
+            // Column already exists, ignore
+        }
         System.out.println("✔ users table ready.");
 
         // ─────────────────────────────────────────────

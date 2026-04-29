@@ -56,7 +56,8 @@ public class UserDAO {
                 (String) row.get("full_name"),
                 (String) row.get("role"),
                 ((Number) row.get("active")).intValue(),
-                (String) row.get("created_at")
+                (String) row.get("created_at"),
+                (String) row.get("last_login")
         );
     }
 
@@ -69,6 +70,7 @@ public class UserDAO {
                 username, passwordHash, fullName, role
         );
     }
+
 
     public int deactivateUser(int id) {
         return jdbc.update(
@@ -97,4 +99,14 @@ public class UserDAO {
                 newHash, userId);
         return true;
     }
+    public void updateLastLogin(int userId) {
+        try {
+            jdbc.update(
+                    "UPDATE users SET last_login = datetime('now') WHERE id = ?",
+                    userId);
+        } catch (Exception e) {
+            // ignore if column doesn't exist yet
+        }
+    }
+
 }

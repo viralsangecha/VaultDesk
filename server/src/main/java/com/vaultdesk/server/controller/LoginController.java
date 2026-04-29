@@ -35,6 +35,8 @@ public class LoginController {
         String hashed = sha256(request.password());
         if (userDAO.validateLogin(request.username(), hashed)) {
             User user = userDAO.getUserByUsername(request.username());
+            // Record login time
+            userDAO.updateLastLogin(user.id());
             return ResponseEntity.ok(new LoginResponse(
                     true, "Login successful",
                     user.role(), user.fullName(), user.id()
