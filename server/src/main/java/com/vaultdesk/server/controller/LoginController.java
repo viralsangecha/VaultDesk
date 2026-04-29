@@ -5,10 +5,7 @@ import com.vaultdesk.server.model.LoginRequest;
 import com.vaultdesk.server.model.LoginResponse;
 import com.vaultdesk.server.model.User;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
 
@@ -16,34 +13,34 @@ import java.security.MessageDigest;
 @RequestMapping("/api/auth")
 public class LoginController {
 
+    private final UserDAO userDAO;
+
+    public LoginController(UserDAO userDAO) {
+        this.userDAO = userDAO;
+    }
+
     private static String sha256(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(input.getBytes("UTF-8"));
             StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
+            for (byte b : hash)
                 sb.append(String.format("%02x", b));
-            }
             return sb.toString();
-        } catch (Exception e) {
-            return "";
-        }
-    }
-    private final UserDAO userDAO;  // field
-
-    public LoginController(UserDAO userDAO) {  // constructor injection
-        this.userDAO = userDAO;
+        } catch (Exception e) { return ""; }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> LoginRequest(@RequestBody LoginRequest request)
-    {
-        String hased=sha256(request.password());
-        if (userDAO.validateLogin(request.username(),hased))
-        {
-            User user=userDAO.getUserByUsername(request.username());
-            return ResponseEntity.ok(new LoginResponse(true,"Login successful",user.role(),user.fullName()));
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        String hashed = sha256(request.password());
+        if (userDAO.validateLogin(request.username(), hashed)) {
+            User user = userDAO.getUserByUsername(request.username());
+            return ResponseEntity.ok(new LoginResponse(
+                    true, "Login successful",
+                    user.role(), user.fullName(), user.id()
+            ));
         }
-        return ResponseEntity.status(401).body(new LoginResponse(false, "Invalid credentials", "", ""));
+        return ResponseEntity.status(401).body(
+                new LoginResponse(false, "Invalid credentials", "", "", 0));
     }
 }

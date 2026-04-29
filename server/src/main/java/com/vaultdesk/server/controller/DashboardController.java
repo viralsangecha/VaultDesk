@@ -3,34 +3,33 @@ package com.vaultdesk.server.controller;
 import com.vaultdesk.server.dao.DashboardDAO;
 import com.vaultdesk.server.model.DashboardStats;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
+
     private final DashboardDAO dashboardDAO;
 
-    public DashboardController(DashboardDAO dashboardDAO)
-    {
-        this.dashboardDAO=dashboardDAO;
+    public DashboardController(DashboardDAO dashboardDAO) {
+        this.dashboardDAO = dashboardDAO;
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<?> getDashboardStats()
-    {
-        int assets    = dashboardDAO.getTotalAssets();
-        int tickets   = dashboardDAO.getOpenTicketsCount();
-        int licenses  = dashboardDAO.getExpiringLicensesCount();
-        int employees = dashboardDAO.getTotalEmployees();
-
-        return ResponseEntity.ok(new DashboardStats(assets, tickets, licenses, employees));
+    public ResponseEntity<?> getDashboardStats() {
+        return ResponseEntity.ok(new DashboardStats(
+                dashboardDAO.getTotalAssets(),
+                dashboardDAO.getOpenTicketsCount(),
+                dashboardDAO.getGeneralTicketCount(),
+                dashboardDAO.getSapTicketCount(),
+                dashboardDAO.getExpiringLicensesCount(),
+                dashboardDAO.getTotalEmployees(),
+                dashboardDAO.getTotalDepartments()
+        ));
     }
 
     @GetMapping("/recent-activity")
-    public ResponseEntity<?> getrecentactivity()
-    {
+    public ResponseEntity<?> getRecentActivity() {
         return ResponseEntity.ok(dashboardDAO.getRecentTickets());
     }
 }
