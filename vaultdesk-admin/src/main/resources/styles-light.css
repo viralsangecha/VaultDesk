@@ -129,3 +129,101 @@
 .scroll-bar .track  { -fx-background-color: #f6f8fa; }
 
 .sidebar-logout { -fx-text-fill: #cf222e; }
+
+/* Fix content scroll background */
+.content-scroll,
+.content-scroll > .viewport {
+    -fx-background-color: #f6f8fa !important;
+    -fx-background: #f6f8fa !important;
+}
+
+/* Fix sidebar new asset button area */
+.sidebar-new-asset {
+    -fx-background-color: #0969da !important;
+}
+
+/* Fix table empty rows */
+.table-row-cell:empty {
+    -fx-background-color: #ffffff !important;
+}
+
+/* Fix stat card icon boxes in light mode */
+.stat-icon-box-blue   { -fx-background-color: #ddf4ff !important; }
+.stat-icon-box-red    { -fx-background-color: #ffebe9 !important; }
+.stat-icon-box-orange { -fx-background-color: #fff8c5 !important; }
+.stat-icon-box-green  { -fx-background-color: #dafbe1 !important; }
+
+/* Fix section cards in settings */
+.dialog-pane {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.dialog-pane > .content {
+    -fx-background-color: #ffffff !important;
+}
+
+.dialog-pane > .button-bar {
+    -fx-background-color: #f6f8fa !important;
+}
+
+.dialog-pane > .button-bar .button {
+    -fx-background-color: #f6f8fa !important;
+    -fx-text-fill: #24292f !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.dialog-pane > .button-bar .button:default {
+    -fx-background-color: #0969da !important;
+    -fx-text-fill: white !important;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #f6f8fa !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #24292f !important;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #24292f !important;
+}
+
+/* Fix tab pane in reports */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: #f6f8fa !important;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #f6f8fa !important;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #24292f !important;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #ffffff !important;
+}
+
+/* Fix radio buttons */
+.radio-button .text { -fx-text-fill: #24292f !important; }
+
+/* Fix text area in settings */
+.text-area {
+    -fx-control-inner-background: #f6f8fa !important;
+    -fx-text-fill: #24292f !important;
+}
+
+/* Fix activity panel in light mode */
+.activity-panel {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+/* Fix scroll bar in light mode */
+.scroll-bar       { -fx-background-color: #f6f8fa !important; }
+.scroll-bar .thumb { -fx-background-color: #d0d7de !important; }
+.scroll-bar .track { -fx-background-color: #f6f8fa !important; }

@@ -83,6 +83,14 @@ public class UserManagementView {
                             ? ca.substring(0, 10) : ca);
         });
 
+        TableColumn<AdminUser, String> lastLoginCol = new TableColumn<>("Last Login");
+        lastLoginCol.setCellValueFactory(d -> {
+            String ll = d.getValue().getLastLogin();
+            return new SimpleStringProperty(
+                    ll != null && ll.length() >= 10
+                            ? ll.substring(0, 10) : "Never");
+        });
+
         // Actions
         TableColumn<AdminUser, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
@@ -164,7 +172,8 @@ public class UserManagementView {
                             extractValue(obj, "fullName"),
                             extractValue(obj, "role"),
                             extractInt(obj, "active"),
-                            extractValue(obj, "createdAt")
+                            extractValue(obj, "createdAt"),
+                            extractValue(obj, "lastLogin")
                     ));
                 }
             }
@@ -191,7 +200,7 @@ public class UserManagementView {
         confirmField.setPromptText("Re-enter password");
 
         ComboBox<String> roleBox = new ComboBox<>();
-        roleBox.getItems().addAll("ADMIN", "ENGINEER", "CONTRACT");
+        roleBox.getItems().addAll("ADMIN", "ENGINEER", "DEPT_HOD");
         roleBox.setValue("ENGINEER");
 
         Label errorLabel = new Label("");

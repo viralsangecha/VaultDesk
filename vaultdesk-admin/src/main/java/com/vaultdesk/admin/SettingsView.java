@@ -184,14 +184,22 @@ public class SettingsView {
         fontBox.setPrefWidth(200);
 
         Button saveFontBtn = new Button("Apply Font Size");
-        saveFontBtn.getStyleClass().setAll("btn-primary");
-        saveFontBtn.setStyle(
-                "-fx-background-color: #238636; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
         saveFontBtn.setOnAction(e -> {
             prefs.put("font.size", fontBox.getValue());
-            themeStatus.setText("✔ Font preference saved. Restart to apply.");
+            String size = fontBox.getValue().contains("12") ? "12px"
+                    : fontBox.getValue().contains("15") ? "15px" : "13px";
+
+            javafx.stage.Stage stage =
+                    (javafx.stage.Stage) javafx.stage.Window.getWindows()
+                            .stream()
+                            .filter(w -> w instanceof javafx.stage.Stage)
+                            .findFirst().orElse(null);
+            if (stage != null && stage.getScene() != null) {
+                // Apply font size to root
+                stage.getScene().getRoot().setStyle(
+                        "-fx-font-size: " + size + ";");
+            }
+            themeStatus.setText("✔ Font size applied: " + size);
             themeStatus.setStyle(
                     "-fx-text-fill: #3fb950; -fx-font-size: 12px;");
         });

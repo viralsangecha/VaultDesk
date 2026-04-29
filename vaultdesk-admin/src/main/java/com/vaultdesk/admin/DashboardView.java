@@ -35,7 +35,7 @@ public class DashboardView {
         VBox userCard = new VBox(3, nameLabel, roleLabel);
         userCard.getStyleClass().add("sidebar-user-card");
 
-        // ── Nav buttons with icons ────────────────────────
+        // ── Nav buttons — shown based on role ────────────────
         Button btnDashboard   = sidebarBtn("⊞  Dashboard");
         Button btnAssets      = sidebarBtn("▣  Assets");
         Button btnTickets     = sidebarBtn("✉  Tickets");
@@ -46,6 +46,12 @@ public class DashboardView {
         Button btnMaintenance = sidebarBtn("🔧  Maintenance");
         Button btnVendors     = sidebarBtn("🤝  Vendors");
         Button btnReports     = sidebarBtn("📊  Reports");
+        Button btnUsers       = sidebarBtn("👥  Users");
+        Button btnSettings    = sidebarBtn("⚙  Settings");
+        Button btnSupport     = sidebarBtn("？  Support");
+        Button btnTheme       = sidebarBtn("☀  Light Mode");
+
+
 
         // ── New Asset button ──────────────────────────────
         Button btnNewAsset = new Button("＋  New Asset");
@@ -63,7 +69,6 @@ public class DashboardView {
         });
 
         // ── Theme toggle in sidebar ───────────────────────────
-        Button btnTheme = new Button("☀  Light Mode");
         btnTheme.getStyleClass().add("sidebar-btn");
         btnTheme.setOnAction(e -> {
             ThemeManager.toggle();
@@ -79,10 +84,6 @@ public class DashboardView {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        // ── Settings + Support ────────────────────────────
-        Button btnSettings = sidebarBtn("⚙  Settings");
-        Button btnSupport  = sidebarBtn("？  Support");
-
         // ── Sidebar VBox ──────────────────────────────────
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
@@ -97,6 +98,40 @@ public class DashboardView {
                 btnSettings, btnSupport,btnTheme,
                 btnLogout
         );
+
+        // Always visible
+        sidebar.getChildren().addAll(
+                sideHeader, userCard,
+                btnDashboard, btnTickets);
+
+// Assets — all roles see it but ENGINEER is read-only
+        sidebar.getChildren().add(btnAssets);
+
+// ADMIN + DEPT_HOD see these
+        if (SessionManager.get().isAdmin()
+                || SessionManager.get().isDeptHod()) {
+            sidebar.getChildren().addAll(
+                    btnEmployees, btnDepartments,
+                    btnLicenses, btnConsumables,
+                    btnMaintenance, btnVendors);
+        }
+
+// Reports — ADMIN + DEPT_HOD
+        if (SessionManager.get().canViewReports()) {
+            sidebar.getChildren().add(btnReports);
+        }
+
+// Users — ADMIN only
+        if (SessionManager.get().canManageUsers()) {
+            sidebar.getChildren().add(btnUsers);
+        }
+
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        sidebar.getChildren().addAll(
+                spacer, newAssetBox,
+                btnSettings, btnSupport,
+                btnTheme, btnLogout);
 
         // ── Top bar with search ───────────────────────────
         TextField searchField = new TextField();
@@ -177,7 +212,6 @@ public class DashboardView {
             contentArea.getChildren().setAll(new SettingsView().getView());
         });
         // ── Users button — ADMIN only ─────────────────────────
-        Button btnUsers = sidebarBtn("👥  Users");
 
 // Add to sidebar only if admin
         if ("ADMIN".equals(role)) {

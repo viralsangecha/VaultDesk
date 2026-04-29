@@ -727,3 +727,82 @@
 /* ── ALERT ───────────────────────────────────────────── */
 .alert .dialog-pane { -fx-background-color: #161b22; }
 .alert .dialog-pane .content.label { -fx-text-fill: #c9d1d9; }
+
+/* ── DIALOG GLOBAL OVERRIDE ──────────────────────────── */
+.dialog-pane {
+    -fx-background-color: #161b22 !important;
+    -fx-border-color: #30363d !important;
+    -fx-border-width: 1 !important;
+    -fx-border-radius: 8 !important;
+    -fx-background-radius: 8 !important;
+    -fx-padding: 0 !important;
+}
+
+.dialog-pane > .content {
+    -fx-background-color: #161b22 !important;
+    -fx-padding: 20 !important;
+}
+
+.dialog-pane > .button-bar {
+    -fx-background-color: #21262d !important;
+    -fx-padding: 12 20 12 20 !important;
+    -fx-border-color: #30363d !important;
+    -fx-border-width: 1 0 0 0 !important;
+}
+
+.dialog-pane > .button-bar .button {
+    -fx-background-color: #21262d !important;
+    -fx-text-fill: #c9d1d9 !important;
+    -fx-border-color: #30363d !important;
+    -fx-border-width: 1 !important;
+    -fx-background-radius: 6 !important;
+    -fx-border-radius: 6 !important;
+    -fx-padding: 8 16 8 16 !important;
+    -fx-font-size: 13px !important;
+    -fx-cursor: hand !important;
+}
+
+.dialog-pane > .button-bar .button:hover {
+    -fx-background-color: #30363d !important;
+}
+
+.dialog-pane > .button-bar .button:default {
+    -fx-background-color: #1f6feb !important;
+    -fx-text-fill: white !important;
+    -fx-border-color: #1f6feb !important;
+}
+
+.dialog-pane > .button-bar .button:default:hover {
+    -fx-background-color: #388bfd !important;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #21262d !important;
+    -fx-padding: 16 20 16 20 !important;
+    -fx-border-color: #30363d !important;
+    -fx-border-width: 0 0 1 0 !important;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #e6edf3 !important;
+    -fx-font-size: 15px !important;
+    -fx-font-weight: bold !important;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #c9d1d9 !important;
+}
+
+/* Alert dialogs */
+.alert .dialog-pane {
+    -fx-background-color: #161b22 !important;
+}
+
+.alert .dialog-pane .content.label {
+    -fx-text-fill: #c9d1d9 !important;
+}
+
+/* Confirmation dialogs */
+.confirmation .dialog-pane {
+    -fx-background-color: #161b22 !important;
+}

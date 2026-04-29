@@ -7,21 +7,25 @@ public class AdminUser {
     private String role;
     private int active;
     private String createdAt;
+    private String lastLogin;
 
     public AdminUser(int id, String username, String fullName,
-                     String role, int active, String createdAt) {
+                     String role, int active,
+                     String createdAt, String lastLogin) {
         this.id        = id;
         this.username  = username;
         this.fullName  = fullName;
         this.role      = role;
         this.active    = active;
         this.createdAt = createdAt;
+        this.lastLogin = lastLogin;
     }
 
-    public int    getId()        { return id; }
-    public String getUsername()  { return username; }
-    public String getFullName()  { return fullName; }
-    public String getRole()      { return role; }
-    public boolean isActive()    { return active == 1; }
-    public String getCreatedAt() { return createdAt; }
+    public int    getId()         { return id; }
+    public String getUsername()   { return username; }
+    public String getFullName()   { return fullName; }
+    public String getRole()       { return role; }
+    public boolean isActive()     { return active == 1; }
+    public String getCreatedAt()  { return createdAt; }
+    public String getLastLogin()  { return lastLogin; }
 }
