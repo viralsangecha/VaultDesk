@@ -2,137 +2,146 @@ package com.vaultdesk.admin;
 
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.http.*;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class TicketView {
 
+    // ── User cache: id → fullName ─────────────────────────
+    private final Map<Integer, String> userMap = new LinkedHashMap<>();
+
     public VBox getView() {
+        loadUsers();
+
         Label title = new Label("Tickets");
         title.getStyleClass().add("section-title");
+
         TableView<Ticket> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Ticket, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(data ->
-                new SimpleIntegerProperty(data.getValue().getId()).asObject());
+        idCol.setCellValueFactory(d ->
+                new SimpleIntegerProperty(d.getValue().getId()).asObject());
+        idCol.setMaxWidth(50);
 
         TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("Ticket No");
-        ticketNoCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getTicketNo()));
+        ticketNoCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getTicketNo()));
 
         TableColumn<Ticket, String> titleCol = new TableColumn<>("Title");
-        titleCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getTitle()));
+        titleCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getTitle()));
 
-        // ── Category column with colored text ─────────────────
+        // Category
         TableColumn<Ticket, String> categoryCol = new TableColumn<>("Category");
-        categoryCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getCategory()));  // need category in Ticket
+        categoryCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getCategory()));
         categoryCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    switch (item.toUpperCase()) {
-                        case "SAP"      -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
-                        case "HARDWARE" -> setStyle("-fx-text-fill: #8b949e; -fx-font-weight: bold;");
-                        case "NETWORK"  -> setStyle("-fx-text-fill: #39d353; -fx-font-weight: bold;");
-                        case "SOFTWARE" -> setStyle("-fx-text-fill: #a371f7; -fx-font-weight: bold;");
-                        default         -> setStyle("-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
-                    }
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item.toUpperCase()) {
+                    case "SAP"      -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "HARDWARE" -> setStyle("-fx-text-fill: #8b949e; -fx-font-weight: bold;");
+                    case "NETWORK"  -> setStyle("-fx-text-fill: #39d353; -fx-font-weight: bold;");
+                    case "SOFTWARE" -> setStyle("-fx-text-fill: #a371f7; -fx-font-weight: bold;");
+                    default         -> setStyle("-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
                 }
             }
         });
 
-        // ── Priority column with colored text ──────────────────
+        // Priority
         TableColumn<Ticket, String> priorityCol = new TableColumn<>("Priority");
-        priorityCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getPriority()));
+        priorityCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getPriority()));
         priorityCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    switch (item.toUpperCase()) {
-                        case "CRITICAL" -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
-                        case "HIGH"     -> setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
-                        case "MEDIUM"   -> setStyle("-fx-text-fill: #8b949e;");
-                        case "LOW"      -> setStyle("-fx-text-fill: #6e7681;");
-                        default         -> setStyle("-fx-text-fill: #c9d1d9;");
-                    }
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item.toUpperCase()) {
+                    case "CRITICAL" -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "HIGH"     -> setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                    case "MEDIUM"   -> setStyle("-fx-text-fill: #8b949e;");
+                    case "LOW"      -> setStyle("-fx-text-fill: #6e7681;");
+                    default         -> setStyle("-fx-text-fill: #c9d1d9;");
                 }
             }
         });
 
-        // ── Status column with colored text ────────────────────
+        // Status
         TableColumn<Ticket, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getStatus()));
+        statusCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getStatus()));
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    switch (item) {
-                        case "Open"        -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
-                        case "In Progress" -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
-                        case "Resolved"    -> setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
-                        case "Closed"      -> setStyle("-fx-text-fill: #8b949e;");
-                        default            -> setStyle("-fx-text-fill: #c9d1d9;");
-                    }
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                switch (item) {
+                    case "Open"        -> setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "In Progress" -> setStyle("-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "Resolved"    -> setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
+                    case "Closed"      -> setStyle("-fx-text-fill: #8b949e;");
+                    default            -> setStyle("-fx-text-fill: #c9d1d9;");
                 }
             }
         });
 
-        TableColumn<Ticket, Integer> assignedToCol = new TableColumn<>("Assigned To");
-        assignedToCol.setCellValueFactory(data ->
-                new SimpleIntegerProperty(data.getValue().getAssignedTo()).asObject());
+        // Assigned To — show name not ID
+        TableColumn<Ticket, String> assignedToCol = new TableColumn<>("Assigned To");
+        assignedToCol.setCellValueFactory(d -> {
+            int uid = d.getValue().getAssignedTo();
+            String name = uid == 0 ? "Unassigned"
+                    : userMap.getOrDefault(uid, "User #" + uid);
+            return new SimpleStringProperty(name);
+        });
 
         TableColumn<Ticket, String> createdCol = new TableColumn<>("Created");
-        createdCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getCreatedAt()));
+        createdCol.setCellValueFactory(d ->
+                new SimpleStringProperty(
+                        d.getValue().getCreatedAt() != null &&
+                                d.getValue().getCreatedAt().length() >= 10
+                                ? d.getValue().getCreatedAt().substring(0, 10)
+                                : d.getValue().getCreatedAt()));
 
+        // Actions
         TableColumn<Ticket, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
-            private final Button updateBtn = new Button("Update Status");
+            private final Button updateBtn = new Button("Update");
             private final Button assignBtn = new Button("Assign");
             {
                 updateBtn.getStyleClass().setAll("btn-warning");
-                updateBtn.setStyle("-fx-background-color: #b45309; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
-                assignBtn.getStyleClass().setAll("btn-warning");
-                assignBtn.setStyle("-fx-background-color: #b45309; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
+                updateBtn.setStyle(
+                        "-fx-background-color: #b45309; -fx-text-fill: white;" +
+                                "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px; -fx-font-weight: bold;");
+                assignBtn.getStyleClass().setAll("btn-primary");
+                assignBtn.setStyle(
+                        "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                                "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px; -fx-font-weight: bold;");
                 updateBtn.setOnAction(e -> {
-                    Ticket ticket = getTableView().getItems().get(getIndex());
-                    showUpdateStatusDialog(ticket, getTableView());
+                    Ticket t = getTableView().getItems().get(getIndex());
+                    showUpdateStatusDialog(t, getTableView());
                 });
                 assignBtn.setOnAction(e -> {
-                    Ticket ticket = getTableView().getItems().get(getIndex());
-                    showAssignDialog(ticket, getTableView());
+                    Ticket t = getTableView().getItems().get(getIndex());
+                    showAssignDialog(t, getTableView());
                 });
             }
             @Override
@@ -142,26 +151,62 @@ public class TicketView {
             }
         });
 
-        table.getColumns().addAll(idCol, ticketNoCol, titleCol, categoryCol,
-                priorityCol, statusCol, assignedToCol, createdCol, actionCol);
+        table.getColumns().addAll(idCol, ticketNoCol, titleCol,
+                categoryCol, priorityCol, statusCol,
+                assignedToCol, createdCol, actionCol);
+
+        // ── Add ticket button ─────────────────────────────
+        Button addBtn = new Button("＋ New Ticket");
+        addBtn.getStyleClass().setAll("btn-primary");
+        addBtn.setStyle(
+                "-fx-background-color: #238636; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        addBtn.setOnAction(e -> showAddTicketDialog(table));
+
+        HBox topBar = new HBox(10, addBtn);
 
         loadTickets(table);
 
-        VBox root = new VBox(10);
-        root.getChildren().addAll(title, table);
+        VBox root = new VBox(10, title, topBar, table);
+        VBox.setVgrow(table, Priority.ALWAYS);
         return root;
+    }
+
+    // ── Load users into map ───────────────────────────────
+    private void loadUsers() {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:8080/api/users"))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = resp.body().trim();
+            body = body.substring(1, body.length() - 1);
+            if (!body.isEmpty()) {
+                for (String obj : body.split("\\},\\{")) {
+                    obj = obj.replace("{", "").replace("}", "");
+                    int id       = extractInt(obj, "id");
+                    String name  = extractValue(obj, "fullName");
+                    userMap.put(id, name);
+                }
+            }
+        } catch (Exception ex) {
+            System.out.println("Error loading users: " + ex.getMessage());
+        }
     }
 
     private void loadTickets(TableView<Ticket> table) {
         table.getItems().clear();
         try {
             HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:8080/api/tickets"))
                     .GET().build();
-            HttpResponse<String> response = client.send(request,
+            HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
-            String body = response.body().trim();
+            String body = resp.body().trim();
             body = body.substring(1, body.length() - 1);
             if (!body.isEmpty()) {
                 for (String obj : body.split("\\},\\{")) {
@@ -170,7 +215,7 @@ public class TicketView {
                             extractInt(obj, "id"),
                             extractValue(obj, "ticketNo"),
                             extractValue(obj, "title"),
-                            extractValue(obj, "category"),   // ← added
+                            extractValue(obj, "category"),
                             extractValue(obj, "priority"),
                             extractValue(obj, "status"),
                             extractInt(obj, "assignedTo"),
@@ -183,14 +228,102 @@ public class TicketView {
         }
     }
 
-    private void showUpdateStatusDialog(Ticket ticket, TableView<Ticket> table) {
+    // ── Add ticket dialog ─────────────────────────────────
+    private void showAddTicketDialog(TableView<Ticket> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("New Ticket");
+        dialog.setHeaderText("Create a new support ticket");
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField titleField = new TextField();
+        titleField.setPromptText("Brief description of the issue");
+        TextArea descField = new TextArea();
+        descField.setPromptText("Detailed description...");
+        descField.setPrefRowCount(3);
+
+        ComboBox<String> categoryBox = new ComboBox<>();
+        categoryBox.getItems().addAll(
+                "Hardware", "Software", "SAP", "Network", "General");
+        categoryBox.setValue("Hardware");
+
+        ComboBox<String> priorityBox = new ComboBox<>();
+        priorityBox.getItems().addAll("Low", "Medium", "High", "Critical");
+        priorityBox.setValue("Medium");
+
+        // Reported by — current logged-in user's id
+        Label reportedByLabel = new Label(
+                "Reported by: " + SessionManager.get().getFullName());
+        reportedByLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.add(new Label("Title *:"),       0, 0); grid.add(titleField,      1, 0);
+        grid.add(new Label("Description:"),   0, 1); grid.add(descField,       1, 1);
+        grid.add(new Label("Category:"),      0, 2); grid.add(categoryBox,     1, 2);
+        grid.add(new Label("Priority:"),      0, 3); grid.add(priorityBox,     1, 3);
+        grid.add(reportedByLabel,             1, 4);
+        grid.add(errorLabel,                  1, 5);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+        titleField.textProperty().addListener((o, ov, nv) ->
+                okButton.setDisable(nv.trim().isEmpty()));
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (titleField.getText().trim().isEmpty()) {
+                errorLabel.setText("Title is required.");
+                event.consume();
+            }
+        });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                int reportedBy = SessionManager.get().getUserId();
+                String body = "{" +
+                        "\"title\":\"" + titleField.getText() + "\"," +
+                        "\"description\":\"" + descField.getText() + "\"," +
+                        "\"category\":\"" + categoryBox.getValue() + "\"," +
+                        "\"priority\":\"" + priorityBox.getValue() + "\"," +
+                        "\"reportedBy\":" + reportedBy +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/tickets"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> resp = client.send(req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 201) {
+                    showAlert("Success", "Ticket created.");
+                    loadTickets(table);
+                } else {
+                    showAlert("Error", "Server returned: " + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", "Cannot connect: " + ex.getMessage());
+            }
+        }
+    }
+
+    // ── Update status dialog ──────────────────────────────
+    private void showUpdateStatusDialog(Ticket ticket,
+                                        TableView<Ticket> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Update Ticket Status");
         dialog.setHeaderText("Ticket: " + ticket.getTicketNo());
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
 
         ComboBox<String> statusBox = new ComboBox<>();
-        statusBox.getItems().addAll("Open", "In Progress", "Resolved", "Closed");
+        statusBox.getItems().addAll(
+                "Open", "In Progress", "Resolved", "Closed");
         statusBox.setValue(ticket.getStatus());
 
         TextField resolutionField = new TextField();
@@ -210,47 +343,71 @@ public class TicketView {
         }
     }
 
+    // ── Assign dialog — dropdown of users by name ─────────
     private void showAssignDialog(Ticket ticket, TableView<Ticket> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Assign Ticket");
         dialog.setHeaderText("Ticket: " + ticket.getTicketNo());
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField userIdField = new TextField();
-        userIdField.setPromptText("Enter User ID...");
+        ComboBox<String> userBox = new ComboBox<>();
+        ObservableList<String> userNames = FXCollections.observableArrayList();
+        Map<String, Integer> nameToId = new LinkedHashMap<>();
+
+        for (Map.Entry<Integer, String> entry : userMap.entrySet()) {
+            String display = entry.getValue() + " (#" + entry.getKey() + ")";
+            userNames.add(display);
+            nameToId.put(display, entry.getKey());
+        }
+        userBox.setItems(userNames);
+        if (!userNames.isEmpty()) userBox.setValue(userNames.get(0));
+
+        // Pre-select current assignee if set
+        if (ticket.getAssignedTo() != 0) {
+            String current = userMap.get(ticket.getAssignedTo());
+            if (current != null) {
+                String display = current + " (#" + ticket.getAssignedTo() + ")";
+                userBox.setValue(display);
+            }
+        }
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Assign to User ID:"), 0, 0);
-        grid.add(userIdField, 1, 0);
+        grid.add(new Label("Assign to:"), 0, 0);
+        grid.add(userBox, 1, 0);
         dialog.getDialogPane().setContent(grid);
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            String txt = userIdField.getText().trim();
-            if (!txt.isEmpty()) {
-                if (assignTicket(ticket.getId(), Integer.parseInt(txt)))
+            String selected = userBox.getValue();
+            if (selected != null) {
+                int userId = nameToId.get(selected);
+                if (assignTicket(ticket.getId(), userId))
                     loadTickets(table);
             }
         }
     }
 
-    private boolean updateTicketStatus(int id, String status, String resolution) {
+    private boolean updateTicketStatus(int id, String status,
+                                       String resolution) {
         try {
             String url = "http://localhost:8080/api/tickets/" + id
-                    + "/status?status=" + URLEncoder.encode(status, StandardCharsets.UTF_8)
-                    + "&resolution=" + URLEncoder.encode(resolution, StandardCharsets.UTF_8);
+                    + "/status?status="
+                    + URLEncoder.encode(status, StandardCharsets.UTF_8)
+                    + "&resolution="
+                    + URLEncoder.encode(resolution, StandardCharsets.UTF_8);
             HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .PUT(HttpRequest.BodyPublishers.noBody()).build();
-            HttpResponse<String> response = client.send(request,
+            HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
+            if (resp.statusCode() == 200) {
                 showAlert("Success", "Status updated to: " + status);
                 return true;
             }
-            showAlert("Error", "Server returned: " + response.statusCode());
+            showAlert("Error", "Server returned: " + resp.statusCode());
             return false;
         } catch (Exception ex) {
             showAlert("Error", "Cannot connect: " + ex.getMessage());
@@ -263,16 +420,17 @@ public class TicketView {
             String url = "http://localhost:8080/api/tickets/"
                     + ticketId + "/assign?userId=" + userId;
             HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .PUT(HttpRequest.BodyPublishers.noBody()).build();
-            HttpResponse<String> response = client.send(request,
+            HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                showAlert("Success", "Ticket assigned to user ID: " + userId);
+            if (resp.statusCode() == 200) {
+                showAlert("Success", "Ticket assigned to: "
+                        + userMap.getOrDefault(userId, "User #" + userId));
                 return true;
             }
-            showAlert("Error", "Server returned: " + response.statusCode());
+            showAlert("Error", "Server returned: " + resp.statusCode());
             return false;
         } catch (Exception ex) {
             showAlert("Error", "Cannot connect: " + ex.getMessage());

@@ -38,8 +38,39 @@ public class DepartmentView {
         addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
                 "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
-        HBox topBar = new HBox(10);
-        topBar.getChildren().add(addBtn);
+
+
+        Button importBtn = new Button("⬆ Import CSV");
+        importBtn.getStyleClass().setAll("btn-primary");
+        importBtn.setStyle(
+                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 8 14 8 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        importBtn.setOnAction(e -> {
+            CsvImporter.importCsv("Import Departments CSV", true, fields -> {
+                // CSV columns: name,location
+                if (fields.length < 2)
+                    throw new Exception("Expected 2 columns");
+                String body = "{" +
+                        "\"name\":\"" + fields[0] + "\"," +
+                        "\"location\":\"" + fields[1] + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/departments"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> resp = client.send(req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() != 201)
+                    throw new Exception("Server returned " + resp.statusCode());
+            });
+            loadDepartments(table);
+        });
+
+        HBox topBar = new HBox(10, addBtn, importBtn);
+
+
 
         loadDepartments(table);
 

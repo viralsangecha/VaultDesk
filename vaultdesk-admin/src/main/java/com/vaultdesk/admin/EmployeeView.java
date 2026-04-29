@@ -102,8 +102,47 @@ public class EmployeeView {
         searchField.textProperty().addListener((obs, oldVal, newVal) ->
                 filterTable(table, newVal));
 
+        Button importBtn = new Button("⬆ Import CSV");
+        importBtn.getStyleClass().setAll("btn-primary");
+        importBtn.setStyle(
+                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 8 14 8 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        importBtn.setOnAction(e -> {
+            CsvImporter.importCsv("Import Employees CSV", true, fields -> {
+                // CSV columns: name,empCode,departmentId,designation,
+                //              email,phone,joinDate,notes
+                if (fields.length < 8)
+                    throw new Exception("Expected 8 columns");
+                String body = "{" +
+                        "\"name\":\"" + fields[0] + "\"," +
+                        "\"empCode\":\"" + fields[1] + "\"," +
+                        "\"departmentId\":" + (fields[2].isEmpty() ? 0
+                        : Integer.parseInt(fields[2])) + "," +
+                        "\"designation\":\"" + fields[3] + "\"," +
+                        "\"email\":\"" + fields[4] + "\"," +
+                        "\"phone\":\"" + fields[5] + "\"," +
+                        "\"joinDate\":\"" + fields[6] + "\"," +
+                        "\"leaveDate\":null," +
+                        "\"active\":1," +
+                        "\"notes\":\"" + fields[7] + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/employees"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> resp = client.send(req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() != 201)
+                    throw new Exception("Server returned " + resp.statusCode());
+            });
+            loadEmployees(table);
+        });
+
+// update topBar to include importBtn
         HBox topBar = new HBox(10);
-        topBar.getChildren().addAll(addBtn, searchField);
+        topBar.getChildren().addAll(addBtn,importBtn, searchField);
 
         loadEmployees(table);
 

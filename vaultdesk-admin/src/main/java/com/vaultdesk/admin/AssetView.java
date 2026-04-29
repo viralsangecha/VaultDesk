@@ -43,11 +43,15 @@ public class AssetView {
                         "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
                         "-fx-font-weight: bold; -fx-font-size: 13px; -fx-cursor: hand;");
 
+        Button importBtn = new Button("⬆ Import CSV");
         Region titleSpacer = new Region();
         HBox.setHgrow(titleSpacer, Priority.ALWAYS);
-        HBox titleRow = new HBox(12, new VBox(4, title, subtitle),
-                titleSpacer, addBtn);
+        HBox titleRow = new HBox(12,
+                new VBox(4, title, subtitle),
+                titleSpacer, importBtn, addBtn);
         titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+
 
         // ── Filter bar ────────────────────────────────────
         Label filterLabel = new Label("Filters:");
@@ -82,6 +86,51 @@ public class AssetView {
         assetTagCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getAssetTag()));
 
+
+        importBtn.getStyleClass().setAll("btn-primary");
+        importBtn.setStyle(
+                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 8 14 8 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        importBtn.setOnAction(e -> {
+            CsvImporter.importCsv("Import Assets CSV", true, fields -> {
+                // CSV columns: assetTag,name,category,brand,model,
+                //              serialNumber,departmentId,location,
+                //              status,purchaseCost,notes
+                if (fields.length < 11)
+                    throw new Exception("Expected 11 columns");
+                String body = "{" +
+                        "\"assetTag\":\"" + fields[0] + "\"," +
+                        "\"name\":\"" + fields[1] + "\"," +
+                        "\"category\":\"" + fields[2] + "\"," +
+                        "\"brand\":\"" + fields[3] + "\"," +
+                        "\"model\":\"" + fields[4] + "\"," +
+                        "\"serialNumber\":\"" + fields[5] + "\"," +
+                        "\"departmentId\":" + (fields[6].isEmpty() ? 0
+                        : Integer.parseInt(fields[6])) + "," +
+                        "\"location\":\"" + fields[7] + "\"," +
+                        "\"status\":\"" + fields[8] + "\"," +
+                        "\"assignedTo\":0," +
+                        "\"assignedDate\":null," +
+                        "\"purchaseDate\":null," +
+                        "\"warrantyExpiry\":null," +
+                        "\"vendorId\":0," +
+                        "\"purchaseCost\":" + (fields[9].isEmpty() ? 0.0
+                        : Double.parseDouble(fields[9])) + "," +
+                        "\"notes\":\"" + fields[10] + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:8080/api/assets"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> resp = client.send(req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() != 201)
+                    throw new Exception("Server returned " + resp.statusCode());
+            });
+            loadAssets(table);
+        });
         // Category — colored text
         TableColumn<Asset, String> categoryCol = new TableColumn<>("CATEGORY");
         categoryCol.setCellValueFactory(d ->
@@ -226,6 +275,7 @@ public class AssetView {
         } catch (Exception ex) {
             System.out.println("Error loading assets: " + ex.getMessage());
         }
+
     }
 
     private void showAddDialog(TableView<Asset> table) {

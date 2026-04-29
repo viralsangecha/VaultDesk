@@ -19,18 +19,18 @@ public class DashboardStatsView {
         Label pageSub = new Label("Here's what's happening today.");
         pageSub.getStyleClass().add("page-subtitle");
 
-        // ── Stat cards ────────────────────────────────────
+        // ── Stat cards — real data loaded below ───────────
         VBox cardAssets    = statCard("⊞", "0", "TOTAL ASSETS",
-                "22 General / 12 SAP", "+12.4%", "stat-badge-green",
+                "Loading...", "+12.4%", "stat-badge-green",
                 "stat-card-blue", "stat-icon-box-blue", "#58a6ff");
         VBox cardTickets   = statCard("✉", "0", "OPEN TICKETS",
-                "Needs attention", "Urgent", "stat-badge-red",
+                "Loading...", "Urgent", "stat-badge-red",
                 "stat-card-red", "stat-icon-box-red", "#f85149");
         VBox cardLicenses  = statCard("🔑", "0", "EXPIRING LICENSES",
                 "Within 30 days", "30 Days", "stat-badge-orange",
                 "stat-card-orange", "stat-icon-box-orange", "#d29922");
         VBox cardEmployees = statCard("👤", "0", "ACTIVE EMPLOYEES",
-                "All departments", "Global", "stat-badge-blue",
+                "Loading...", "Global", "stat-badge-blue",
                 "stat-card-green", "stat-icon-box-green", "#3fb950");
 
         HBox statsRow = new HBox(16,
@@ -40,7 +40,8 @@ public class DashboardStatsView {
         // ── Tickets at a Glance ───────────────────────────
         Label recentLabel = new Label("Tickets at a Glance");
         recentLabel.getStyleClass().add("section-title");
-        Label recentSub = new Label("Monitoring operational health and resolution speed");
+        Label recentSub = new Label(
+                "Monitoring operational health and resolution speed");
         recentSub.getStyleClass().add("page-subtitle");
 
         // ── Table ─────────────────────────────────────────
@@ -48,23 +49,17 @@ public class DashboardStatsView {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(380);
 
-        // Ticket No
         TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("TICKET ID");
         ticketNoCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getTicketNo()));
-        ticketNoCol.setPrefWidth(160);
 
-        // Title
         TableColumn<Ticket, String> titleCol = new TableColumn<>("REQUEST DETAIL");
         titleCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getTitle()));
-        titleCol.setPrefWidth(220);
 
-        // Category — colored text
         TableColumn<Ticket, String> categoryCol = new TableColumn<>("SYSTEM");
         categoryCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getCategory()));
-        categoryCol.setPrefWidth(110);
         categoryCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -81,11 +76,9 @@ public class DashboardStatsView {
             }
         });
 
-        // Priority — colored text
         TableColumn<Ticket, String> priorityCol = new TableColumn<>("PRIORITY");
         priorityCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getPriority()));
-        priorityCol.setPrefWidth(100);
         priorityCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -102,11 +95,9 @@ public class DashboardStatsView {
             }
         });
 
-        // Status — colored text
         TableColumn<Ticket, String> statusCol = new TableColumn<>("STATUS");
         statusCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getStatus()));
-        statusCol.setPrefWidth(110);
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -129,24 +120,23 @@ public class DashboardStatsView {
         // ── Recent Activity panel ─────────────────────────
         Label activityTitle = new Label("Recent Activity");
         activityTitle.getStyleClass().add("activity-panel-title");
-
         Label realtimeLabel = new Label("REAL-TIME");
-        realtimeLabel.setStyle("-fx-text-fill: #484f58; -fx-font-size: 10px; -fx-font-weight: bold;");
-
-        HBox activityHeader = new HBox(activityTitle, new Region(), realtimeLabel);
-        HBox.setHgrow(activityHeader.getChildren().get(1), Priority.ALWAYS);
+        realtimeLabel.setStyle(
+                "-fx-text-fill: #484f58; -fx-font-size: 10px; -fx-font-weight: bold;");
+        Region actSpacer = new Region();
+        HBox.setHgrow(actSpacer, Priority.ALWAYS);
+        HBox activityHeader = new HBox(activityTitle, actSpacer, realtimeLabel);
         activityHeader.setAlignment(Pos.CENTER_LEFT);
 
         VBox activityFeed = new VBox(0);
-
-        VBox activityPanel = new VBox(10, activityHeader, new Separator(), activityFeed);
+        VBox activityPanel = new VBox(10,
+                activityHeader, new Separator(), activityFeed);
         activityPanel.getStyleClass().add("activity-panel");
 
-        // ── Main content row (table + activity) ───────────
-        HBox mainRow = new HBox(16);
+        // ── Main content row ──────────────────────────────
         VBox tableBox = new VBox(8, recentLabel, recentSub, table);
         HBox.setHgrow(tableBox, Priority.ALWAYS);
-        mainRow.getChildren().addAll(tableBox, activityPanel);
+        HBox mainRow = new HBox(16, tableBox, activityPanel);
 
         // ── Load stats ────────────────────────────────────
         try {
@@ -158,10 +148,28 @@ public class DashboardStatsView {
                     HttpResponse.BodyHandlers.ofString());
             String body = resp.body().trim();
 
-            setStatNumber(cardAssets,    extractInt(body, "totalAssets"));
-            setStatNumber(cardTickets,   extractInt(body, "openTickets"));
-            setStatNumber(cardLicenses,  extractInt(body, "expiringLicenses"));
-            setStatNumber(cardEmployees, extractInt(body, "totalEmployees"));
+            int totalAssets    = extractInt(body, "totalAssets");
+            int openTickets    = extractInt(body, "openTickets");
+            int generalTickets = extractInt(body, "generalTickets");
+            int sapTickets     = extractInt(body, "sapTickets");
+            int expiringLic    = extractInt(body, "expiringLicenses");
+            int totalEmp       = extractInt(body, "totalEmployees");
+            int totalDepts     = extractInt(body, "totalDepartments");
+
+            setStatNumber(cardAssets,    totalAssets);
+            setStatNumber(cardTickets,   openTickets);
+            setStatNumber(cardLicenses,  expiringLic);
+            setStatNumber(cardEmployees, totalEmp);
+
+            // ── Real sublabels ─────────────────────────────
+            setStatSublabel(cardAssets,
+                    generalTickets + " General / " + sapTickets + " SAP tickets");
+            setStatSublabel(cardTickets,
+                    openTickets > 0 ? "Needs attention" : "All clear");
+            setStatSublabel(cardLicenses,
+                    expiringLic > 0 ? "Action required" : "All valid");
+            setStatSublabel(cardEmployees,
+                    totalDepts + " department(s)");
 
         } catch (Exception ex) {
             System.out.println("Error loading stats: " + ex.getMessage());
@@ -171,7 +179,8 @@ public class DashboardStatsView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/dashboard/recent-activity"))
+                    .uri(URI.create(
+                            "http://localhost:8080/api/dashboard/recent-activity"))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -181,24 +190,24 @@ public class DashboardStatsView {
             if (!body.isEmpty()) {
                 for (String obj : body.split("\\},\\{")) {
                     obj = obj.replace("{", "").replace("}", "");
-                    table.getItems().add(new Ticket(
-                            extractInt(obj, "id"),
-                            extractValue(obj, "ticketNo"),
-                            extractValue(obj, "title"),
-                            extractValue(obj, "category"),
-                            extractValue(obj, "priority"),
-                            extractValue(obj, "status"),
-                            extractInt(obj, "assignedTo"),
-                            extractValue(obj, "createdAt")
-                    ));
-
-                    // ── Add to activity feed ───────────────
-                    String dotClass = dotClass(extractValue(obj, "priority"));
+                    String priority = extractValue(obj, "priority");
                     String title    = extractValue(obj, "title");
                     String status   = extractValue(obj, "status");
                     String time     = extractValue(obj, "createdAt");
+
+                    table.getItems().add(new Ticket(
+                            extractInt(obj, "id"),
+                            extractValue(obj, "ticketNo"),
+                            title,
+                            extractValue(obj, "category"),
+                            priority,
+                            status,
+                            extractInt(obj, "assignedTo"),
+                            time
+                    ));
+
                     activityFeed.getChildren().add(
-                            activityEntry(dotClass, title, status, time));
+                            activityEntry(dotClass(priority), title, status, time));
                 }
             }
         } catch (Exception ex) {
@@ -213,37 +222,34 @@ public class DashboardStatsView {
     // ── Stat card builder ─────────────────────────────────
     private VBox statCard(String icon, String number, String label,
                           String sublabel, String badge, String badgeClass,
-                          String cardClass, String iconBoxClass, String iconColor) {
-
-        // Icon box
+                          String cardClass, String iconBoxClass,
+                          String iconColor) {
         Label iconLabel = new Label(icon);
-        iconLabel.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: 18px;");
+        iconLabel.setStyle(
+                "-fx-text-fill: " + iconColor + "; -fx-font-size: 18px;");
         StackPane iconBox = new StackPane(iconLabel);
         iconBox.getStyleClass().add(iconBoxClass);
         iconBox.setMinSize(40, 40);
         iconBox.setMaxSize(40, 40);
 
-        // Badge
         Label badgeLabel = new Label(badge);
         badgeLabel.getStyleClass().add(badgeClass);
 
-        // Top row: icon + badge
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox topRow = new HBox(iconBox, spacer, badgeLabel);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Number
         Label numLabel = new Label(number);
         numLabel.getStyleClass().add("stat-number");
         numLabel.setId("stat-num");
 
-        // Labels
         Label txtLabel = new Label(label);
         txtLabel.getStyleClass().add("stat-label");
 
         Label subLabel = new Label(sublabel);
         subLabel.getStyleClass().add("stat-sublabel");
+        subLabel.setId("stat-sub");
 
         VBox card = new VBox(8, topRow, numLabel, txtLabel, subLabel);
         card.getStyleClass().addAll("stat-card", cardClass);
@@ -254,13 +260,20 @@ public class DashboardStatsView {
     private void setStatNumber(VBox card, int value) {
         card.getChildren().stream()
                 .filter(n -> n instanceof Label
-                        && ((Label) n).getId() != null
-                        && ((Label) n).getId().equals("stat-num"))
+                        && "stat-num".equals(((Label) n).getId()))
                 .findFirst()
                 .ifPresent(n -> ((Label) n).setText(String.valueOf(value)));
     }
 
-    // ── Activity entry builder ────────────────────────────
+    private void setStatSublabel(VBox card, String text) {
+        card.getChildren().stream()
+                .filter(n -> n instanceof Label
+                        && "stat-sub".equals(((Label) n).getId()))
+                .findFirst()
+                .ifPresent(n -> ((Label) n).setText(text));
+    }
+
+    // ── Activity entry ────────────────────────────────────
     private VBox activityEntry(String dotClass, String title,
                                String status, String time) {
         Region dot = new Region();
@@ -272,19 +285,22 @@ public class DashboardStatsView {
         titleLabel.setWrapText(true);
 
         Label statusLabel = new Label(status);
-        statusLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        statusLabel.setStyle(
+                "-fx-text-fill: #8b949e; -fx-font-size: 11px;");
 
         VBox textBox = new VBox(2, titleLabel, statusLabel);
         HBox row = new HBox(10, dot, textBox);
         row.setAlignment(Pos.TOP_LEFT);
 
-        Label timeLabel = new Label(time != null && time.length() >= 10
-                ? time.substring(0, 10) : time);
+        Label timeLabel = new Label(
+                time != null && time.length() >= 10
+                        ? time.substring(0, 10) : time);
         timeLabel.getStyleClass().add("activity-time");
 
         VBox entry = new VBox(4, row, timeLabel);
-        entry.setStyle("-fx-border-color: #21262d; -fx-border-width: 0 0 1 0;" +
-                "-fx-padding: 8 0 8 0;");
+        entry.setStyle(
+                "-fx-border-color: #21262d; -fx-border-width: 0 0 1 0;" +
+                        "-fx-padding: 8 0 8 0;");
         return entry;
     }
 
@@ -299,14 +315,12 @@ public class DashboardStatsView {
         };
     }
 
-    // ── Helpers ───────────────────────────────────────────
     private String extractValue(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
         if (start == -1) return "";
         start += search.length();
-        int end = json.indexOf("\"", start);
-        return json.substring(start, end);
+        return json.substring(start, json.indexOf("\"", start));
     }
 
     private int extractInt(String json, String key) {

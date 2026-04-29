@@ -62,6 +62,17 @@ public class DashboardView {
             contentArea.getChildren().setAll(new AssetView().getView());
         });
 
+        // ── Theme toggle in sidebar ───────────────────────────
+        Button btnTheme = new Button("☀  Light Mode");
+        btnTheme.getStyleClass().add("sidebar-btn");
+        btnTheme.setOnAction(e -> {
+            ThemeManager.toggle();
+            Scene s = stage.getScene();
+            ThemeManager.apply(s);
+            btnTheme.setText(ThemeManager.getCurrent() ==
+                    ThemeManager.Theme.DARK ? "☀  Light Mode" : "🌙  Dark Mode");
+        });
+
         // ── Logout ────────────────────────────────────────
         Button btnLogout = new Button("⏻  Logout");
         btnLogout.getStyleClass().add("sidebar-logout");
@@ -83,7 +94,7 @@ public class DashboardView {
                 btnReports,
                 spacer,
                 newAssetBox,
-                btnSettings, btnSupport,
+                btnSettings, btnSupport,btnTheme,
                 btnLogout
         );
 
@@ -160,12 +171,29 @@ public class DashboardView {
             setActive(btnReports);
             contentArea.getChildren().setAll(new ReportView().getView());
         });
+
+        btnSettings.setOnAction(e -> {
+            setActive(btnSettings);
+            contentArea.getChildren().setAll(new SettingsView().getView());
+        });
+        // ── Users button — ADMIN only ─────────────────────────
+        Button btnUsers = sidebarBtn("👥  Users");
+
+// Add to sidebar only if admin
+        if ("ADMIN".equals(role)) {
+            sidebar.getChildren().add(
+                    sidebar.getChildren().indexOf(btnReports) + 1, btnUsers);
+        }
+
+        btnUsers.setOnAction(e -> {
+            setActive(btnUsers);
+            contentArea.getChildren().setAll(new UserManagementView().getView());
+        });
         btnLogout.setOnAction(e ->
                 stage.setScene(new LoginView().getScene(stage)));
 
         Scene scene = new Scene(mainLayout, 1200, 800);
-        scene.getStylesheets().add(
-                getClass().getResource("/styles.css").toExternalForm());
+        ThemeManager.apply(scene);
         return scene;
     }
 

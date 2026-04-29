@@ -52,6 +52,9 @@ public class ReportView {
 
         Label summaryLabel = new Label();
 
+        Button exportBtn = new Button("⬇ Export to Excel");
+
+
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
@@ -88,11 +91,26 @@ public class ReportView {
             summaryLabel.setText("Error loading data: " + ex.getMessage());
         }
 
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #238636; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        exportBtn.setOnAction(e -> {
+            List<List<String>> exportRows = new ArrayList<>();
+            for (String[] row : table.getItems()) {
+                exportRows.add(List.of(row));
+            }
+            ExcelExporter.export("Assets_by_Category",
+                    List.of("Category", "Count"),
+                    exportRows);
+        });
+
         VBox content = new VBox(10);
         content.setPadding(new Insets(10));
         content.getChildren().addAll(
                 new Label("Asset Distribution by Category"),
-                summaryLabel, table);
+                summaryLabel, exportBtn, table);
         tab.setContent(content);
         return tab;
     }
