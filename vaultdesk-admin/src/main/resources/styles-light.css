@@ -3,9 +3,7 @@
     -fx-background-color: #f6f8fa;
 }
 
-.login-bg {
-    -fx-background-color: #f6f8fa;
-}
+.login-bg { -fx-background-color: #f6f8fa; }
 
 .login-card {
     -fx-background-color: #ffffff;
@@ -17,16 +15,25 @@
 .login-subtitle { -fx-text-fill: #57606a; }
 .login-label  { -fx-text-fill: #24292f; }
 
+/* ── SIDEBAR LIGHT ───────────────────────────────────── */
 .sidebar {
     -fx-background-color: #ffffff;
     -fx-border-color: #d0d7de;
 }
 
-.sidebar-header { -fx-background-color: #ffffff; -fx-border-color: #d0d7de; }
+.sidebar-header {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+}
+
 .sidebar-title  { -fx-text-fill: #24292f; }
 .sidebar-subtitle { -fx-text-fill: #57606a; }
 
-.sidebar-user-card { -fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; }
+.sidebar-user-card {
+    -fx-background-color: #f6f8fa;
+    -fx-border-color: #d0d7de;
+}
+
 .sidebar-user-name { -fx-text-fill: #24292f; }
 
 .sidebar-btn {
@@ -39,12 +46,23 @@
     -fx-text-fill: #24292f;
 }
 
+.sidebar-btn:pressed {
+    -fx-background-color: #eaeef2;
+    -fx-text-fill: #24292f;
+}
+
 .sidebar-btn-active {
     -fx-background-color: #ddf4ff;
     -fx-text-fill: #0969da;
     -fx-border-color: #0969da;
 }
 
+.sidebar-logout:hover {
+    -fx-background-color: #fff0ee;
+    -fx-text-fill: #cf222e;
+}
+
+/* ── TOP BAR LIGHT ───────────────────────────────────── */
 .top-bar {
     -fx-background-color: #ffffff;
     -fx-border-color: #d0d7de;
@@ -57,40 +75,103 @@
     -fx-prompt-text-fill: #8c959f;
 }
 
+.search-bar:focused {
+    -fx-border-color: #0969da;
+    -fx-effect: dropshadow(gaussian, rgba(9,105,218,0.15), 6, 0, 0, 0);
+}
+
+/* ── CONTENT LIGHT ───────────────────────────────────── */
 .content-area { -fx-background-color: #f6f8fa; }
+
+.content-scroll {
+    -fx-background-color: #f6f8fa !important;
+    -fx-background: #f6f8fa !important;
+}
+
+.content-scroll > .viewport {
+    -fx-background-color: #f6f8fa !important;
+}
 
 .page-title   { -fx-text-fill: #24292f; }
 .page-subtitle { -fx-text-fill: #57606a; }
 .section-title { -fx-text-fill: #24292f; }
 .label        { -fx-text-fill: #24292f; }
 
+/* ── STAT CARDS LIGHT ────────────────────────────────── */
 .stat-card {
     -fx-background-color: #ffffff;
     -fx-border-color: #d0d7de;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);
+}
+
+.stat-card:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 14, 0, 0, 4);
 }
 
 .stat-number  { -fx-text-fill: #24292f; }
 .stat-label   { -fx-text-fill: #57606a; }
 .stat-sublabel { -fx-text-fill: #8c959f; }
 
+/* ── STAT BADGES LIGHT ───────────────────────────────── */
+.stat-badge-red {
+    -fx-background-color: #ffebe9;
+    -fx-text-fill: #cf222e;
+}
+
+.stat-badge-green {
+    -fx-background-color: #dafbe1;
+    -fx-text-fill: #1a7f37;
+}
+
+.stat-badge-orange {
+    -fx-background-color: #fff8c5;
+    -fx-text-fill: #9a6700;
+}
+
+.stat-badge-blue {
+    -fx-background-color: #ddf4ff;
+    -fx-text-fill: #0969da;
+}
+
+/* ── STAT ICON BOXES LIGHT ───────────────────────────── */
+.stat-icon-box-blue   { -fx-background-color: #ddf4ff; }
+.stat-icon-box-red    { -fx-background-color: #ffebe9; }
+.stat-icon-box-orange { -fx-background-color: #fff8c5; }
+.stat-icon-box-green  { -fx-background-color: #dafbe1; }
+
+/* ── TABLE LIGHT ─────────────────────────────────────── */
 .table-view {
     -fx-background-color: #ffffff;
     -fx-border-color: #d0d7de;
 }
 
-.table-view .column-header-background { -fx-background-color: #f6f8fa; }
-.table-view .column-header .label     { -fx-text-fill: #57606a; }
+.table-view .column-header-background {
+    -fx-background-color: #f6f8fa;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #57606a;
+}
 
 .table-row-cell {
     -fx-background-color: #ffffff;
-    -fx-border-color: #d0d7de;
+    -fx-border-color: #eaeef2;
 }
 
 .table-row-cell:odd  { -fx-background-color: #f6f8fa; }
-.table-row-cell:hover { -fx-background-color: #ddf4ff; }
-.table-row-cell .text { -fx-fill: #24292f; }
-.table-row-cell:empty { -fx-background-color: #ffffff; }
 
+.table-row-cell:hover {
+    -fx-background-color: #ddf4ff;
+    -fx-effect: none;
+}
+
+.table-row-cell .text { -fx-fill: #24292f; }
+
+.table-row-cell:empty {
+    -fx-background-color: #ffffff !important;
+}
+
+/* ── INPUTS LIGHT ────────────────────────────────────── */
 .text-field, .password-field {
     -fx-background-color: #ffffff;
     -fx-border-color: #d0d7de;
@@ -98,65 +179,62 @@
     -fx-prompt-text-fill: #8c959f;
 }
 
-.combo-box { -fx-background-color: #ffffff; -fx-border-color: #d0d7de; }
-.combo-box .list-cell { -fx-text-fill: #24292f; -fx-background-color: #ffffff; }
-.combo-box-popup .list-view { -fx-background-color: #ffffff; -fx-border-color: #d0d7de; }
-.combo-box-popup .list-view .list-cell:hover { -fx-background-color: #ddf4ff; }
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #0969da;
+    -fx-effect: dropshadow(gaussian, rgba(9,105,218,0.15), 6, 0, 0, 0);
+}
 
-.filter-bar { -fx-background-color: #ffffff; -fx-border-color: #d0d7de; }
-.filter-combo { -fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; }
-
-.activity-panel { -fx-background-color: #ffffff; -fx-border-color: #d0d7de; }
-.activity-panel-title { -fx-text-fill: #24292f; }
-.activity-text { -fx-text-fill: #24292f; }
-
-.dialog-pane { -fx-background-color: #ffffff; -fx-border-color: #d0d7de; }
-.dialog-pane .header-panel { -fx-background-color: #f6f8fa; }
-.dialog-pane .header-panel .label { -fx-text-fill: #24292f; }
-.dialog-pane .content.label { -fx-text-fill: #24292f; }
-.dialog-pane .button-bar .button {
-    -fx-background-color: #f6f8fa;
-    -fx-text-fill: #24292f;
+.text-area {
+    -fx-control-inner-background: #f6f8fa !important;
+    -fx-text-fill: #24292f !important;
     -fx-border-color: #d0d7de;
 }
 
-.breadcrumb-root    { -fx-text-fill: #8c959f; }
-.breadcrumb-sep     { -fx-text-fill: #8c959f; }
-.breadcrumb-current { -fx-text-fill: #0969da; }
-
-.scroll-bar { -fx-background-color: #f6f8fa; }
-.scroll-bar .thumb  { -fx-background-color: #d0d7de; }
-.scroll-bar .track  { -fx-background-color: #f6f8fa; }
-
-.sidebar-logout { -fx-text-fill: #cf222e; }
-
-/* Fix content scroll background */
-.content-scroll,
-.content-scroll > .viewport {
-    -fx-background-color: #f6f8fa !important;
-    -fx-background: #f6f8fa !important;
+/* ── COMBO BOX LIGHT ─────────────────────────────────── */
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
 }
 
-/* Fix sidebar new asset button area */
-.sidebar-new-asset {
-    -fx-background-color: #0969da !important;
+.combo-box .list-cell {
+    -fx-text-fill: #24292f;
+    -fx-background-color: #ffffff;
 }
 
-/* Fix table empty rows */
-.table-row-cell:empty {
+.combo-box-popup .list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #ddf4ff;
+}
+
+/* ── FILTER BAR LIGHT ────────────────────────────────── */
+.filter-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+}
+
+.filter-combo {
+    -fx-background-color: #f6f8fa;
+    -fx-border-color: #d0d7de;
+}
+
+/* ── ACTIVITY PANEL LIGHT ────────────────────────────── */
+.activity-panel {
     -fx-background-color: #ffffff !important;
+    -fx-border-color: #d0d7de !important;
 }
 
-/* Fix stat card icon boxes in light mode */
-.stat-icon-box-blue   { -fx-background-color: #ddf4ff !important; }
-.stat-icon-box-red    { -fx-background-color: #ffebe9 !important; }
-.stat-icon-box-orange { -fx-background-color: #fff8c5 !important; }
-.stat-icon-box-green  { -fx-background-color: #dafbe1 !important; }
+.activity-panel-title { -fx-text-fill: #24292f; }
+.activity-text { -fx-text-fill: #24292f; }
 
-/* Fix section cards in settings */
+/* ── DIALOG LIGHT ────────────────────────────────────── */
 .dialog-pane {
     -fx-background-color: #ffffff !important;
     -fx-border-color: #d0d7de !important;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 6) !important;
 }
 
 .dialog-pane > .content {
@@ -165,6 +243,7 @@
 
 .dialog-pane > .button-bar {
     -fx-background-color: #f6f8fa !important;
+    -fx-border-color: #d0d7de !important;
 }
 
 .dialog-pane > .button-bar .button {
@@ -173,9 +252,19 @@
     -fx-border-color: #d0d7de !important;
 }
 
+.dialog-pane > .button-bar .button:hover {
+    -fx-background-color: #eaeef2 !important;
+    -fx-text-fill: #24292f !important;
+}
+
 .dialog-pane > .button-bar .button:default {
     -fx-background-color: #0969da !important;
     -fx-text-fill: white !important;
+    -fx-border-color: #0969da !important;
+}
+
+.dialog-pane > .button-bar .button:default:hover {
+    -fx-background-color: #218bff !important;
 }
 
 .dialog-pane .header-panel {
@@ -191,9 +280,10 @@
     -fx-text-fill: #24292f !important;
 }
 
-/* Fix tab pane in reports */
+/* ── TAB PANE LIGHT ──────────────────────────────────── */
 .tab-pane .tab-header-area .tab-header-background {
     -fx-background-color: #f6f8fa !important;
+    -fx-border-color: #d0d7de !important;
 }
 
 .tab-pane .tab {
@@ -201,29 +291,45 @@
 }
 
 .tab-pane .tab .tab-label {
+    -fx-text-fill: #57606a !important;
+}
+
+.tab-pane .tab:hover .tab-label {
     -fx-text-fill: #24292f !important;
 }
 
 .tab-pane .tab:selected {
     -fx-background-color: #ffffff !important;
+    -fx-border-color: #0969da !important;
 }
 
-/* Fix radio buttons */
-.radio-button .text { -fx-text-fill: #24292f !important; }
-
-/* Fix text area in settings */
-.text-area {
-    -fx-control-inner-background: #f6f8fa !important;
-    -fx-text-fill: #24292f !important;
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #0969da !important;
 }
 
-/* Fix activity panel in light mode */
-.activity-panel {
+.tab-pane .tab-content-area {
+    -fx-background-color: #f6f8fa !important;
+}
+
+/* ── SCROLL BAR LIGHT ────────────────────────────────── */
+.scroll-bar       { -fx-background-color: #f6f8fa !important; }
+.scroll-bar .thumb { -fx-background-color: #d0d7de !important; }
+.scroll-bar .thumb:hover { -fx-background-color: #8c959f !important; }
+.scroll-bar .track { -fx-background-color: #f6f8fa !important; }
+
+/* ── SETTINGS CARD LIGHT ─────────────────────────────── */
+.settings-card {
     -fx-background-color: #ffffff !important;
     -fx-border-color: #d0d7de !important;
 }
 
-/* Fix scroll bar in light mode */
-.scroll-bar       { -fx-background-color: #f6f8fa !important; }
-.scroll-bar .thumb { -fx-background-color: #d0d7de !important; }
-.scroll-bar .track { -fx-background-color: #f6f8fa !important; }
+/* ── BREADCRUMB LIGHT ────────────────────────────────── */
+.breadcrumb-root  { -fx-text-fill: #8c959f; }
+.breadcrumb-sep   { -fx-text-fill: #8c959f; }
+.breadcrumb-current { -fx-text-fill: #0969da; }
+
+/* ── RADIO BUTTON LIGHT ──────────────────────────────── */
+.radio-button .text { -fx-text-fill: #24292f !important; }
+
+/* ── SIDEBAR LOGOUT LIGHT ────────────────────────────── */
+.sidebar-logout { -fx-text-fill: #cf222e; }

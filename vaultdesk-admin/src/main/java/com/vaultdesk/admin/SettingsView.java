@@ -414,13 +414,7 @@ public class SettingsView {
         Separator sep = new Separator();
 
         VBox card = new VBox(12, headLabel, sep, content);
-        card.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-border-radius: 8;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-padding: 20;");
+        card.getStyleClass().add("settings-card");
         return card;
     }
 

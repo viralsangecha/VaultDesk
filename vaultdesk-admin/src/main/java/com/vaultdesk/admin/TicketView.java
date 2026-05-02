@@ -286,9 +286,21 @@ public class TicketView {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 int reportedBy = SessionManager.get().getUserId();
+                String title = titleField.getText().trim()
+                        .replace("\\", "\\\\")
+                        .replace("\"", "'")
+                        .replace("\n", " ")
+                        .replace("\r", "");
+
+                String desc = descField.getText().trim()
+                        .replace("\\", "\\\\")
+                        .replace("\"", "'")
+                        .replace("\n", " ")
+                        .replace("\r", "");
+
                 String body = "{" +
-                        "\"title\":\"" + titleField.getText() + "\"," +
-                        "\"description\":\"" + descField.getText() + "\"," +
+                        "\"title\":\"" + title + "\"," +
+                        "\"description\":\"" + desc + "\"," +
                         "\"category\":\"" + categoryBox.getValue() + "\"," +
                         "\"priority\":\"" + priorityBox.getValue() + "\"," +
                         "\"reportedBy\":" + reportedBy +
