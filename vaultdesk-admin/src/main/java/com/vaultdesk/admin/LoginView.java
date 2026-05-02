@@ -11,6 +11,8 @@ import javafx.stage.Stage;
 import java.net.URI;
 import java.net.http.*;
 
+import static org.apache.commons.codec.digest.DigestUtils.sha256;
+
 public class LoginView {
 
     public Scene getScene(Stage stage) {
@@ -115,6 +117,9 @@ public class LoginView {
                             + " role: " + role + " id: " + userId);
 
                     SessionManager.get().login(userId, fullName, role);
+                    // ── Persist session to disk ────────────────────
+                    SessionStore.save(userId, fullName, role,
+                            username, sha256(password));   // ← ADD THIS LINE
 
                     try {
                         Scene dash = new DashboardView(fullName, role).getScene(stage);
@@ -178,5 +183,16 @@ public class LoginView {
             return Integer.parseInt(
                     json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0; }
+    }
+    private String sha256(String input) {
+        try {
+            java.security.MessageDigest md =
+                    java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(input.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash)
+                sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) { return ""; }
     }
 }

@@ -210,10 +210,11 @@ public class DashboardView {
 
         // ── Logout ────────────────────────────────────────
         btnLogout.setOnAction(e -> {
+            SessionStore.clear();
             SessionManager.get().logout();
-            Scene login = new LoginView().getScene(stage);
-            ThemeManager.apply(login);
-            stage.setScene(login);
+            Scene loginScene = new LoginView().getScene(stage);
+            ThemeManager.apply(loginScene);
+            stage.setScene(loginScene);
         });
 
         Scene scene = new Scene(mainLayout, 1200, 800);
