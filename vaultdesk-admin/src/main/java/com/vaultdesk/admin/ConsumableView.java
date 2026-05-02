@@ -113,7 +113,7 @@ public class ConsumableView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/consumables"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/consumables"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -220,7 +220,7 @@ public class ConsumableView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/consumables"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/consumables"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();
@@ -302,7 +302,7 @@ public class ConsumableView {
                 int qty = Integer.parseInt(qtyField.getText().trim());
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/consumables/"
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/consumables/"
                                 + c.getId() + "/quantity?quantity=" + qty))
                         .PUT(HttpRequest.BodyPublishers.noBody())
                         .build();

@@ -142,7 +142,7 @@ public class DashboardStatsView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/dashboard/stats"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/dashboard/stats"))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -180,7 +180,7 @@ public class DashboardStatsView {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(
-                            "http://localhost:8080/api/dashboard/recent-activity"))
+                            ConfigManager.getBaseUrl() + "/api/dashboard/recent-activity"))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());

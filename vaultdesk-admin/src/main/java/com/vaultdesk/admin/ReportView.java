@@ -58,7 +58,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/assets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -139,7 +139,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/tickets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/tickets"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -216,7 +216,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/licenses/expiring?days=90"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/licenses/expiring?days=90"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -285,7 +285,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/consumables/low-stock"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/consumables/low-stock"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -352,7 +352,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/maintenance"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/maintenance"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -427,7 +427,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/assets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -502,7 +502,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/tickets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/tickets"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -591,7 +591,7 @@ public class ReportView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/assets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());

@@ -178,7 +178,7 @@ public class TicketView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/users"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users"))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -202,7 +202,7 @@ public class TicketView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/tickets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/tickets"))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -295,7 +295,7 @@ public class TicketView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/tickets"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/tickets"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
                 HttpResponse<String> resp = client.send(req,
@@ -392,7 +392,7 @@ public class TicketView {
     private boolean updateTicketStatus(int id, String status,
                                        String resolution) {
         try {
-            String url = "http://localhost:8080/api/tickets/" + id
+            String url = ConfigManager.getBaseUrl() + "/api/tickets/" + id
                     + "/status?status="
                     + URLEncoder.encode(status, StandardCharsets.UTF_8)
                     + "&resolution="
@@ -417,7 +417,7 @@ public class TicketView {
 
     private boolean assignTicket(int ticketId, int userId) {
         try {
-            String url = "http://localhost:8080/api/tickets/"
+            String url = ConfigManager.getBaseUrl() + "/api/tickets/"
                     + ticketId + "/assign?userId=" + userId;
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()

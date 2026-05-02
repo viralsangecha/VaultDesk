@@ -57,7 +57,7 @@ public class DepartmentView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/departments"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/departments"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
                 HttpResponse<String> resp = client.send(req,
@@ -84,7 +84,7 @@ public class DepartmentView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/departments"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/departments"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -146,7 +146,7 @@ public class DepartmentView {
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/departments"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/departments"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();

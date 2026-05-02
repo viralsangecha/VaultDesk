@@ -129,7 +129,7 @@ public class EmployeeView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/employees"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/employees"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
                 HttpResponse<String> resp = client.send(req,
@@ -166,7 +166,7 @@ public class EmployeeView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/employees"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/employees"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -266,7 +266,7 @@ public class EmployeeView {
                         "\"active\":1," +
                         "\"notes\":\"" + notesField.getText() + "\"" +
                         "}";
-                if (postRequest("http://localhost:8080/api/employees", body, 201))
+                if (postRequest(ConfigManager.getBaseUrl() + "/api/employees", body, 201))
                     loadEmployees(table);
             } catch (NumberFormatException ex) {
                 showAlert("Error", "Dept ID must be a number.");
@@ -340,7 +340,7 @@ public class EmployeeView {
                     "\"active\":1," +
                     "\"notes\":\"\"" +
                     "}";
-            if (putRequest("http://localhost:8080/api/employees/" + emp.getId(), body))
+            if (putRequest(ConfigManager.getBaseUrl() + "/api/employees/" + emp.getId(), body))
                 loadEmployees(table);
         }
     }
@@ -352,7 +352,7 @@ public class EmployeeView {
         confirm.setContentText("Deactivate " + emp.getName() + "?");
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            if (deleteRequest("http://localhost:8080/api/employees/" + emp.getId()))
+            if (deleteRequest(ConfigManager.getBaseUrl() + "/api/employees/" + emp.getId()))
                 loadEmployees(table);
         }
     }

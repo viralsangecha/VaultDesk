@@ -121,7 +121,7 @@ public class AssetView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/assets"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
                 HttpResponse<String> resp = client.send(req,
@@ -248,7 +248,7 @@ public class AssetView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/assets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -425,7 +425,7 @@ public class AssetView {
                     "}";
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/assets"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body)).build();
             HttpResponse<String> response = client.send(request,
@@ -444,7 +444,7 @@ public class AssetView {
 
     private boolean updateAssetStatus(int id, String status) {
         try {
-            String url = "http://localhost:8080/api/assets/" + id
+            String url = ConfigManager.getBaseUrl() + "/api/assets/" + id
                     + "/status?status="
                     + URLEncoder.encode(status, StandardCharsets.UTF_8);
             HttpClient client = HttpClient.newHttpClient();

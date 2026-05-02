@@ -66,7 +66,7 @@ public class VendorView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/vendors"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/vendors"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -155,7 +155,7 @@ public class VendorView {
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/vendors"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/vendors"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();

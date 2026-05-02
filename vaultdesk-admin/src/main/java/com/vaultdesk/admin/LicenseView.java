@@ -119,7 +119,7 @@ public class LicenseView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/licenses"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/licenses"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -227,7 +227,7 @@ public class LicenseView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/licenses"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/licenses"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();
@@ -308,7 +308,7 @@ public class LicenseView {
                 int used = Integer.parseInt(seatsField.getText().trim());
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/licenses/"
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/licenses/"
                                 + license.getId() + "/seats?used=" + used))
                         .PUT(HttpRequest.BodyPublishers.noBody())
                         .build();

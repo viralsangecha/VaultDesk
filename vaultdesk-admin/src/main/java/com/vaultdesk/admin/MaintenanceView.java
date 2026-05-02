@@ -85,7 +85,7 @@ public class MaintenanceView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/maintenance"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/maintenance"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -195,7 +195,7 @@ public class MaintenanceView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/maintenance"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/maintenance"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();

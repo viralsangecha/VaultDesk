@@ -157,7 +157,7 @@ public class UserManagementView {
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:8080/api/users"))
+                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users"))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -253,7 +253,7 @@ public class UserManagementView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/users"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
                 HttpResponse<String> resp = client.send(req,
@@ -331,7 +331,7 @@ public class UserManagementView {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(
-                                "http://localhost:8080/api/users/" + user.getId()))
+                                ConfigManager.getBaseUrl() + "/api/users/" + user.getId()))
                         .header("Content-Type", "application/json")
                         .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
                 HttpResponse<String> resp = client.send(req,
@@ -363,7 +363,7 @@ public class UserManagementView {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(
-                                "http://localhost:8080/api/users/" + user.getId()))
+                                ConfigManager.getBaseUrl() + "/api/users/" + user.getId()))
                         .DELETE().build();
                 HttpResponse<String> resp = client.send(req,
                         HttpResponse.BodyHandlers.ofString());

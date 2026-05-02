@@ -98,28 +98,39 @@ public class LoginView {
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/auth/login"))
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/auth/login"))
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
                         .build();
                 HttpResponse<String> response = client.send(request,
                         HttpResponse.BodyHandlers.ofString());
+
                 if (response.statusCode() == 200) {
                     String rb       = response.body();
                     String fullName = extractValue(rb, "fullName");
                     String role     = extractValue(rb, "role");
                     int userId      = extractInt(rb, "userId");
 
-                    // ── Store session ──────────────────────
+                    System.out.println("Login OK — user: " + fullName
+                            + " role: " + role + " id: " + userId);
+
                     SessionManager.get().login(userId, fullName, role);
 
-                    Scene dash = new DashboardView(fullName, role).getScene(stage);
-                    ThemeManager.apply(dash);
-                    stage.setScene(dash);
+                    try {
+                        Scene dash = new DashboardView(fullName, role).getScene(stage);
+                        ThemeManager.apply(dash);
+                        stage.setScene(dash);
+                    } catch (Exception dashEx) {
+                        System.out.println("Dashboard load error: " + dashEx.getMessage());
+                        dashEx.printStackTrace();
+                        statusLabel.setText("Dashboard load failed: " + dashEx.getMessage());
+                    }
                 } else {
                     statusLabel.setText("Invalid username or password.");
                 }
             } catch (Exception ex) {
+                System.out.println("Connection error: " + ex.getMessage());
+                ex.printStackTrace();
                 statusLabel.setText("Cannot connect to server.");
             }
         };
@@ -150,13 +161,18 @@ public class LoginView {
         int start = json.indexOf(search);
         if (start == -1) return "";
         start += search.length();
-        return json.substring(start, json.indexOf("\"", start));
+        int end = json.indexOf("\"", start);
+        if (end == -1) return "";
+        return json.substring(start, end);
     }
 
     private int extractInt(String json, String key) {
         String search = "\"" + key + "\":";
-        int start = json.indexOf(search) + search.length();
+        int start = json.indexOf(search);
+        if (start == -1) return 0;
+        start += search.length();
         int end = json.indexOf(",", start);
+        if (end == -1) end = json.indexOf("}", start);
         if (end == -1) end = json.length();
         try {
             return Integer.parseInt(

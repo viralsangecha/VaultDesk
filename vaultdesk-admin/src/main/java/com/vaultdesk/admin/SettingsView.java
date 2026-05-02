@@ -110,11 +110,11 @@ public class SettingsView {
                         "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
                         "-fx-font-weight: bold; -fx-cursor: hand;");
         saveBtn.setOnAction(e -> {
-            prefs.put("server.host", hostField.getText().trim());
-            prefs.put("server.port", portField.getText().trim());
+            ConfigManager.setHost(hostField.getText().trim());
+            ConfigManager.setPort(portField.getText().trim());
+            ConfigManager.save();
             statusLabel.setText("✔ Server settings saved.");
-            statusLabel.setStyle(
-                    "-fx-text-fill: #3fb950; -fx-font-size: 12px;");
+            statusLabel.setStyle("-fx-text-fill: #3fb950; -fx-font-size: 12px;");
         });
 
         Label note = new Label(
@@ -279,7 +279,7 @@ public class SettingsView {
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:8080/api/users/"
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users/"
                                 + userId + "/password"))
                         .header("Content-Type", "application/json")
                         .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
