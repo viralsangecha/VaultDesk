@@ -25,7 +25,11 @@ public class DashboardView {
         sideTitle.getStyleClass().add("sidebar-title");
         Label sideSub = new Label("IT Management");
         sideSub.getStyleClass().add("sidebar-subtitle");
-        VBox sideHeader = new VBox(2, sideTitle, sideSub);
+        Label versionLabel = new Label(
+                "v" + VersionChecker.getCurrentVersion());
+        versionLabel.setStyle(
+                "-fx-text-fill: #484f58; -fx-font-size: 10px;");
+        VBox sideHeader = new VBox(2, sideTitle, sideSub, versionLabel);
         sideHeader.getStyleClass().add("sidebar-header");
 
         // ── User card ─────────────────────────────────────

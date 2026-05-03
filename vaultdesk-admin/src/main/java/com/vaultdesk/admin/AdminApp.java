@@ -14,32 +14,47 @@ public class AdminApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
-        // Apply AtlantaFX base theme first
-        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+        Application.setUserAgentStylesheet(
+                new PrimerDark().getUserAgentStylesheet());
 
-        stage.setTitle("VaultDesk Admin");
+        stage.setTitle("VaultDesk Admin v"
+                + VersionChecker.getCurrentVersion());
         stage.setWidth(1200);
         stage.setHeight(800);
 
-        Scene scene;
-
+        // Step 1 — server not configured yet
         if (!ConfigManager.isConfigured()) {
-            scene = new ServerConfigView().getScene(stage);
+            Scene scene = new ServerConfigView().getScene(stage);
             stage.setScene(scene);
             stage.show();
             return;
         }
 
+        // Step 2 — check session
         Properties session = SessionStore.load();
+        Scene initialScene;
         if (session != null) {
-            scene = tryAutoLogin(stage, session);
+            initialScene = tryAutoLogin(stage, session);
         } else {
-            scene = new LoginView().getScene(stage);
-            ThemeManager.apply(scene);
+            initialScene = new LoginView().getScene(stage);
+            ThemeManager.apply(initialScene);
         }
 
-        stage.setScene(scene);
+        stage.setScene(initialScene);
         stage.show();
+
+        // Step 3 — check for update in background
+        // Don't block startup — check after window is shown
+        Thread updateThread = new Thread(() -> {
+            VersionChecker.UpdateInfo info =
+                    VersionChecker.checkForUpdate();
+            if (info != null) {
+                javafx.application.Platform.runLater(() ->
+                        UpdateDialog.show(stage, info, null));
+            }
+        });
+        updateThread.setDaemon(true);
+        updateThread.start();
     }
 
     private Scene tryAutoLogin(Stage stage, Properties session) {
