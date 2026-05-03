@@ -11,8 +11,6 @@ import javafx.stage.Stage;
 import java.net.URI;
 import java.net.http.*;
 
-import static org.apache.commons.codec.digest.DigestUtils.sha256;
-
 public class LoginView {
 
     public Scene getScene(Stage stage) {

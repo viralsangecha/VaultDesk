@@ -42,7 +42,7 @@ public class ConfigManager {
     public static String getBaseUrl() {
         String host = getHost();
         String port = getPort();
-        if (host.isEmpty()) return ConfigManager.getBaseUrl() + "";
+        if (host.isEmpty()) return "http://localhost:8080";
         return "http://" + host + ":" + port;
     }
 
