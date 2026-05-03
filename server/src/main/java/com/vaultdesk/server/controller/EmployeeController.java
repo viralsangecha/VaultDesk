@@ -49,6 +49,11 @@ public class EmployeeController {
         return ResponseEntity.ok("Employee deactivated");
     }
 
+    @GetMapping("/department/{deptId}")
+    public ResponseEntity<?> getByDept(@PathVariable int deptId) {
+        return ResponseEntity.ok(employeeDAO.getEmployeesByDept(deptId));
+    }
+
 
 
 

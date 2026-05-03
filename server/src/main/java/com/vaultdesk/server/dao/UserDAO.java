@@ -57,17 +57,19 @@ public class UserDAO {
                 (String) row.get("role"),
                 ((Number) row.get("active")).intValue(),
                 (String) row.get("created_at"),
-                (String) row.get("last_login")
+                (String) row.get("last_login"),
+                row.get("dept_id") != null
+                        ? ((Number) row.get("dept_id")).intValue() : 0
         );
     }
 
     public void saveUser(String username, String passwordHash,
-                         String fullName, String role) {
+                         String fullName, String role, int deptId) {
         jdbc.update(
                 "INSERT INTO users (username, password_hash, full_name, " +
-                        "role, active, created_at) " +
-                        "VALUES (?, ?, ?, ?, 1, datetime('now'))",
-                username, passwordHash, fullName, role
+                        "role, active, dept_id, created_at) " +
+                        "VALUES (?, ?, ?, ?, 1, ?, datetime('now'))",
+                username, passwordHash, fullName, role, deptId
         );
     }
 

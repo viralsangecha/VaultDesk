@@ -37,6 +37,12 @@ public class DatabaseInitializer implements CommandLineRunner {
         } catch (Exception e) {
             // Column already exists, ignore
         }
+        try {
+            jdbc.execute("ALTER TABLE users ADD COLUMN dept_id INTEGER DEFAULT 0");
+            System.out.println("✔ dept_id column added to users.");
+        } catch (Exception e) {
+            // Column already exists, ignore
+        }
         System.out.println("✔ users table ready.");
 
         // ─────────────────────────────────────────────

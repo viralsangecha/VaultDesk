@@ -69,4 +69,16 @@ public class MaintenanceLogDAO {
                 (String) row.get("created_at")
         );
     }
+
+    public List<MaintenanceLog> getLogsByDept(int deptId) {
+        List<Map<String,Object>> rows = jdbc.queryForList(
+                "SELECT m.* FROM maintenance_log m " +
+                        "JOIN assets a ON m.asset_id = a.id " +
+                        "WHERE a.department_id = ?", deptId);
+        List<MaintenanceLog> list = new ArrayList<>();
+        for (Map<String,Object> row : rows) {
+            list.add(mapRow(row));
+        }
+        return list;
+    }
 }

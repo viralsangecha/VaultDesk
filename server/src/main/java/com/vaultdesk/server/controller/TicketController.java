@@ -70,4 +70,9 @@ public class TicketController {
         if (rows == 0) return ResponseEntity.notFound().build();
         return ResponseEntity.ok("Ticket assigned");
     }
+
+    @GetMapping("/department/{deptId}")
+    public ResponseEntity<?> getByDept(@PathVariable int deptId) {
+        return ResponseEntity.ok(ticketDAO.getTicketsByDept(deptId));
+    }
 }

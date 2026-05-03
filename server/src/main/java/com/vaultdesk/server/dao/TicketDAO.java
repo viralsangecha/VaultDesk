@@ -121,4 +121,16 @@ public class TicketDAO {
         );
     }
 
+    public List<Ticket> getTicketsByDept(int deptId) {
+        List<Map<String,Object>> rows = jdbc.queryForList(
+                "SELECT t.* FROM tickets t " +
+                        "JOIN employees e ON t.reported_by = e.id " +
+                        "WHERE e.department_id = ? " +
+                        "ORDER BY t.created_at DESC", deptId);
+        List<Ticket> tickets = new ArrayList<>();
+        for (Map<String,Object> row : rows) {
+            tickets.add(mapRowToTicket(row));
+        }
+        return tickets;
+    }
 }

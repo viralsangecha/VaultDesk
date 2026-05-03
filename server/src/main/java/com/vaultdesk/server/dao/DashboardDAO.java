@@ -1,5 +1,6 @@
 package com.vaultdesk.server.dao;
 
+import com.vaultdesk.server.model.DashboardStats;
 import com.vaultdesk.server.model.Ticket;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -88,5 +89,26 @@ public class DashboardDAO {
                 (String) row.get("resolved_at"),
                 (String) row.get("resolution")
         );
+    }
+
+    public DashboardStats getDeptStats(int deptId) {
+        int totalAssets = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM assets WHERE department_id = ?",
+                Integer.class, deptId);
+
+        int openTickets = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM tickets t " +
+                        "JOIN employees e ON t.reported_by = e.id " +
+                        "WHERE e.department_id = ? AND t.status = 'Open'",
+                Integer.class, deptId);
+
+        int totalEmployees = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM employees " +
+                        "WHERE department_id = ? AND active = 1",
+                Integer.class, deptId);
+
+        return new DashboardStats(
+                totalAssets, openTickets, 0, 0, 0,
+                totalEmployees, 1);
     }
 }

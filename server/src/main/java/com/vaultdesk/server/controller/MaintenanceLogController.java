@@ -29,4 +29,9 @@ public class MaintenanceLogController {
         maintenanceLogDAO.saveLog(log);
         return ResponseEntity.status(201).body("Maintenance log added");
     }
+
+    @GetMapping("/department/{deptId}")
+    public ResponseEntity<?> getByDept(@PathVariable int deptId) {
+        return ResponseEntity.ok(maintenanceLogDAO.getLogsByDept(deptId));
+    }
 }

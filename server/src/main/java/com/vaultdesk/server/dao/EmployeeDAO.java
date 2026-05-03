@@ -48,6 +48,33 @@ public class EmployeeDAO {
         }
     }
 
+    public List<Employee> getEmployeesByDept(int deptId) {
+        try {
+            List<Map<String,Object>> rows = jdbc.queryForList(
+                    "SELECT * FROM employees WHERE department_id = ? AND active = 1",
+                    deptId);
+            List<Employee> employees = new ArrayList<>();
+            for (Map<String,Object> row : rows) {
+                employees.add(new Employee(
+                        ((Number) row.get("id")).intValue(),
+                        (String) row.get("name"),
+                        (String) row.get("emp_code"),
+                        ((Number) row.get("department_id")).intValue(),
+                        (String) row.get("designation"),
+                        (String) row.get("email"),
+                        (String) row.get("phone"),
+                        (String) row.get("join_date"),
+                        (String) row.get("leave_date"),
+                        ((Number) row.get("active")).intValue(),
+                        (String) row.get("notes")
+                ));
+            }
+            return employees;
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
     public Employee getEmployeeById(int id)
     {
         try {

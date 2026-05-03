@@ -8,5 +8,6 @@ public record User(
         String role,
         int active,
         String createdAt,
-        String lastLogin
+        String lastLogin,
+        int deptId
 ) {}

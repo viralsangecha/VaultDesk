@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -35,14 +36,32 @@ public class LoginController {
         String hashed = sha256(request.password());
         if (userDAO.validateLogin(request.username(), hashed)) {
             User user = userDAO.getUserByUsername(request.username());
-            // Record login time
             userDAO.updateLastLogin(user.id());
             return ResponseEntity.ok(new LoginResponse(
                     true, "Login successful",
-                    user.role(), user.fullName(), user.id()
+                    user.role(), user.fullName(), user.id(), user.deptId()
             ));
         }
         return ResponseEntity.status(401).body(
-                new LoginResponse(false, "Invalid credentials", "", "", 0));
+                new LoginResponse(false, "Invalid credentials", "", "", 0, 0));
+    }
+
+    @PostMapping("/validate")
+    public ResponseEntity<?> validate(@RequestBody Map<String, String> body) {
+        String username     = body.get("username");
+        String passwordHash = body.get("passwordHash");
+
+        if (username == null || passwordHash == null)
+            return ResponseEntity.badRequest().build();
+
+        if (userDAO.validateLogin(username, passwordHash)) {
+            User user = userDAO.getUserByUsername(username);
+            userDAO.updateLastLogin(user.id());
+            return ResponseEntity.ok(new LoginResponse(
+                    true, "Session valid",
+                    user.role(), user.fullName(), user.id(), user.deptId()
+            ));
+        }
+        return ResponseEntity.status(401).build();
     }
 }

@@ -5,5 +5,6 @@ public record LoginResponse(
         String message,
         String role,
         String fullName,
-        int userId
+        int userId,
+        int deptId
 ) {}

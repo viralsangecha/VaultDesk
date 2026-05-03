@@ -32,4 +32,9 @@ public class DashboardController {
     public ResponseEntity<?> getRecentActivity() {
         return ResponseEntity.ok(dashboardDAO.getRecentTickets());
     }
+
+    @GetMapping("/stats/department/{deptId}")
+    public ResponseEntity<?> getDeptStats(@PathVariable int deptId) {
+        return ResponseEntity.ok(dashboardDAO.getDeptStats(deptId));
+    }
 }

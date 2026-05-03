@@ -29,13 +29,15 @@ public class UserController {
         String password  = body.get("password");
         String fullName  = body.get("fullName");
         String role      = body.get("role");
+        int deptId       = body.get("deptId") != null
+                ? Integer.parseInt(body.get("deptId")) : 0;
 
         if (username == null || password == null
                 || fullName == null || role == null)
             return ResponseEntity.badRequest().body("Missing fields");
 
         String hash = sha256(password);
-        userDAO.saveUser(username, hash, fullName, role);
+        userDAO.saveUser(username, hash, fullName, role, deptId);
         return ResponseEntity.status(201).body("User created");
     }
 
@@ -47,6 +49,25 @@ public class UserController {
         int rows = userDAO.updateUser(id, fullName, role);
         if (rows == 0) return ResponseEntity.notFound().build();
         return ResponseEntity.ok("User updated");
+    }
+
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> changePassword(@PathVariable int id,
+                                            @RequestBody Map<String, String> body) {
+        String currentPassword = body.get("currentPassword");
+        String newPassword     = body.get("newPassword");
+
+        if (currentPassword == null || newPassword == null)
+            return ResponseEntity.badRequest().body("Missing fields");
+
+        String currentHash = sha256(currentPassword);
+        String newHash     = sha256(newPassword);
+
+        boolean changed = userDAO.changePassword(id, currentHash, newHash);
+        if (!changed)
+            return ResponseEntity.status(401).body("Current password is incorrect");
+
+        return ResponseEntity.ok("Password changed");
     }
 
     @DeleteMapping("/{id}")
