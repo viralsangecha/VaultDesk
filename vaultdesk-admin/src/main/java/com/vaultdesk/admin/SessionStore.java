@@ -9,13 +9,14 @@ public class SessionStore {
 
     public static void save(int userId, String fullName,
                             String role, String username,
-                            String passwordHash) {
+                            String passwordHash, int deptId) {  // ← add deptId
         Properties props = new Properties();
         props.setProperty("userId",       String.valueOf(userId));
         props.setProperty("fullName",     fullName);
         props.setProperty("role",         role);
         props.setProperty("username",     username);
         props.setProperty("passwordHash", passwordHash);
+        props.setProperty("deptId",       String.valueOf(deptId));  // ← ADD
         try (FileOutputStream fos = new FileOutputStream(SESSION_FILE)) {
             props.store(fos, "VaultDesk Session — do not edit");
         } catch (Exception e) {

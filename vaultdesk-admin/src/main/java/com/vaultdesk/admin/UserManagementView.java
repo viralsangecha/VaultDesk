@@ -203,6 +203,9 @@ public class UserManagementView {
         roleBox.getItems().addAll("ADMIN", "ENGINEER", "DEPT_HOD");
         roleBox.setValue("ENGINEER");
 
+        TextField deptIdField = new TextField();
+        deptIdField.setPromptText("Required for DEPT_ADMIN");
+
         Label errorLabel = new Label("");
         errorLabel.setStyle(
                 "-fx-text-fill: #f85149; -fx-font-size: 12px;");
@@ -214,7 +217,8 @@ public class UserManagementView {
         grid.add(new Label("Password *:"),  0, 2); grid.add(passwordField, 1, 2);
         grid.add(new Label("Confirm *:"),   0, 3); grid.add(confirmField,  1, 3);
         grid.add(new Label("Role:"),        0, 4); grid.add(roleBox,       1, 4);
-        grid.add(errorLabel,                1, 5);
+        grid.add(new Label("Dept ID:"),     0, 5); grid.add(deptIdField,   1, 5);
+        grid.add(errorLabel,                1, 6);
         dialog.getDialogPane().setContent(grid);
 
         Button okButton = (Button) dialog.getDialogPane()
@@ -249,7 +253,9 @@ public class UserManagementView {
                         "\"username\":\"" + usernameField.getText() + "\"," +
                         "\"password\":\"" + passwordField.getText() + "\"," +
                         "\"fullName\":\"" + fullNameField.getText() + "\"," +
-                        "\"role\":\"" + roleBox.getValue() + "\"" +
+                        "\"role\":\"" + roleBox.getValue() + "\"," +
+                        "\"deptId\":" + (deptIdField.getText().trim().isEmpty()
+                        ? 0 : Integer.parseInt(deptIdField.getText().trim())) +
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()

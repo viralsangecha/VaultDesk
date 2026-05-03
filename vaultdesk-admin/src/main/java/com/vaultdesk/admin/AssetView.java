@@ -44,14 +44,25 @@ public class AssetView {
                         "-fx-font-weight: bold; -fx-font-size: 13px; -fx-cursor: hand;");
 
         Button importBtn = new Button("⬆ Import CSV");
+        importBtn.getStyleClass().setAll("btn-primary");
+        importBtn.setStyle(
+                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 8 14 8 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+
         Region titleSpacer = new Region();
         HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+
         HBox titleRow = new HBox(12,
                 new VBox(4, title, subtitle),
-                titleSpacer, importBtn, addBtn);
+                titleSpacer);
+
+// Role-based buttons — add once only
+        if (SessionManager.get().isAdmin()
+                || SessionManager.get().isDeptHod()) {
+            titleRow.getChildren().addAll(importBtn, addBtn);
+        }
         titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-
 
         // ── Filter bar ────────────────────────────────────
         Label filterLabel = new Label("Filters:");
@@ -246,9 +257,14 @@ public class AssetView {
         table.getItems().clear();
         allAssets.clear();
         try {
+            String url = SessionManager.get().isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/assets/department/"
+                    + SessionManager.get().getDeptId()
+                    : ConfigManager.getBaseUrl() + "/api/assets";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
+                    .uri(URI.create(url))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -275,7 +291,6 @@ public class AssetView {
         } catch (Exception ex) {
             System.out.println("Error loading assets: " + ex.getMessage());
         }
-
     }
 
     private void showAddDialog(TableView<Asset> table) {

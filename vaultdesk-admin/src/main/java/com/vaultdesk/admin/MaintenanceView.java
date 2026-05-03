@@ -83,9 +83,14 @@ public class MaintenanceView {
     private void loadMaintenance(TableView<Maintenance> table) {
         table.getItems().clear();
         try {
+            String url = SessionManager.get().isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/maintenance/department/"
+                    + SessionManager.get().getDeptId()
+                    : ConfigManager.getBaseUrl() + "/api/maintenance";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/maintenance"))
+                    .uri(URI.create(url))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());

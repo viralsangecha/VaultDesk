@@ -140,9 +140,14 @@ public class EmployeeView {
             loadEmployees(table);
         });
 
-// update topBar to include importBtn
         HBox topBar = new HBox(10);
-        topBar.getChildren().addAll(addBtn,importBtn, searchField);
+        topBar.getChildren().add(searchField);
+
+        if (SessionManager.get().isAdmin()
+                || SessionManager.get().isDeptHod()) {
+            topBar.getChildren().addAll(0,
+                    java.util.List.of(addBtn, importBtn));
+        }
 
         loadEmployees(table);
 
@@ -164,9 +169,14 @@ public class EmployeeView {
     private void loadEmployees(TableView<Employee> table) {
         table.getItems().clear();
         try {
+            String url = SessionManager.get().isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/employees/department/"
+                    + SessionManager.get().getDeptId()
+                    : ConfigManager.getBaseUrl() + "/api/employees";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/employees"))
+                    .uri(URI.create(url))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -182,7 +192,7 @@ public class EmployeeView {
                             extractValue(obj, "designation"),
                             extractValue(obj, "email"),
                             extractValue(obj, "phone"),
-                            extractInt(obj, "active")       // ← added
+                            extractInt(obj, "active")
                     ));
                 }
             }

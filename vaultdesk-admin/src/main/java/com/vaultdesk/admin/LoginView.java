@@ -112,14 +112,18 @@ public class LoginView {
                     String fullName = extractValue(rb, "fullName");
                     String role     = extractValue(rb, "role");
                     int userId      = extractInt(rb, "userId");
+                    int deptId      = extractInt(rb, "deptId");
 
                     System.out.println("Login OK — user: " + fullName
                             + " role: " + role + " id: " + userId);
 
                     SessionManager.get().login(userId, fullName, role);
+                    SessionManager.get().setDeptId(deptId);
+
                     // ── Persist session to disk ────────────────────
                     SessionStore.save(userId, fullName, role,
-                            username, sha256(password));   // ← ADD THIS LINE
+                            username, sha256(password), deptId);
+
 
                     try {
                         Scene dash = new DashboardView(fullName, role).getScene(stage);

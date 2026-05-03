@@ -107,6 +107,10 @@ public class LicenseView {
         HBox topBar = new HBox(10);
         topBar.getChildren().add(addBtn);
 
+        // in getView(), find where topBar is built
+        if (SessionManager.get().isAdmin()) {
+            topBar.getChildren().add(addBtn);
+        }
         loadLicenses(table);
 
         VBox root = new VBox(10);

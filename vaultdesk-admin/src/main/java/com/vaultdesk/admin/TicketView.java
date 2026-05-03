@@ -200,9 +200,14 @@ public class TicketView {
     private void loadTickets(TableView<Ticket> table) {
         table.getItems().clear();
         try {
+            String url = SessionManager.get().isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/tickets/department/"
+                    + SessionManager.get().getDeptId()
+                    : ConfigManager.getBaseUrl() + "/api/tickets";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/tickets"))
+                    .uri(URI.create(url))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -227,7 +232,6 @@ public class TicketView {
             System.out.println("Error loading tickets: " + ex.getMessage());
         }
     }
-
     // ── Add ticket dialog ─────────────────────────────────
     private void showAddTicketDialog(TableView<Ticket> table) {
         Dialog<ButtonType> dialog = new Dialog<>();

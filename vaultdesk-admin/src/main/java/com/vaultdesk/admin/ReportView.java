@@ -12,6 +12,14 @@ import java.util.*;
 
 public class ReportView {
 
+    private boolean isDeptHod() {
+        return SessionManager.get().isDeptHod();
+    }
+
+    private String deptFilter() {
+        return "/department/" + SessionManager.get().getDeptId();
+    }
+
     public VBox getView() {
         Label title = new Label("Reports & Analytics");
 
@@ -56,9 +64,14 @@ public class ReportView {
 
 
         try {
+            // Assets tabs
+            String assetUrl = isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/assets" + deptFilter()
+                    : ConfigManager.getBaseUrl() + "/api/assets";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/assets"))
+                    .uri(URI.create(assetUrl))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -137,9 +150,13 @@ public class ReportView {
         Label avgAgeLabel = new Label();
 
         try {
+            String ticketUrl = isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/tickets" + deptFilter()
+                    : ConfigManager.getBaseUrl() + "/api/tickets";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/tickets"))
+                    .uri(URI.create(ticketUrl))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -350,9 +367,13 @@ public class ReportView {
         Label totalLabel = new Label();
 
         try {
+            String maintUrl = isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/maintenance" + deptFilter()
+                    : ConfigManager.getBaseUrl() + "/api/maintenance";
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/maintenance"))
+                    .uri(URI.create(maintUrl))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());

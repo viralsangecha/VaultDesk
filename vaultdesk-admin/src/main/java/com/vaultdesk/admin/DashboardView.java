@@ -69,36 +69,46 @@ public class DashboardView {
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
 
-        // Always visible to all roles
-        sidebar.getChildren().addAll(sideHeader, userCard,
-                btnDashboard, btnTickets, btnAssets);
+// Always visible for all roles
+        sidebar.getChildren().addAll(
+                sideHeader, userCard, btnDashboard);
 
-        // ADMIN + DEPT_HOD only
         if (SessionManager.get().isAdmin()
-                || SessionManager.get().isDeptHod()) {
-            sidebar.getChildren().addAll(
-                    btnEmployees, btnDepartments,
-                    btnLicenses, btnConsumables,
-                    btnMaintenance, btnVendors);
+                || SessionManager.get().isEngineer()) {
+            sidebar.getChildren().add(btnTickets);
         }
 
-        // Reports — ADMIN + DEPT_HOD
-        if (SessionManager.get().canViewReports()) {
+        sidebar.getChildren().add(btnAssets);
+        sidebar.getChildren().add(btnEmployees);
+
+        if (SessionManager.get().isAdmin()) {
+            sidebar.getChildren().add(btnDepartments);
+        }
+
+        sidebar.getChildren().addAll(
+                btnLicenses, btnConsumables,
+                btnMaintenance, btnVendors);
+
+        if (SessionManager.get().isAdmin()
+                || SessionManager.get().isDeptHod()) {
             sidebar.getChildren().add(btnReports);
         }
 
-        // Users — ADMIN only
-        if (SessionManager.get().canManageUsers()) {
+        if (SessionManager.get().isAdmin()) {
             sidebar.getChildren().add(btnUsers);
         }
 
-        // Bottom items — always visible
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
+
         sidebar.getChildren().addAll(
-                spacer, newAssetBox,
-                btnSettings, btnSupport,
-                btnTheme, btnLogout);
+                spacer, newAssetBox);
+
+        if (SessionManager.get().isAdmin()) {
+            sidebar.getChildren().addAll(btnSettings, btnSupport);
+        }
+
+        sidebar.getChildren().addAll(btnTheme, btnLogout);
 
         // ── Top bar ───────────────────────────────────────
         TextField searchField = new TextField();

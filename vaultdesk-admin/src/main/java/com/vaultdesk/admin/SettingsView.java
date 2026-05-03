@@ -407,9 +407,7 @@ public class SettingsView {
     // ── Section card wrapper ──────────────────────────────
     private VBox sectionCard(String heading, VBox content) {
         Label headLabel = new Label(heading);
-        headLabel.setStyle(
-                "-fx-text-fill: #e6edf3; -fx-font-size: 14px;" +
-                        "-fx-font-weight: bold;");
+        headLabel.getStyleClass().add("section-title");
 
         Separator sep = new Separator();
 

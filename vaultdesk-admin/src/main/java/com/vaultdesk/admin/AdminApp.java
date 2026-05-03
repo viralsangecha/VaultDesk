@@ -1,5 +1,6 @@
 package com.vaultdesk.admin;
 
+import atlantafx.base.theme.PrimerDark;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
@@ -13,13 +14,15 @@ public class AdminApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
+        // Apply AtlantaFX base theme first
+        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+
         stage.setTitle("VaultDesk Admin");
         stage.setWidth(1200);
         stage.setHeight(800);
 
         Scene scene;
 
-        // Step 1 — server not configured yet
         if (!ConfigManager.isConfigured()) {
             scene = new ServerConfigView().getScene(stage);
             stage.setScene(scene);
@@ -27,7 +30,6 @@ public class AdminApp extends Application {
             return;
         }
 
-        // Step 2 — check for saved session
         Properties session = SessionStore.load();
         if (session != null) {
             scene = tryAutoLogin(stage, session);
@@ -63,12 +65,16 @@ public class AdminApp extends Application {
                     HttpResponse.BodyHandlers.ofString());
 
             if (resp.statusCode() == 200) {
+                // Also restore deptId from session file
+                int deptId = Integer.parseInt(
+                        session.getProperty("deptId", "0"));
                 SessionManager.get().login(userId, fullName, role);
+                SessionManager.get().setDeptId(deptId);         // ← ADD
                 Scene dash = new DashboardView(fullName, role)
                         .getScene(stage);
                 ThemeManager.apply(dash);
                 return dash;
-            } else {
+            }else {
                 SessionStore.clear();
             }
         } catch (Exception ex) {

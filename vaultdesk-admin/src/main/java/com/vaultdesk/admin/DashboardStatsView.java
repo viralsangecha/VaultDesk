@@ -140,9 +140,14 @@ public class DashboardStatsView {
 
         // ── Load stats ────────────────────────────────────
         try {
+            // Replace the stats loading URL
+            String statsUrl = SessionManager.get().isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/dashboard/stats/department/"
+                    + SessionManager.get().getDeptId()
+                    : ConfigManager.getBaseUrl() + "/api/dashboard/stats";
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/dashboard/stats"))
+                    .uri(URI.create(statsUrl))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());
@@ -177,10 +182,13 @@ public class DashboardStatsView {
 
         // ── Load recent tickets ───────────────────────────
         try {
+            String activityUrl = SessionManager.get().isDeptHod()
+                    ? ConfigManager.getBaseUrl() + "/api/tickets/department/"
+                    + SessionManager.get().getDeptId()
+                    : ConfigManager.getBaseUrl() + "/api/dashboard/recent-activity";
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(
-                            ConfigManager.getBaseUrl() + "/api/dashboard/recent-activity"))
+                    .uri(URI.create(activityUrl))
                     .GET().build();
             HttpResponse<String> resp = client.send(req,
                     HttpResponse.BodyHandlers.ofString());

@@ -845,3 +845,66 @@
 
 /* ── RADIO BUTTON ────────────────────────────────────── */
 .radio-button .text { -fx-text-fill: #c9d1d9; }
+
+/* ── ATLANTAFX DIALOG OVERRIDE ───────────────────────── */
+.modal-pane .dialog-pane,
+.dialog-pane {
+    -fx-background-color: #161b22 !important;
+    -fx-border-color: #30363d !important;
+}
+
+.modal-pane .dialog-pane > .content,
+.dialog-pane > .content {
+    -fx-background-color: #161b22 !important;
+}
+
+.modal-pane .dialog-pane > .button-bar,
+.dialog-pane > .button-bar {
+    -fx-background-color: #21262d !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button,
+.dialog-pane > .button-bar .button {
+    -fx-background-color: #21262d !important;
+    -fx-text-fill: #c9d1d9 !important;
+    -fx-border-color: #30363d !important;
+    -fx-border-width: 1 !important;
+    -fx-background-radius: 6 !important;
+    -fx-border-radius: 6 !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button:hover,
+.dialog-pane > .button-bar .button:hover {
+    -fx-background-color: #30363d !important;
+    -fx-text-fill: #e6edf3 !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button:default,
+.dialog-pane > .button-bar .button:default {
+    -fx-background-color: #1f6feb !important;
+    -fx-text-fill: white !important;
+    -fx-border-color: #1f6feb !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button:default:hover,
+.dialog-pane > .button-bar .button:default:hover {
+    -fx-background-color: #388bfd !important;
+}
+
+.modal-pane .dialog-pane .header-panel,
+.dialog-pane .header-panel {
+    -fx-background-color: #21262d !important;
+    -fx-border-color: #30363d !important;
+    -fx-border-width: 0 0 1 0 !important;
+}
+
+.modal-pane .dialog-pane .header-panel .label,
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #e6edf3 !important;
+    -fx-font-weight: bold !important;
+}
+
+.modal-pane .dialog-pane .label,
+.dialog-pane .label {
+    -fx-text-fill: #c9d1d9 !important;
+}

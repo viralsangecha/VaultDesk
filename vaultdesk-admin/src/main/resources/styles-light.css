@@ -333,3 +333,56 @@
 
 /* ── SIDEBAR LOGOUT LIGHT ────────────────────────────── */
 .sidebar-logout { -fx-text-fill: #cf222e; }
+
+/* ── ATLANTAFX DIALOG OVERRIDE LIGHT ─────────────────── */
+.modal-pane .dialog-pane,
+.dialog-pane {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.modal-pane .dialog-pane > .content,
+.dialog-pane > .content {
+    -fx-background-color: #ffffff !important;
+}
+
+.modal-pane .dialog-pane > .button-bar,
+.dialog-pane > .button-bar {
+    -fx-background-color: #f6f8fa !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button,
+.dialog-pane > .button-bar .button {
+    -fx-background-color: #f6f8fa !important;
+    -fx-text-fill: #24292f !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button:hover,
+.dialog-pane > .button-bar .button:hover {
+    -fx-background-color: #eaeef2 !important;
+}
+
+.modal-pane .dialog-pane > .button-bar .button:default,
+.dialog-pane > .button-bar .button:default {
+    -fx-background-color: #0969da !important;
+    -fx-text-fill: white !important;
+    -fx-border-color: #0969da !important;
+}
+
+.modal-pane .dialog-pane .header-panel,
+.dialog-pane .header-panel {
+    -fx-background-color: #f6f8fa !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.modal-pane .dialog-pane .header-panel .label,
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #24292f !important;
+}
+
+.modal-pane .dialog-pane .label,
+.dialog-pane .label {
+    -fx-text-fill: #24292f !important;
+}
