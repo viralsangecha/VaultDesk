@@ -47,3 +47,13 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+output/
+output2/
+output3/
+output4/
+output5/
+target/
+*.jar
+
+output-release/
