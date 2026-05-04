@@ -34,8 +34,8 @@ public class ServerConfigView {
 
         Label portLabel = new Label("Server Port");
         portLabel.getStyleClass().add("login-label");
-        TextField portField = new TextField(ConfigManager.getPort());
-        portField.setPromptText("e.g. 8080");
+        TextField portField = new TextField(ConfigManager.getPort().isEmpty() ? "2008" : ConfigManager.getPort());
+        portField.setPromptText("e.g. 2008");
         portField.getStyleClass().add("login-field");
 
         Label statusLabel = new Label("");

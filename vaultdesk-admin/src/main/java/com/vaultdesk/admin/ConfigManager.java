@@ -36,13 +36,13 @@ public class ConfigManager {
     }
 
     public static String getPort() {
-        return props.getProperty("server.port", "8080");
+        return props.getProperty("server.port", "2008");
     }
 
     public static String getBaseUrl() {
         String host = getHost();
         String port = getPort();
-        if (host.isEmpty()) return "http://localhost:8080";
+        if (host.isEmpty()) return "http://localhost:2008";
         return "http://" + host + ":" + port;
     }
 
