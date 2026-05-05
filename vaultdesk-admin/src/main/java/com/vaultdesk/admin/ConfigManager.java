@@ -5,11 +5,20 @@ import java.util.Properties;
 
 public class ConfigManager {
 
-    private static final String CONFIG_FILE = "vaultdesk-config.properties";
+    private static final String CONFIG_FILE = getAppDataPath() + "vaultdesk-config.properties";
     private static Properties props = new Properties();
 
     static {
         load();
+    }
+
+    // ── Store files in AppData\Roaming\VaultDesk ──────────
+    public static String getAppDataPath() {
+        String appData = System.getenv("APPDATA");
+        if (appData == null) appData = System.getProperty("user.home");
+        File dir = new File(appData + File.separator + "VaultDesk");
+        if (!dir.exists()) dir.mkdirs();
+        return dir.getAbsolutePath() + File.separator;
     }
 
     private static void load() {

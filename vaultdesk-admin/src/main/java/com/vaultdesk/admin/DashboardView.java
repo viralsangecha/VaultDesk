@@ -55,7 +55,7 @@ public class DashboardView {
         Button btnSettings    = sidebarBtn("⚙  Settings");
         Button btnSupport     = sidebarBtn("？  Support");
         Button btnTheme       = sidebarBtn("☀  Light Mode");
-        Button btnLogout      = new Button("⏻  Logout");
+        Button btnLogout = new Button("→  Logout");
         btnLogout.getStyleClass().add("sidebar-logout");
 
         // ── New Asset button ──────────────────────────────
@@ -291,19 +291,17 @@ public class DashboardView {
         h.setStyle("-fx-text-fill: " + color + ";" +
                 "-fx-font-size: 14px; -fx-font-weight: bold;");
         Label d = new Label(desc);
-        d.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        d.getStyleClass().add("page-subtitle");
         Label dt = new Label(detail);
-        dt.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 13px;" +
-                "-fx-font-weight: bold;");
+        dt.getStyleClass().add("section-title");
         dt.setWrapText(true);
         VBox card = new VBox(8, h, d, dt);
-        card.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: " + color + ";" +
-                        "-fx-border-width: 0 0 0 3;" +
-                        "-fx-border-radius: 6;" +
-                        "-fx-background-radius: 6;" +
-                        "-fx-padding: 20;");
+        card.getStyleClass().add("settings-card");
+        card.setStyle("-fx-border-color: " + color + ";" +
+                "-fx-border-width: 0 0 0 3;" +
+                "-fx-border-radius: 6;" +
+                "-fx-background-radius: 6;" +
+                "-fx-padding: 20;");
         return card;
     }
 }

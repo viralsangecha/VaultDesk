@@ -16,7 +16,8 @@ public class ThemeManager {
 
     public static void apply(Scene scene) {
         scene.getStylesheets().clear();
-        // base styles always applied
+
+        // Our CSS on top — overrides AtlantaFX
         String base = ThemeManager.class
                 .getResource("/styles.css").toExternalForm();
         scene.getStylesheets().add(base);

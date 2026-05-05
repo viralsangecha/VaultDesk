@@ -5,18 +5,19 @@ import java.util.Properties;
 
 public class SessionStore {
 
-    private static final String SESSION_FILE = "vaultdesk-session.properties";
+    private static final String SESSION_FILE =
+            ConfigManager.getAppDataPath() + "vaultdesk-session.properties";
 
     public static void save(int userId, String fullName,
                             String role, String username,
-                            String passwordHash, int deptId) {  // ← add deptId
+                            String passwordHash, int deptId) {
         Properties props = new Properties();
         props.setProperty("userId",       String.valueOf(userId));
         props.setProperty("fullName",     fullName);
         props.setProperty("role",         role);
         props.setProperty("username",     username);
         props.setProperty("passwordHash", passwordHash);
-        props.setProperty("deptId",       String.valueOf(deptId));  // ← ADD
+        props.setProperty("deptId",       String.valueOf(deptId));
         try (FileOutputStream fos = new FileOutputStream(SESSION_FILE)) {
             props.store(fos, "VaultDesk Session — do not edit");
         } catch (Exception e) {
