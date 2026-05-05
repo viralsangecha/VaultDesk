@@ -16,7 +16,7 @@ public class VersionController {
     private static final String DOWNLOAD_URL    =
             "http://localhost:8080/api/version/download";
     private static final String CHANGELOG       =
-            "Initial release of VaultDesk Admin v1.0.0";
+            "Initial release of VaultDesk Admin v1.0.1";
 
     @GetMapping
     public ResponseEntity<?> getVersion() {

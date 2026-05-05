@@ -55,5 +55,8 @@ output4/
 output5/
 target/
 *.jar
-
+*.bat
 output-release/
+installer-output/
+vaultdesk-config.properties
+vaultdesk-session.properties
