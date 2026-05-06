@@ -62,8 +62,8 @@ public class SettingsView {
         portLabel.getStyleClass().add("login-label");
 
         TextField portField = new TextField(
-                prefs.get("server.port", "8080"));
-        portField.setPromptText("e.g. 8080");
+                prefs.get("server.port", "2008"));
+        portField.setPromptText("e.g. 2008");
         portField.setPrefWidth(120);
 
         Label statusLabel = new Label("");
