@@ -14,7 +14,7 @@ public class VersionController {
     // ── Update this when you release a new version ────────
     private static final String LATEST_VERSION  = "1.0.1";
     private static final String DOWNLOAD_URL    =
-            "http://localhost:8080/api/version/download";
+            "http://localhost:2008/api/version/download";
     private static final String CHANGELOG       =
             "Initial release of VaultDesk Admin v1.0.0";
 
