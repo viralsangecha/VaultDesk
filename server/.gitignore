@@ -60,3 +60,7 @@ output-release/
 installer-output/
 vaultdesk-config.properties
 vaultdesk-session.properties
+*.bmp
+*.ico
+*.exe
+*.iss
