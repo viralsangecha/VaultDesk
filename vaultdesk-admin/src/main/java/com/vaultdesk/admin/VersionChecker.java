@@ -38,16 +38,21 @@ public class VersionChecker {
 
             String body = resp.body();
             String latestVersion = extractValue(body, "version");
-            String downloadUrl   = extractValue(body, "downloadUrl");
+            String downloadPath  = extractValue(body, "downloadUrl");
             String changelog     = extractValue(body, "changelog");
 
+            // Build full URL using configured server base
+            String fullDownloadUrl = ConfigManager.getBaseUrl()
+                    + downloadPath;
+
             if (isNewerVersion(latestVersion, getCurrentVersion())) {
-                return new UpdateInfo(latestVersion, downloadUrl, changelog);
+                return new UpdateInfo(latestVersion,
+                        fullDownloadUrl, changelog);
             }
         } catch (Exception e) {
             System.out.println("Version check failed: " + e.getMessage());
         }
-        return null; // null means no update available
+        return null;
     }
 
     // ── Compare versions: "1.1.0" > "1.0.0" ──────────────
