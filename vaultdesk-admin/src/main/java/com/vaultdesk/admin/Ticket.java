@@ -8,10 +8,13 @@ public class Ticket {
     private String priority;
     private String status;
     private int assignedTo;
+    private int reportedBy;
     private String createdAt;
+    private String updatedAt;
 
     public Ticket(int id, String ticketNo, String title, String category,
-                  String priority, String status, int assignedTo, String createdAt) {
+                  String priority, String status, int assignedTo,
+                  int reportedBy, String createdAt, String updatedAt) {
         this.id = id;
         this.ticketNo = ticketNo;
         this.title = title;
@@ -19,15 +22,19 @@ public class Ticket {
         this.priority = priority;
         this.status = status;
         this.assignedTo = assignedTo;
+        this.reportedBy = reportedBy;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
-    public int getId()         { return id; }
+    public int getId()           { return id; }
     public String getTicketNo()  { return ticketNo; }
     public String getTitle()     { return title; }
     public String getCategory()  { return category; }
     public String getPriority()  { return priority; }
     public String getStatus()    { return status; }
     public int getAssignedTo()   { return assignedTo; }
+    public int getReportedBy()   { return reportedBy; }
     public String getCreatedAt() { return createdAt; }
+    public String getUpdatedAt() { return updatedAt; }
 }

@@ -8,6 +8,7 @@ import java.nio.file.*;
 public class UpdateDownloader {
 
     // ── Download new JAR to temp file ─────────────────────
+    // ── Download new JAR to temp file ─────────────────────
     public static File download(String downloadUrl,
                                 javafx.scene.control.ProgressBar progressBar)
             throws Exception {
@@ -16,9 +17,8 @@ public class UpdateDownloader {
                 .uri(URI.create(downloadUrl))
                 .GET().build();
 
-        // Download to temp file
         File tempFile = File.createTempFile("vaultdesk-update-", ".jar");
-        tempFile.deleteOnExit();
+        // ── removed tempFile.deleteOnExit() — batch script needs it after System.exit() ──
 
         HttpResponse<InputStream> resp = client.send(req,
                 HttpResponse.BodyHandlers.ofInputStream());
@@ -26,7 +26,6 @@ public class UpdateDownloader {
         if (resp.statusCode() != 200)
             throw new Exception("Download failed: HTTP " + resp.statusCode());
 
-        // Get content length for progress if available
         long contentLength = resp.headers()
                 .firstValueAsLong("content-length")
                 .orElse(-1L);
@@ -54,43 +53,36 @@ public class UpdateDownloader {
 
     // ── Write a batch script that replaces JAR + restarts ─
     public static void applyUpdate(File newJar) throws Exception {
-        // Find current JAR path
-        String currentJar = UpdateDownloader.class
-                .getProtectionDomain()
-                .getCodeSource()
-                .getLocation()
-                .toURI()
-                .getPath();
 
-        // On Windows, path may start with /C:/ — fix it
-        if (currentJar.startsWith("/") && currentJar.contains(":")) {
-            currentJar = currentJar.substring(1);
-        }
+        String installDir    = System.getProperty("user.dir");
+        String targetJarPath = installDir + "\\app\\vaultdesk-admin-fat.jar";
+        String exePath       = installDir + "\\VaultDesk Admin.exe";
+        String newJarPath    = newJar.getAbsolutePath();
 
-        String newJarPath = newJar.getAbsolutePath();
-
-        // Write batch script
         File batchFile = new File(System.getProperty("java.io.tmpdir"),
                 "vaultdesk-update.bat");
 
         String script =
                 "@echo off\r\n" +
                         "echo Applying VaultDesk update...\r\n" +
-                        "timeout /t 2 /nobreak > nul\r\n" +
-                        // Wait for app to close, then replace JAR
-                        "copy /Y \"" + newJarPath + "\" \""
-                        + currentJar + "\"\r\n" +
-                        "echo Starting VaultDesk...\r\n" +
-                        "start \"\" javaw -jar \"" + currentJar + "\"\r\n" +
-                        "del \"" + batchFile.getAbsolutePath() + "\"\r\n";
+                        "timeout /t 3 /nobreak > nul\r\n" +
+                        "copy /Y \"" + newJarPath + "\" \"" + targetJarPath + "\"\r\n" +
+                        "if errorlevel 1 (\r\n" +
+                        "    echo Copy failed! Path: " + targetJarPath + "\r\n" +
+                        "    pause\r\n" +
+                        "    exit /b 1\r\n" +
+                        ")\r\n" +
+                        "del \"" + newJarPath + "\"\r\n" +          // ← clean up temp JAR
+                        "echo Update applied. Starting VaultDesk...\r\n" +
+                        "start \"\" \"" + exePath + "\"\r\n" +
+                        "exit\r\n";
 
         try (FileWriter fw = new FileWriter(batchFile)) {
             fw.write(script);
         }
 
-        // Run batch script and exit
         Runtime.getRuntime().exec(new String[]{
-                "cmd.exe", "/c", "start", "",
+                "cmd.exe", "/c", "start", "VaultDesk Update",
                 batchFile.getAbsolutePath()
         });
 

@@ -1,24 +1,16 @@
-; ── VaultDesk Admin — Inno Setup Installer Script ────────
-; Saurashtra Cement Ltd | IT Helpdesk + Asset Management
-; Version 1.0.0
-
+; ── VaultDesk Admin Installer ─────────────────────────────
 #define MyAppName "VaultDesk Admin"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Saurashtra Cement Ltd"
 #define MyAppExeName "VaultDesk Admin.exe"
-#define MyAppURL "http://localhost:2008"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-AppPublisherURL={#MyAppURL}
-AppSupportURL={#MyAppURL}
-AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-AllowNoIcons=no
 OutputDir=..\installer-output
 OutputBaseFilename=VaultDesk-Admin-Setup-v{#MyAppVersion}
 SetupIconFile=icon.ico
@@ -27,7 +19,7 @@ WizardSmallImageFile=banner.bmp
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
@@ -40,7 +32,7 @@ MinVersion=10.0
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut";
+Name: "desktopicon"; Description: "Create a desktop shortcut"
 
 [Files]
 Source: "..\output-release\VaultDesk Admin\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -62,8 +54,9 @@ procedure InitializeWizard();
 begin
   WizardForm.WelcomeLabel1.Caption := 'Welcome to VaultDesk Admin Setup';
   WizardForm.WelcomeLabel2.Caption :=
-    'This will install VaultDesk Admin v1.0.0 on your computer.' + #13#10 + #13#10 +
-    'VaultDesk is the IT Helpdesk and Asset Management platform' + #13#10 +
+    'This will install VaultDesk Admin v{#MyAppVersion}.' + #13#10 + #13#10 +
+    'IT Helpdesk and Asset Management platform' + #13#10 +
     'for Saurashtra Cement Ltd.' + #13#10 + #13#10 +
+    'No administrator rights required.' + #13#10 + #13#10 +
     'Click Next to continue.';
 end;

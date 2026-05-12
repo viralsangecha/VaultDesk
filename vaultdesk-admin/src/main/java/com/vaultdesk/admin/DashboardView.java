@@ -41,7 +41,7 @@ public class DashboardView {
         userCard.getStyleClass().add("sidebar-user-card");
 
         // ── All nav buttons ───────────────────────────────
-        Button btnDashboard   = sidebarBtn("⊞  Dashboard");
+        Button btnDashboard   = sidebarBtn("⊞  Dhjghgjhgjhashboard");
         Button btnAssets      = sidebarBtn("▣  Assets");
         Button btnTickets     = sidebarBtn("✉  Tickets");
         Button btnEmployees   = sidebarBtn("👤  Employees");

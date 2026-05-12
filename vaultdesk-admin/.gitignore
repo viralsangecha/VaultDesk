@@ -54,3 +54,6 @@ output-release/
 installer-output/
 vaultdesk-config.properties
 vaultdesk-session.properties
+/packaging
+
+*.properties

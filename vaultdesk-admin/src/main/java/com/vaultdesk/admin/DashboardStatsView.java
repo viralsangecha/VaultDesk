@@ -211,7 +211,8 @@ public class DashboardStatsView {
                             priority,
                             status,
                             extractInt(obj, "assignedTo"),
-                            time
+                            extractInt(obj, "reportedBy"),
+                            time,extractValue(obj, "createdAt")
                     ));
 
                     activityFeed.getChildren().add(
