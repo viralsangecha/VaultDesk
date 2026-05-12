@@ -1,4 +1,10 @@
 package com.vaultdesk.server.model;
 
-public class TicketComment {
-}
+public record TicketComment(
+        int id,
+        int ticketId,
+        String comment,
+        int addedBy,
+        String addedByName,
+        String addedAt
+) {}

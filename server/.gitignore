@@ -64,3 +64,9 @@ vaultdesk-session.properties
 *.ico
 *.exe
 *.iss
+
+/packaging
+
+*.properties
+
+/server-installer-output

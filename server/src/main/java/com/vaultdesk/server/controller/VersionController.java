@@ -15,9 +15,9 @@ import java.util.Map;
 public class VersionController {
 
     // ── Update these when releasing new version ───────────
-    private static final String LATEST_VERSION = "1.0.2";
+    private static final String LATEST_VERSION = "1.0.3";
     private static final String CHANGELOG =
-            "Initial release of VaultDesk Admin v1.0.2";
+            "Initial release of VaultDesk Admin v1.0.3";
 
     @GetMapping
     public ResponseEntity<?> getVersion() {
@@ -29,19 +29,16 @@ public class VersionController {
     }
 
     @GetMapping("/download")
-    public ResponseEntity<Resource> downloadJar() {
-        // Looks for JAR in same folder as server JAR
+    public ResponseEntity<?> downloadJar() throws Exception {
         File jar = new File("vaultdesk-admin-fat.jar");
-        if (!jar.exists()) {
-            System.out.println("Update JAR not found at: "
-                    + jar.getAbsolutePath());
+        if (!jar.exists())
             return ResponseEntity.notFound().build();
-        }
-        Resource resource = new FileSystemResource(jar);
+
+        byte[] bytes = java.nio.file.Files.readAllBytes(jar.toPath());
         return ResponseEntity.ok()
                 .header("Content-Disposition",
                         "attachment; filename=vaultdesk-admin-fat.jar")
-                .header("Content-Type", "application/java-archive")
-                .body(resource);
+                .header("Content-Type", "application/octet-stream")
+                .body(bytes);
     }
 }
