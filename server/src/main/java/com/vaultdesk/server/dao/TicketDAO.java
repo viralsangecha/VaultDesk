@@ -6,9 +6,13 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.Year;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class TicketDAO {
@@ -17,6 +21,7 @@ public class TicketDAO {
     public TicketDAO(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
+    private static final AtomicInteger series = new AtomicInteger(1);
 
     public List<Ticket> getAllTickets() {
         try {
@@ -64,7 +69,7 @@ public class TicketDAO {
 
     public void saveTicket(String title, String description,
                            String category, String priority, int reportedBy) {
-        String ticketNo = "VD-2025-" + System.currentTimeMillis();
+        String ticketNo = "SCL-" + Year.now().getValue()+"-"+ series.getAndIncrement();
         jdbc.update(
                 "INSERT INTO tickets (ticket_no, title, description, category, " +
                         "priority, status, reported_by, created_at) " +

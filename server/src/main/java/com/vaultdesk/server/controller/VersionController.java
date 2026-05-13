@@ -15,9 +15,9 @@ import java.util.Map;
 public class VersionController {
 
     // ── Update these when releasing new version ───────────
-    private static final String LATEST_VERSION = "1.0.3";
+    private static final String LATEST_VERSION = "1.0.0";
     private static final String CHANGELOG =
-            "Initial release of VaultDesk Admin v1.0.3";
+            "Initial release of VaultDesk Admin v1.0.0";
 
     @GetMapping
     public ResponseEntity<?> getVersion() {
