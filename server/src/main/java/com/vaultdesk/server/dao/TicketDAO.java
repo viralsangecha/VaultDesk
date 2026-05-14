@@ -139,6 +139,16 @@ public class TicketDAO {
                         "VALUES (?, ?, ?, datetime('now'))",
                 ticketId, comment, addedBy);
     }
+    public List<Ticket> getTicketsByReporter(int employeeId) {
+        List<Map<String,Object>> rows = jdbc.queryForList(
+                "SELECT * FROM tickets WHERE reported_by = ? " +
+                        "ORDER BY created_at DESC", employeeId);
+        List<Ticket> tickets = new ArrayList<>();
+        for (Map<String,Object> row : rows) {
+            tickets.add(mapRowToTicket(row));
+        }
+        return tickets;
+    }
 
     private Ticket mapRowToTicket(Map<String,Object> row) {
         return new Ticket(

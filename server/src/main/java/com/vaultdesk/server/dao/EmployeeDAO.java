@@ -126,4 +126,67 @@ public class EmployeeDAO {
         );
     }
 
+    public Employee getEmployeeByUsername(String username) {
+        try {
+            Map<String, Object> row = jdbc.queryForMap(
+                    "SELECT * FROM employees WHERE username = ? AND active = 1",
+                    username);
+            return mapRowToEmployee(row);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    public boolean validateEmployeeLogin(String username, String passwordHash) {
+        try {
+            jdbc.queryForMap(
+                    "SELECT * FROM employees WHERE username = ? " +
+                            "AND password_hash = ? AND active = 1",
+                    username, passwordHash);
+            return true;
+        } catch (EmptyResultDataAccessException e) {
+            return false;
+        }
+    }
+
+    public int setEmployeeCredentials(int id, String username,
+                                      String passwordHash) {
+        return jdbc.update(
+                "UPDATE employees SET username = ?, password_hash = ? " +
+                        "WHERE id = ?",
+                username, passwordHash, id);
+    }
+
+    public int changeEmployeePassword(int id, String currentHash,
+                                      String newHash) {
+        try {
+            jdbc.queryForMap(
+                    "SELECT id FROM employees WHERE id = ? " +
+                            "AND password_hash = ? AND active = 1",
+                    id, currentHash);
+        } catch (EmptyResultDataAccessException e) {
+            return 0;
+        }
+        return jdbc.update(
+                "UPDATE employees SET password_hash = ? WHERE id = ?",
+                newHash, id);
+    }
+
+    private Employee mapRowToEmployee(Map<String, Object> row) {
+        return new Employee(
+                ((Number) row.get("id")).intValue(),
+                (String) row.get("name"),
+                (String) row.get("emp_code"),
+                row.get("department_id") != null
+                        ? ((Number) row.get("department_id")).intValue() : 0,
+                (String) row.get("designation"),
+                (String) row.get("email"),
+                (String) row.get("phone"),
+                (String) row.get("join_date"),
+                (String) row.get("leave_date"),
+                row.get("active") != null
+                        ? ((Number) row.get("active")).intValue() : 0,
+                (String) row.get("notes")
+        );
+    }
 }

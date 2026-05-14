@@ -87,6 +87,21 @@ public class AssetDAO {
                         "WHERE id = ?",status,id);
     }
 
+    public List<Asset> getAssetsByEmployee(int employeeId) {
+        try {
+            List<Map<String,Object>> rows = jdbc.queryForList(
+                    "SELECT * FROM assets WHERE assigned_to = ?",
+                    employeeId);
+            List<Asset> assets = new ArrayList<>();
+            for (Map<String,Object> row : rows) {
+                assets.add(mapRowToAsset(row));
+            }
+            return assets;
+        } catch (EmptyResultDataAccessException e) {
+            return new ArrayList<>();
+        }
+    }
+
     private Asset mapRowToAsset(Map<String,Object> row) {
         return new Asset(
                 ((Number) row.get("id")).intValue(),

@@ -78,6 +78,22 @@ public class DatabaseInitializer implements CommandLineRunner {
         """);
         System.out.println("✔ employees table ready.");
 
+        // Add username to employees
+        try {
+            jdbc.execute("ALTER TABLE employees ADD COLUMN username TEXT");
+            System.out.println("✔ username column added to employees.");
+        } catch (Exception e) {
+            // already exists
+        }
+
+// Add password_hash to employees
+        try {
+            jdbc.execute("ALTER TABLE employees ADD COLUMN password_hash TEXT");
+            System.out.println("✔ password_hash column added to employees.");
+        } catch (Exception e) {
+            // already exists
+        }
+
         // ─────────────────────────────────────────────
         // 4. VENDOR CONTACTS
         //    Suppliers, AMC partners, service vendors
