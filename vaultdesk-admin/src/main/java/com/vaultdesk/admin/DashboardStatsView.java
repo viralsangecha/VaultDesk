@@ -8,8 +8,20 @@ import javafx.scene.layout.*;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.function.Consumer;
 
 public class DashboardStatsView {
+
+    // ── Navigation callback ───────────────────────────────
+    private Consumer<String> onNavigate;
+
+    public void setOnNavigate(Consumer<String> onNavigate) {
+        this.onNavigate = onNavigate;
+    }
+
+    private void navigateTo(String view) {
+        if (onNavigate != null) onNavigate.accept(view);
+    }
 
     public VBox getView() {
 
@@ -19,7 +31,7 @@ public class DashboardStatsView {
         Label pageSub = new Label("Here's what's happening today.");
         pageSub.getStyleClass().add("page-subtitle");
 
-        // ── Stat cards — real data loaded below ───────────
+        // ── Stat cards ────────────────────────────────────
         VBox cardAssets    = statCard("⊞", "0", "TOTAL ASSETS",
                 "Loading...", "+12.4%", "stat-badge-green",
                 "stat-card-blue", "stat-icon-box-blue", "#58a6ff");
@@ -32,6 +44,18 @@ public class DashboardStatsView {
         VBox cardEmployees = statCard("👤", "0", "ACTIVE EMPLOYEES",
                 "Loading...", "Global", "stat-badge-blue",
                 "stat-card-green", "stat-icon-box-green", "#3fb950");
+
+        // ── Card click navigation ─────────────────────────
+        cardAssets.setOnMouseClicked(e -> navigateTo("assets"));
+        cardTickets.setOnMouseClicked(e -> navigateTo("tickets"));
+        cardLicenses.setOnMouseClicked(e -> navigateTo("licenses"));
+        cardEmployees.setOnMouseClicked(e -> navigateTo("employees"));
+
+        // ── Cursor hand on hover ──────────────────────────
+        cardAssets.setStyle(cardAssets.getStyle() + "-fx-cursor: hand;");
+        cardTickets.setStyle(cardTickets.getStyle() + "-fx-cursor: hand;");
+        cardLicenses.setStyle(cardLicenses.getStyle() + "-fx-cursor: hand;");
+        cardEmployees.setStyle(cardEmployees.getStyle() + "-fx-cursor: hand;");
 
         HBox statsRow = new HBox(16,
                 cardAssets, cardTickets, cardLicenses, cardEmployees);
@@ -48,6 +72,17 @@ public class DashboardStatsView {
         TableView<Ticket> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(380);
+
+        // ── Double click row → navigate to tickets ────────
+        table.setRowFactory(tv -> {
+            TableRow<Ticket> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty()) {
+                    navigateTo("tickets");
+                }
+            });
+            return row;
+        });
 
         TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("TICKET ID");
         ticketNoCol.setCellValueFactory(d ->
@@ -140,7 +175,6 @@ public class DashboardStatsView {
 
         // ── Load stats ────────────────────────────────────
         try {
-            // Replace the stats loading URL
             String statsUrl = SessionManager.get().isDeptHod()
                     ? ConfigManager.getBaseUrl() + "/api/dashboard/stats/department/"
                     + SessionManager.get().getDeptId()
@@ -166,7 +200,6 @@ public class DashboardStatsView {
             setStatNumber(cardLicenses,  expiringLic);
             setStatNumber(cardEmployees, totalEmp);
 
-            // ── Real sublabels ─────────────────────────────
             setStatSublabel(cardAssets,
                     generalTickets + " General / " + sapTickets + " SAP tickets");
             setStatSublabel(cardTickets,
@@ -212,7 +245,8 @@ public class DashboardStatsView {
                             status,
                             extractInt(obj, "assignedTo"),
                             extractInt(obj, "reportedBy"),
-                            time,extractValue(obj, "createdAt")
+                            time,
+                            ""
                     ));
 
                     activityFeed.getChildren().add(
@@ -294,8 +328,7 @@ public class DashboardStatsView {
         titleLabel.setWrapText(true);
 
         Label statusLabel = new Label(status);
-        statusLabel.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        statusLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
 
         VBox textBox = new VBox(2, titleLabel, statusLabel);
         HBox row = new HBox(10, dot, textBox);

@@ -13,6 +13,12 @@ public class DashboardView {
     private Button activeBtn = null;
     private VBox contentArea;
 
+    private Button btnAssets;
+    private Button btnTickets;
+    private Button btnLicenses;
+    private Button btnEmployees;
+    private Button btnDashboard;
+
     public DashboardView(String fullName, String role) {
         this.fullName = fullName;
         this.role = role;
@@ -41,12 +47,12 @@ public class DashboardView {
         userCard.getStyleClass().add("sidebar-user-card");
 
         // ── All nav buttons ───────────────────────────────
-        Button btnDashboard   = sidebarBtn("⊞  Dhjghgjhgjhashboard");
-        Button btnAssets      = sidebarBtn("▣  Assets");
-        Button btnTickets     = sidebarBtn("✉  Tickets");
-        Button btnEmployees   = sidebarBtn("👤  Employees");
+        btnDashboard   = sidebarBtn("⊞  Dashboard");
+        btnAssets      = sidebarBtn("▣  Assets");
+        btnTickets     = sidebarBtn("✉  Tickets");
+        btnEmployees   = sidebarBtn("👤  Employees");
         Button btnDepartments = sidebarBtn("🏢  Departments");
-        Button btnLicenses    = sidebarBtn("🔑  Licenses");
+        btnLicenses    = sidebarBtn("🔑  Licenses");
         Button btnConsumables = sidebarBtn("📦  Consumables");
         Button btnMaintenance = sidebarBtn("🔧  Maintenance");
         Button btnVendors     = sidebarBtn("🤝  Vendors");
@@ -143,13 +149,12 @@ public class DashboardView {
 
         // ── Default view — dashboard ──────────────────────
         setActive(btnDashboard);
-        contentArea.getChildren().add(new DashboardStatsView().getView());
+        showDashboard();
 
         // ── Nav actions ───────────────────────────────────
         btnDashboard.setOnAction(e -> {
             setActive(btnDashboard);
-            contentArea.getChildren().setAll(
-                    new DashboardStatsView().getView());
+            showDashboard();
         });
         btnAssets.setOnAction(e -> {
             setActive(btnAssets);
@@ -303,5 +308,26 @@ public class DashboardView {
                 "-fx-background-radius: 6;" +
                 "-fx-padding: 20;");
         return card;
+    }
+    private void showDashboard() {
+        setActive(activeBtn != null ? activeBtn : new Button());
+        DashboardStatsView dashView = new DashboardStatsView();
+        dashView.setOnNavigate(view -> {
+            switch (view) {
+                case "assets"    -> { setActive(btnAssets);
+                    contentArea.getChildren().setAll(
+                            new AssetView().getView()); }
+                case "tickets"   -> { setActive(btnTickets);
+                    contentArea.getChildren().setAll(
+                            new TicketView().getView()); }
+                case "licenses"  -> { setActive(btnLicenses);
+                    contentArea.getChildren().setAll(
+                            new LicenseView().getView()); }
+                case "employees" -> { setActive(btnEmployees);
+                    contentArea.getChildren().setAll(
+                            new EmployeeView().getView()); }
+            }
+        });
+        contentArea.getChildren().setAll(dashView.getView());
     }
 }

@@ -172,6 +172,7 @@ public class EmployeeDAO {
                 newHash, id);
     }
 
+
     private Employee mapRowToEmployee(Map<String, Object> row) {
         return new Employee(
                 ((Number) row.get("id")).intValue(),

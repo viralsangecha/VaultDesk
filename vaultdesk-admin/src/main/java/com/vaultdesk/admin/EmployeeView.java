@@ -63,8 +63,9 @@ public class EmployeeView {
         TableColumn<Employee, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button editBtn       = new Button("Edit");
+            private final Button setLoginBtn = new Button("Set Login");
             private final Button deactivateBtn = new Button("Deactivate");
-            private final HBox box = new HBox(5, editBtn, deactivateBtn);
+            private final HBox box = new HBox(5, editBtn, deactivateBtn,setLoginBtn);
             {
                 editBtn.getStyleClass().setAll("btn-warning");
                 editBtn.setStyle("-fx-background-color: #b45309; -fx-text-fill: white;" +
@@ -75,6 +76,15 @@ public class EmployeeView {
                 editBtn.setOnAction(e -> {
                     Employee emp = getTableView().getItems().get(getIndex());
                     showEditDialog(emp, getTableView());
+                });
+                setLoginBtn.getStyleClass().setAll("btn-primary");
+                setLoginBtn.setStyle(
+                        "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                                "-fx-background-radius: 6; -fx-padding: 6 10 6 10;" +
+                                "-fx-font-size: 11px; -fx-font-weight: bold;");
+                setLoginBtn.setOnAction(e -> {
+                    Employee emp = getTableView().getItems().get(getIndex());
+                    showSetLoginDialog(emp);
                 });
                 deactivateBtn.setOnAction(e -> {
                     Employee emp = getTableView().getItems().get(getIndex());
@@ -431,6 +441,79 @@ public class EmployeeView {
         }
     }
 
+    private void showSetLoginDialog(Employee emp) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Set Employee Login");
+        dialog.setHeaderText("Set credentials for: " + emp.getName());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Choose a username");
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Minimum 6 characters");
+        PasswordField confirmField = new PasswordField();
+        confirmField.setPromptText("Re-enter password");
+        Label errorLabel = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.add(new Label("Username *:"), 0, 0); grid.add(usernameField, 1, 0);
+        grid.add(new Label("Password *:"), 0, 1); grid.add(passwordField, 1, 1);
+        grid.add(new Label("Confirm *:"),  0, 2); grid.add(confirmField,  1, 2);
+        grid.add(errorLabel,               1, 3);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okButton = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+
+        Runnable check = () -> okButton.setDisable(
+                usernameField.getText().trim().isEmpty()
+                        || passwordField.getText().isEmpty());
+        usernameField.textProperty().addListener((o, ov, nv) -> check.run());
+        passwordField.textProperty().addListener((o, ov, nv) -> check.run());
+
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (passwordField.getText().length() < 6) {
+                errorLabel.setText("Password must be at least 6 characters.");
+                event.consume();
+                return;
+            }
+            if (!passwordField.getText().equals(confirmField.getText())) {
+                errorLabel.setText("Passwords do not match.");
+                event.consume();
+            }
+        });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                String body = "{" +
+                        "\"username\":\"" + usernameField.getText() + "\"," +
+                        "\"password\":\"" + passwordField.getText() + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(ConfigManager.getBaseUrl()
+                                + "/api/employee/credentials/" + emp.getId()))
+                        .header("Content-Type", "application/json")
+                        .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
+                HttpResponse<String> resp = client.send(req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success",
+                            "Login credentials set for " + emp.getName() + ".\n" +
+                                    "Username: " + usernameField.getText());
+                } else {
+                    showAlert("Error", "Server returned: " + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", "Cannot connect: " + ex.getMessage());
+            }
+        }
+    }
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

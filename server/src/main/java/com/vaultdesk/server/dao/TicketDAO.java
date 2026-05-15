@@ -139,6 +139,7 @@ public class TicketDAO {
                         "VALUES (?, ?, ?, datetime('now'))",
                 ticketId, comment, addedBy);
     }
+
     public List<Ticket> getTicketsByReporter(int employeeId) {
         List<Map<String,Object>> rows = jdbc.queryForList(
                 "SELECT * FROM tickets WHERE reported_by = ? " +
