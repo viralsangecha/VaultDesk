@@ -19,6 +19,9 @@ import java.util.Optional;
 
 public class TicketView {
 
+    private ObservableList<Ticket> allTickets =
+            FXCollections.observableArrayList();
+
     private final Map<Integer, String> userMap = new LinkedHashMap<>();
     // ── Main layout — list on left, detail on right ───────
     private HBox mainLayout;
@@ -573,6 +576,7 @@ public class TicketView {
 
     private void loadTickets(TableView<Ticket> table) {
         table.getItems().clear();
+        allTickets.clear();
         LoadingUtil.setLoading(table, "Loading tickets...");
         try {
             String url = SessionManager.get().isDeptHod()
@@ -589,7 +593,7 @@ public class TicketView {
             if (!body.isEmpty()) {
                 for (String obj : body.split("\\},\\{")) {
                     obj = obj.replace("{", "").replace("}", "");
-                    table.getItems().add(new Ticket(
+                    Ticket t = new Ticket(
                             extractInt(obj, "id"),
                             extractValue(obj, "ticketNo"),
                             extractValue(obj, "title"),
@@ -600,7 +604,9 @@ public class TicketView {
                             extractInt(obj, "reportedBy"),
                             extractValue(obj, "createdAt"),
                             extractValue(obj, "updatedAt")
-                    ));
+                    );
+                    table.getItems().add(t);
+                    allTickets.add(t);
                 }
                 if (table.getItems().isEmpty()) {
                     LoadingUtil.setEmpty(table, "✉",
@@ -616,7 +622,25 @@ public class TicketView {
             LoadingUtil.setEmpty(table, "⚠",
                     "Could not load tickets",
                     "Check server connection and try again.");
-            System.out.println("Error loading tickets: " + ex.getMessage());
+        }
+    }
+
+    public void search(String keyword) {
+        if (keyword.isEmpty()) {
+            table.getItems().setAll(allTickets);
+            return;
+        }
+        table.getItems().setAll(allTickets.filtered(t ->
+                t.getTitle().toLowerCase().contains(keyword)
+                        || t.getTicketNo().toLowerCase().contains(keyword)
+                        || t.getCategory().toLowerCase().contains(keyword)
+                        || t.getPriority().toLowerCase().contains(keyword)
+                        || t.getStatus().toLowerCase().contains(keyword)
+        ));
+        if (table.getItems().isEmpty()) {
+            LoadingUtil.setEmpty(table, "🔍",
+                    "No results found",
+                    "No tickets match \"" + keyword + "\"");
         }
     }
 

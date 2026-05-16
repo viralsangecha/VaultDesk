@@ -2,6 +2,8 @@ package com.vaultdesk.admin;
 
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -13,10 +15,14 @@ import java.util.Optional;
 
 public class EmployeeView {
 
+    private TableView<Employee> table;
+    private ObservableList<Employee> allEmployees =
+            FXCollections.observableArrayList();
+
     public VBox getView() {
         Label title = new Label("Employees");
         title.getStyleClass().add("section-title");
-        TableView<Employee> table = new TableView<>();
+        table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Employee, Integer> idCol = new TableColumn<>("ID");
@@ -178,10 +184,12 @@ public class EmployeeView {
 
     private void loadEmployees(TableView<Employee> table) {
         table.getItems().clear();
+        allEmployees.clear();
         LoadingUtil.setLoading(table, "Loading employees...");
         try {
             String url = SessionManager.get().isDeptHod()
-                    ? ConfigManager.getBaseUrl() + "/api/employees/department/"
+                    ? ConfigManager.getBaseUrl()
+                    + "/api/employees/department/"
                     + SessionManager.get().getDeptId()
                     : ConfigManager.getBaseUrl() + "/api/employees";
             HttpClient client = HttpClient.newHttpClient();
@@ -194,7 +202,7 @@ public class EmployeeView {
             if (!body.isEmpty()) {
                 for (String obj : body.split("\\},\\{")) {
                     obj = obj.replace("{", "").replace("}", "");
-                    table.getItems().add(new Employee(
+                    Employee e = new Employee(
                             extractInt(obj, "id"),
                             extractValue(obj, "name"),
                             extractValue(obj, "empCode"),
@@ -202,7 +210,9 @@ public class EmployeeView {
                             extractValue(obj, "email"),
                             extractValue(obj, "phone"),
                             extractInt(obj, "active")
-                    ));
+                    );
+                    table.getItems().add(e);
+                    allEmployees.add(e);
                 }
                 if (table.getItems().isEmpty()) {
                     LoadingUtil.setEmpty(table, "👤",
@@ -218,6 +228,24 @@ public class EmployeeView {
             LoadingUtil.setEmpty(table, "⚠",
                     "Could not load employees",
                     "Check server connection and try again.");
+        }
+    }
+
+    public void search(String keyword) {
+        if (keyword.isEmpty()) {
+            table.getItems().setAll(allEmployees);
+            return;
+        }
+        table.getItems().setAll(allEmployees.filtered(e ->
+                e.getName().toLowerCase().contains(keyword)
+                        || e.getEmpCode().toLowerCase().contains(keyword)
+                        || e.getEmail().toLowerCase().contains(keyword)
+                        || e.getDesignation().toLowerCase().contains(keyword)
+        ));
+        if (table.getItems().isEmpty()) {
+            LoadingUtil.setEmpty(table, "🔍",
+                    "No results found",
+                    "No employees match \"" + keyword + "\"");
         }
     }
 

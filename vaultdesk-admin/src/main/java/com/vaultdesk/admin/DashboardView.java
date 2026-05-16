@@ -12,6 +12,7 @@ public class DashboardView {
     private String role;
     private Button activeBtn = null;
     private VBox contentArea;
+    private String currentView = "dashboard";
 
     private Button btnAssets;
     private Button btnTickets;
@@ -19,9 +20,15 @@ public class DashboardView {
     private Button btnEmployees;
     private Button btnDashboard;
 
+    private AssetView currentAssetView       = null;
+    private TicketView currentTicketView     = null;
+    private EmployeeView currentEmployeeView = null;
+
+    private TextField searchField;
+
     public DashboardView(String fullName, String role) {
         this.fullName = fullName;
-        this.role = role;
+        this.role     = role;
     }
 
     public Scene getScene(Stage stage) {
@@ -46,13 +53,16 @@ public class DashboardView {
         VBox userCard = new VBox(3, nameLabel, roleLabel);
         userCard.getStyleClass().add("sidebar-user-card");
 
-        // ── All nav buttons ───────────────────────────────
-        btnDashboard   = sidebarBtn("⊞  Dashboard");
-        btnAssets      = sidebarBtn("▣  Assets");
-        btnTickets     = sidebarBtn("✉  Tickets");
-        btnEmployees   = sidebarBtn("👤  Employees");
+        // ── Nav buttons ───────────────────────────────────
+        btnDashboard         = sidebarBtn("⊞  Dashboard");
+        Button btnTickets2   = sidebarBtn("✉  Tickets");
+        btnTickets           = btnTickets2;
+        Button btnAssets2    = sidebarBtn("▣  Assets");
+        btnAssets            = btnAssets2;
+        Button btnEmployees2 = sidebarBtn("👤  Employees");
+        btnEmployees         = btnEmployees2;
         Button btnDepartments = sidebarBtn("🏢  Departments");
-        btnLicenses    = sidebarBtn("🔑  Licenses");
+        btnLicenses          = sidebarBtn("🔑  Licenses");
         Button btnConsumables = sidebarBtn("📦  Consumables");
         Button btnMaintenance = sidebarBtn("🔧  Maintenance");
         Button btnVendors     = sidebarBtn("🤝  Vendors");
@@ -64,7 +74,6 @@ public class DashboardView {
         Button btnLogout = new Button("→  Logout");
         btnLogout.getStyleClass().add("sidebar-logout");
 
-        // ── New Asset button ──────────────────────────────
         Button btnNewAsset = new Button("＋  New Asset");
         btnNewAsset.getStyleClass().setAll("sidebar-new-asset");
         btnNewAsset.setStyle(
@@ -75,13 +84,10 @@ public class DashboardView {
         VBox newAssetBox = new VBox(btnNewAsset);
         newAssetBox.setPadding(new Insets(16));
 
-        // ── Sidebar — built once, role-based ──────────────
+        // ── Sidebar ───────────────────────────────────────
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
-
-// Always visible for all roles
-        sidebar.getChildren().addAll(
-                sideHeader, userCard, btnDashboard);
+        sidebar.getChildren().addAll(sideHeader, userCard, btnDashboard);
 
         if (SessionManager.get().isAdmin()
                 || SessionManager.get().isEngineer()) {
@@ -110,9 +116,7 @@ public class DashboardView {
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        sidebar.getChildren().addAll(
-                spacer, newAssetBox);
+        sidebar.getChildren().addAll(spacer, newAssetBox);
 
         if (SessionManager.get().isAdmin()) {
             sidebar.getChildren().addAll(btnSettings, btnSupport);
@@ -120,23 +124,50 @@ public class DashboardView {
 
         sidebar.getChildren().addAll(btnTheme, btnLogout);
 
-        // ── Top bar ───────────────────────────────────────────
-        TextField searchField = new TextField();
+        // ── Top bar ───────────────────────────────────────
+        searchField = new TextField();
         searchField.setPromptText(
-                "🔍  Search assets, tickets, or serial numbers...");
+                "🔍  Search assets, tickets, or employees...");
         searchField.getStyleClass().add("search-bar");
 
-        // ── Notification bell ─────────────────────────────────
         NotificationBell bell = new NotificationBell();
         StackPane bellView = bell.getView();
 
         HBox topBar = new HBox(searchField, bellView);
         topBar.getStyleClass().add("top-bar");
-        topBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        topBar.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        // ── Stop polling when window closes ───────────────────
         stage.setOnCloseRequest(e -> bell.stopPolling());
+
+        // ── Search listener ───────────────────────────────
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            String keyword = newVal.trim().toLowerCase();
+            switch (currentView) {
+                case "assets"    -> searchField.setPromptText(
+                        "🔍  Search by name, tag, category, brand...");
+                case "tickets"   -> searchField.setPromptText(
+                        "🔍  Search by title, ticket no, status...");
+                case "employees" -> searchField.setPromptText(
+                        "🔍  Search by name, code, email...");
+                default          -> searchField.setPromptText(
+                        "🔍  Go to Assets, Tickets or Employees to search");
+            }
+            switch (currentView) {
+                case "assets" -> {
+                    if (currentAssetView != null)
+                        currentAssetView.search(keyword);
+                }
+                case "tickets" -> {
+                    if (currentTicketView != null)
+                        currentTicketView.search(keyword);
+                }
+                case "employees" -> {
+                    if (currentEmployeeView != null)
+                        currentEmployeeView.search(keyword);
+                }
+            }
+        });
 
         // ── Content area ──────────────────────────────────
         contentArea = new VBox(10);
@@ -156,77 +187,160 @@ public class DashboardView {
         HBox mainLayout = new HBox(sidebar, rightSide);
         HBox.setHgrow(rightSide, Priority.ALWAYS);
 
-        // ── Default view — dashboard ──────────────────────
+        // ── Default view ──────────────────────────────────
         setActive(btnDashboard);
         showDashboard();
 
         // ── Nav actions ───────────────────────────────────
         btnDashboard.setOnAction(e -> {
+            searchField.clear();
+            currentView = "dashboard";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnDashboard);
             showDashboard();
         });
+
         btnAssets.setOnAction(e -> {
+            searchField.clear();
             setActive(btnAssets);
-            contentArea.getChildren().setAll(new AssetView().getView());
+            currentView = "assets";
+            currentTicketView = null;
+            currentEmployeeView = null;
+            currentAssetView = new AssetView();
+            contentArea.getChildren().setAll(currentAssetView.getView());
         });
+
         btnTickets.setOnAction(e -> {
+            searchField.clear();
             setActive(btnTickets);
-            contentArea.getChildren().setAll(new TicketView().getView());
+            currentView = "tickets";
+            currentAssetView = null;
+            currentEmployeeView = null;
+            currentTicketView = new TicketView();
+            contentArea.getChildren().setAll(currentTicketView.getView());
         });
+
         btnEmployees.setOnAction(e -> {
+            searchField.clear();
             setActive(btnEmployees);
+            currentView = "employees";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = new EmployeeView();
             contentArea.getChildren().setAll(
-                    new EmployeeView().getView());
+                    currentEmployeeView.getView());
         });
+
         btnDepartments.setOnAction(e -> {
+            searchField.clear();
+            currentView = "departments";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnDepartments);
             contentArea.getChildren().setAll(
                     new DepartmentView().getView());
         });
+
         btnLicenses.setOnAction(e -> {
+            searchField.clear();
+            currentView = "licenses";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnLicenses);
             contentArea.getChildren().setAll(
                     new LicenseView().getView());
         });
+
         btnConsumables.setOnAction(e -> {
+            searchField.clear();
+            currentView = "consumables";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnConsumables);
             contentArea.getChildren().setAll(
                     new ConsumableView().getView());
         });
+
         btnMaintenance.setOnAction(e -> {
+            searchField.clear();
+            currentView = "maintenance";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnMaintenance);
             contentArea.getChildren().setAll(
                     new MaintenanceView().getView());
         });
+
         btnVendors.setOnAction(e -> {
+            searchField.clear();
+            currentView = "vendors";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnVendors);
-            contentArea.getChildren().setAll(new VendorView().getView());
+            contentArea.getChildren().setAll(
+                    new VendorView().getView());
         });
+
         btnReports.setOnAction(e -> {
+            searchField.clear();
+            currentView = "reports";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnReports);
             contentArea.getChildren().setAll(
                     new ReportView().getView());
         });
+
         btnUsers.setOnAction(e -> {
+            searchField.clear();
+            currentView = "users";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnUsers);
             contentArea.getChildren().setAll(
                     new UserManagementView().getView());
         });
+
         btnSettings.setOnAction(e -> {
+            searchField.clear();
+            currentView = "settings";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnSettings);
             contentArea.getChildren().setAll(
                     new SettingsView().getView());
         });
+
         btnSupport.setOnAction(e -> {
+            searchField.clear();
+            currentView = "support";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
             setActive(btnSupport);
             contentArea.getChildren().setAll(buildSupportView());
         });
+
         btnNewAsset.setOnAction(e -> {
+            searchField.clear();
             setActive(btnAssets);
-            contentArea.getChildren().setAll(new AssetView().getView());
+            currentView = "assets";
+            currentTicketView = null;
+            currentEmployeeView = null;
+            currentAssetView = new AssetView();
+            contentArea.getChildren().setAll(currentAssetView.getView());
         });
 
-        // ── Theme toggle ──────────────────────────────────
         btnTheme.setOnAction(e -> {
             ThemeManager.toggle();
             Scene s = stage.getScene();
@@ -236,8 +350,8 @@ public class DashboardView {
                     ? "☀  Light Mode" : "🌙  Dark Mode");
         });
 
-        // ── Logout ────────────────────────────────────────
         btnLogout.setOnAction(e -> {
+            bell.stopPolling();
             SessionStore.clear();
             SessionManager.get().logout();
             Scene loginScene = new LoginView().getScene(stage);
@@ -250,14 +364,59 @@ public class DashboardView {
         return scene;
     }
 
-    // ── Sidebar button factory ────────────────────────────
+    // ── Show dashboard with navigation callback ───────────
+    private void showDashboard() {
+        DashboardStatsView dashView = new DashboardStatsView();
+        dashView.setOnNavigate(view -> {
+            searchField.clear();
+            switch (view) {
+                case "assets" -> {
+                    setActive(btnAssets);
+                    currentView = "assets";
+                    currentAssetView = new AssetView();
+                    currentTicketView = null;
+                    currentEmployeeView = null;
+                    contentArea.getChildren().setAll(
+                            currentAssetView.getView());
+                }
+                case "tickets" -> {
+                    setActive(btnTickets);
+                    currentView = "tickets";
+                    currentTicketView = new TicketView();
+                    currentAssetView = null;
+                    currentEmployeeView = null;
+                    contentArea.getChildren().setAll(
+                            currentTicketView.getView());
+                }
+                case "licenses" -> {
+                    setActive(btnLicenses);
+                    currentView = "licenses";
+                    currentAssetView = null;
+                    currentTicketView = null;
+                    currentEmployeeView = null;
+                    contentArea.getChildren().setAll(
+                            new LicenseView().getView());
+                }
+                case "employees" -> {
+                    setActive(btnEmployees);
+                    currentView = "employees";
+                    currentEmployeeView = new EmployeeView();
+                    currentAssetView = null;
+                    currentTicketView = null;
+                    contentArea.getChildren().setAll(
+                            currentEmployeeView.getView());
+                }
+            }
+        });
+        contentArea.getChildren().setAll(dashView.getView());
+    }
+
     private Button sidebarBtn(String text) {
         Button btn = new Button(text);
         btn.getStyleClass().add("sidebar-btn");
         return btn;
     }
 
-    // ── Active state toggle ───────────────────────────────
     private void setActive(Button btn) {
         if (activeBtn != null)
             activeBtn.getStyleClass().setAll("sidebar-btn");
@@ -265,7 +424,6 @@ public class DashboardView {
         activeBtn = btn;
     }
 
-    // ── Support view ──────────────────────────────────────
     private VBox buildSupportView() {
         Label title = new Label("Support");
         title.getStyleClass().add("page-title");
@@ -274,20 +432,16 @@ public class DashboardView {
 
         VBox card1 = supportCard("📧  Email Support",
                 "IT Department internal support",
-                "it-support@saurashtracement.com",
-                "#58a6ff");
+                "it-support@saurashtracement.com", "#58a6ff");
         VBox card2 = supportCard("📞  Phone Support",
                 "Call the IT helpdesk directly",
-                "Ext. 2100  |  Mon–Sat 9AM–6PM",
-                "#3fb950");
+                "Ext. 2100  |  Mon–Sat 9AM–6PM", "#3fb950");
         VBox card3 = supportCard("📋  Raise a Ticket",
                 "Create a formal support ticket",
-                "Go to Tickets → New Ticket",
-                "#d29922");
+                "Go to Tickets → New Ticket", "#d29922");
         VBox card4 = supportCard("ℹ  About VaultDesk",
                 "Version 1.0.0  |  Built by Viral Sangecha",
-                "IT Helpdesk & Asset Management Platform",
-                "#a371f7");
+                "IT Helpdesk & Asset Management Platform", "#a371f7");
 
         HBox row1 = new HBox(16, card1, card2);
         HBox row2 = new HBox(16, card3, card4);
@@ -317,26 +471,5 @@ public class DashboardView {
                 "-fx-background-radius: 6;" +
                 "-fx-padding: 20;");
         return card;
-    }
-    private void showDashboard() {
-        setActive(activeBtn != null ? activeBtn : new Button());
-        DashboardStatsView dashView = new DashboardStatsView();
-        dashView.setOnNavigate(view -> {
-            switch (view) {
-                case "assets"    -> { setActive(btnAssets);
-                    contentArea.getChildren().setAll(
-                            new AssetView().getView()); }
-                case "tickets"   -> { setActive(btnTickets);
-                    contentArea.getChildren().setAll(
-                            new TicketView().getView()); }
-                case "licenses"  -> { setActive(btnLicenses);
-                    contentArea.getChildren().setAll(
-                            new LicenseView().getView()); }
-                case "employees" -> { setActive(btnEmployees);
-                    contentArea.getChildren().setAll(
-                            new EmployeeView().getView()); }
-            }
-        });
-        contentArea.getChildren().setAll(dashView.getView());
     }
 }
