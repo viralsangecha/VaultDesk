@@ -63,10 +63,12 @@ public class VendorView {
 
     private void loadVendors(TableView<Vendor> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading vendors...");
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/vendors"))
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/vendors"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -84,9 +86,20 @@ public class VendorView {
                             extractValue(obj, "category")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "🤝",
+                            "No vendors found",
+                            "Add your first vendor contact.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "🤝",
+                        "No vendors found",
+                        "Add your first vendor contact.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading vendors: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load vendors",
+                    "Check server connection and try again.");
         }
     }
 

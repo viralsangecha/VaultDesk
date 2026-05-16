@@ -178,16 +178,15 @@ public class EmployeeView {
 
     private void loadEmployees(TableView<Employee> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading employees...");
         try {
             String url = SessionManager.get().isDeptHod()
                     ? ConfigManager.getBaseUrl() + "/api/employees/department/"
                     + SessionManager.get().getDeptId()
                     : ConfigManager.getBaseUrl() + "/api/employees";
-
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .GET().build();
+                    .uri(URI.create(url)).GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
             String body = response.body().trim();
@@ -205,9 +204,20 @@ public class EmployeeView {
                             extractInt(obj, "active")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "👤",
+                            "No employees found",
+                            "Add employees using the button above.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "👤",
+                        "No employees found",
+                        "Add employees using the button above.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading employees: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load employees",
+                    "Check server connection and try again.");
         }
     }
 

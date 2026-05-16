@@ -110,10 +110,12 @@ public class ConsumableView {
 
     private void loadConsumables(TableView<Consumable> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading consumables...");
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/consumables"))
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/consumables"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -131,9 +133,20 @@ public class ConsumableView {
                             extractInt(obj, "reorderLevel")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "📦",
+                            "No consumables found",
+                            "Add your first consumable item.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "📦",
+                        "No consumables found",
+                        "Add your first consumable item.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading consumables: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load consumables",
+                    "Check server connection and try again.");
         }
     }
 

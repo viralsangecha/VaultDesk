@@ -72,6 +72,7 @@ public class MyAssetsView {
 
     private void loadAssets(TableView<String[]> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading your assets...");
         try {
             int empId = SessionManager.get().getEmployeeId();
             HttpClient client = HttpClient.newHttpClient();
@@ -95,13 +96,20 @@ public class MyAssetsView {
                             extractValue(obj, "location")
                     });
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "▣",
+                            "No assets assigned",
+                            "Contact IT to assign assets to you.");
+                }
             } else {
-                // Show empty state
-                table.setPlaceholder(new Label(
-                        "No assets currently assigned to you."));
+                LoadingUtil.setEmpty(table, "▣",
+                        "No assets assigned",
+                        "Contact IT to assign assets to you.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading assets: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load assets",
+                    "Check server connection and try again.");
         }
     }
 

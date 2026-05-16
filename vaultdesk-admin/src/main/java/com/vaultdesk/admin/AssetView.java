@@ -256,6 +256,7 @@ public class AssetView {
     private void loadAssets(TableView<Asset> table) {
         table.getItems().clear();
         allAssets.clear();
+        LoadingUtil.setLoading(table, "Loading assets...");
         try {
             String url = SessionManager.get().isDeptHod()
                     ? ConfigManager.getBaseUrl() + "/api/assets/department/"
@@ -264,8 +265,7 @@ public class AssetView {
 
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .GET().build();
+                    .uri(URI.create(url)).GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
             String body = response.body().trim();
@@ -287,8 +287,20 @@ public class AssetView {
                     allAssets.add(a);
                     table.getItems().add(a);
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "▣",
+                            "No assets found",
+                            "Add your first asset using the button above.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "▣",
+                        "No assets found",
+                        "Add your first asset using the button above.");
             }
         } catch (Exception ex) {
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load assets",
+                    "Check server connection and try again.");
             System.out.println("Error loading assets: " + ex.getMessage());
         }
     }

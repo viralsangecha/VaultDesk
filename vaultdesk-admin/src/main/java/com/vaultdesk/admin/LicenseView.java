@@ -118,10 +118,12 @@ public class LicenseView {
 
     private void loadLicenses(TableView<License> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading licenses...");
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/licenses"))
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/licenses"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -140,9 +142,20 @@ public class LicenseView {
                             extractInt(obj, "seatsUsed")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "🔑",
+                            "No licenses found",
+                            "Add your first software license.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "🔑",
+                        "No licenses found",
+                        "Add your first software license.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading licenses: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load licenses",
+                    "Check server connection and try again.");
         }
     }
 

@@ -81,10 +81,12 @@ public class DepartmentView {
 
     private void loadDepartments(TableView<Department> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading departments...");
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/departments"))
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/departments"))
                     .GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
@@ -99,9 +101,20 @@ public class DepartmentView {
                             extractValue(obj, "location")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "🏢",
+                            "No departments found",
+                            "Add your first department.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "🏢",
+                        "No departments found",
+                        "Add your first department.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading departments: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load departments",
+                    "Check server connection and try again.");
         }
     }
 

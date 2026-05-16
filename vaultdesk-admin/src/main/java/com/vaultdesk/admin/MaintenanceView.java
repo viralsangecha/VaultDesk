@@ -82,16 +82,15 @@ public class MaintenanceView {
 
     private void loadMaintenance(TableView<Maintenance> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading maintenance logs...");
         try {
             String url = SessionManager.get().isDeptHod()
                     ? ConfigManager.getBaseUrl() + "/api/maintenance/department/"
                     + SessionManager.get().getDeptId()
                     : ConfigManager.getBaseUrl() + "/api/maintenance";
-
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .GET().build();
+                    .uri(URI.create(url)).GET().build();
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
             String body = response.body().trim();
@@ -109,9 +108,20 @@ public class MaintenanceView {
                             extractValue(obj, "status")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "🔧",
+                            "No maintenance logs found",
+                            "Add a maintenance log using the button above.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "🔧",
+                        "No maintenance logs found",
+                        "Add a maintenance log using the button above.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading maintenance: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load maintenance logs",
+                    "Check server connection and try again.");
         }
     }
 

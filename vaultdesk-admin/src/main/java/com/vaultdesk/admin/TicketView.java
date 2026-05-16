@@ -573,6 +573,7 @@ public class TicketView {
 
     private void loadTickets(TableView<Ticket> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading tickets...");
         try {
             String url = SessionManager.get().isDeptHod()
                     ? ConfigManager.getBaseUrl() + "/api/tickets/department/"
@@ -601,8 +602,20 @@ public class TicketView {
                             extractValue(obj, "updatedAt")
                     ));
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "✉",
+                            "No tickets found",
+                            "All clear! No support tickets at the moment.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "✉",
+                        "No tickets found",
+                        "All clear! No support tickets at the moment.");
             }
         } catch (Exception ex) {
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load tickets",
+                    "Check server connection and try again.");
             System.out.println("Error loading tickets: " + ex.getMessage());
         }
     }

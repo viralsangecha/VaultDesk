@@ -120,6 +120,7 @@ public class MyTicketsView {
 
     private void loadTickets(TableView<String[]> table) {
         table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading your tickets...");
         try {
             int empId = SessionManager.get().getEmployeeId();
             HttpClient client = HttpClient.newHttpClient();
@@ -148,9 +149,20 @@ public class MyTicketsView {
                             extractValue(obj, "resolution")
                     });
                 }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "✉",
+                            "No tickets yet",
+                            "Raise your first ticket using the sidebar.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "✉",
+                        "No tickets yet",
+                        "Raise your first ticket using the sidebar.");
             }
         } catch (Exception ex) {
-            System.out.println("Error loading tickets: " + ex.getMessage());
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load tickets",
+                    "Check server connection and try again.");
         }
     }
 
