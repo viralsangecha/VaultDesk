@@ -120,14 +120,23 @@ public class DashboardView {
 
         sidebar.getChildren().addAll(btnTheme, btnLogout);
 
-        // ── Top bar ───────────────────────────────────────
+        // ── Top bar ───────────────────────────────────────────
         TextField searchField = new TextField();
         searchField.setPromptText(
                 "🔍  Search assets, tickets, or serial numbers...");
         searchField.getStyleClass().add("search-bar");
-        HBox topBar = new HBox(searchField);
+
+        // ── Notification bell ─────────────────────────────────
+        NotificationBell bell = new NotificationBell();
+        StackPane bellView = bell.getView();
+
+        HBox topBar = new HBox(searchField, bellView);
         topBar.getStyleClass().add("top-bar");
+        topBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         HBox.setHgrow(searchField, Priority.ALWAYS);
+
+        // ── Stop polling when window closes ───────────────────
+        stage.setOnCloseRequest(e -> bell.stopPolling());
 
         // ── Content area ──────────────────────────────────
         contentArea = new VBox(10);

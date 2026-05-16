@@ -2,9 +2,11 @@ package com.vaultdesk.server.controller;
 
 import com.vaultdesk.server.dao.AssetDAO;
 import com.vaultdesk.server.dao.EmployeeDAO;
+import com.vaultdesk.server.dao.NotificationDAO;
 import com.vaultdesk.server.dao.TicketDAO;
 import com.vaultdesk.server.model.TicketRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
@@ -17,13 +19,19 @@ public class EmployeePortalController {
     private final TicketDAO ticketDAO;
     private final AssetDAO assetDAO;
     private final EmployeeDAO employeeDAO;
+    private final NotificationDAO notificationDAO;
+    private final JdbcTemplate jdbc;
 
     public EmployeePortalController(TicketDAO ticketDAO,
                                     AssetDAO assetDAO,
-                                    EmployeeDAO employeeDAO) {
-        this.ticketDAO   = ticketDAO;
-        this.assetDAO    = assetDAO;
-        this.employeeDAO = employeeDAO;
+                                    EmployeeDAO employeeDAO,
+                                    NotificationDAO notificationDAO,
+                                    JdbcTemplate jdbc) {
+        this.ticketDAO        = ticketDAO;
+        this.assetDAO         = assetDAO;
+        this.employeeDAO      = employeeDAO;
+        this.notificationDAO  = notificationDAO;
+        this.jdbc             = jdbc;
     }
 
     // ── My Tickets ────────────────────────────────────────
@@ -36,12 +44,17 @@ public class EmployeePortalController {
 
     // ── Raise Ticket ──────────────────────────────────────
     @PostMapping("/tickets")
-    public ResponseEntity<?> raiseTicket(
-            @RequestBody TicketRequest request) {
+    public ResponseEntity<?> raiseTicket(@RequestBody TicketRequest request) {
         ticketDAO.saveTicket(
                 request.title(), request.description(),
                 request.category(), request.priority(),
                 request.reportedBy());
+
+        // ── Notify all admins ─────────────────────────────
+        notificationDAO.notifyAllAdmins(jdbc,
+                "New ticket from employee: " + request.title(),
+                "TICKET_CREATED", 0);
+
         return ResponseEntity.status(201).body("Ticket raised");
     }
 

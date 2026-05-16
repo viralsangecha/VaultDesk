@@ -400,6 +400,20 @@ public class DatabaseInitializer implements CommandLineRunner {
         """);
         System.out.println("✔ activity_log table ready.");
 
+        // ── NOTIFICATIONS ─────────────────────────────────────
+        jdbc.execute("""
+    CREATE TABLE IF NOT EXISTS notifications (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER DEFAULT 0,
+        employee_id  INTEGER DEFAULT 0,
+        message      TEXT NOT NULL,
+        type         TEXT,
+        reference_id INTEGER DEFAULT 0,
+        is_read      INTEGER DEFAULT 0,
+        created_at   TEXT DEFAULT (datetime('now'))
+    )
+""");
+        System.out.println("✔ notifications table ready.");
         // ─────────────────────────────────────────────
         // DEFAULT ADMIN USER
         // username: admin  |  password: admin123

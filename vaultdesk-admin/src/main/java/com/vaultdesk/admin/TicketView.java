@@ -117,6 +117,67 @@ public class TicketView {
                     ca != null && ca.length() >= 10 ? ca.substring(0, 10) : ca);
         });
 
+        // ── Time open + SLA color ─────────────────────────────
+        TableColumn<Ticket, String> slaCol = new TableColumn<>("Time Open");
+        slaCol.setCellValueFactory(d -> {
+            String created = d.getValue().getCreatedAt();
+            String status  = d.getValue().getStatus();
+            if (created == null || "Resolved".equals(status)
+                    || "Closed".equals(status))
+                return new SimpleStringProperty("—");
+            try {
+                java.time.LocalDateTime createdTime =
+                        java.time.LocalDateTime.parse(
+                                created.replace(" ", "T"));
+                long hours = java.time.Duration.between(
+                        createdTime,
+                        java.time.LocalDateTime.now()).toHours();
+                if (hours < 1) return new SimpleStringProperty("< 1h");
+                if (hours < 24) return new SimpleStringProperty(hours + "h");
+                return new SimpleStringProperty((hours / 24) + "d "
+                        + (hours % 24) + "h");
+            } catch (Exception e) {
+                return new SimpleStringProperty("—");
+            }
+        });
+        slaCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || "—".equals(item)) {
+                    setText(item);
+                    setStyle("-fx-text-fill: #484f58;");
+                    return;
+                }
+                setText(item);
+                // Get priority from same row
+                Ticket t = getTableView().getItems().get(getIndex());
+                long hours = 0;
+                try {
+                    if (t.getCreatedAt() != null) {
+                        java.time.LocalDateTime ct =
+                                java.time.LocalDateTime.parse(
+                                        t.getCreatedAt().replace(" ", "T"));
+                        hours = java.time.Duration.between(ct,
+                                java.time.LocalDateTime.now()).toHours();
+                    }
+                } catch (Exception ignored) {}
+
+                long slaHours = switch (t.getPriority().toUpperCase()) {
+                    case "CRITICAL" -> 4;
+                    case "HIGH"     -> 8;
+                    case "MEDIUM"   -> 24;
+                    default         -> 48;
+                };
+
+                if (hours > slaHours)
+                    setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                else if (hours > slaHours * 0.75)
+                    setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                else
+                    setStyle("-fx-text-fill: #3fb950;");
+            }
+        });
+
         TableColumn<Ticket, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateBtn = new Button("Update");
@@ -149,7 +210,7 @@ public class TicketView {
 
         table.getColumns().addAll(idCol, ticketNoCol, titleCol,
                 categoryCol, priorityCol, statusCol,
-                assignedToCol, createdCol, actionCol);
+                assignedToCol, createdCol,slaCol, actionCol);
 
         // ── Click row to open detail panel ────────────────
         table.setRowFactory(tv -> {

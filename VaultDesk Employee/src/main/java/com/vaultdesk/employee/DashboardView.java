@@ -60,19 +60,22 @@ public class DashboardView {
                 spacer, btnSettings,btnTheme, btnLogout);
         sidebar.getStyleClass().add("sidebar");
 
-        // ── Top bar ───────────────────────────────────────
+        // ── Top bar ───────────────────────────────────────────
         Label topTitle = new Label("VaultDesk Employee Portal");
-        topTitle.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
-        Label topUser = new Label(
-                "👤  " + SessionManager.get().getName());
-        topUser.setStyle(
-                "-fx-text-fill: #c9d1d9; -fx-font-size: 12px;");
+        topTitle.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        Label topUser = new Label("👤  " + SessionManager.get().getName());
+        topUser.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 12px;");
+
+        NotificationBell bell = new NotificationBell();
+        StackPane bellView = bell.getView();
+
         Region topSpacer = new Region();
         HBox.setHgrow(topSpacer, Priority.ALWAYS);
-        HBox topBar = new HBox(topTitle, topSpacer, topUser);
+        HBox topBar = new HBox(topTitle, topSpacer, topUser, bellView);
         topBar.getStyleClass().add("top-bar");
         topBar.setAlignment(Pos.CENTER_LEFT);
+
+        stage.setOnCloseRequest(e -> bell.stopPolling());
 
         // ── Content area ──────────────────────────────────
         contentArea = new VBox(10);
