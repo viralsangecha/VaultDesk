@@ -97,10 +97,19 @@ public class EmployeeView {
                     showDeactivateConfirm(emp, getTableView());
                 });
             }
+            // Wrap in permission checks:
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : box);
+                if (empty) { setGraphic(null); return; }
+                HBox box = new HBox(5);
+                if (PermissionManager.canEditEmployee())
+                    box.getChildren().add(editBtn);
+                if (PermissionManager.has("DELETE_TICKET"))
+                    box.getChildren().add(deactivateBtn);
+                if (PermissionManager.canSetLogin())
+                    box.getChildren().add(setLoginBtn);
+                setGraphic(box.getChildren().isEmpty() ? null : box);
             }
         });
 
@@ -159,10 +168,11 @@ public class EmployeeView {
         HBox topBar = new HBox(10);
         topBar.getChildren().add(searchField);
 
-        if (SessionManager.get().isAdmin()
-                || SessionManager.get().isDeptHod()) {
-            topBar.getChildren().addAll(0,
-                    java.util.List.of(addBtn, importBtn));
+        if (PermissionManager.canAddEmployee()) {
+            topBar.getChildren().add(0, addBtn);
+        }
+        if (PermissionManager.has("IMPORT_ASSETS")) {
+            topBar.getChildren().add(importBtn);
         }
 
         loadEmployees(table);

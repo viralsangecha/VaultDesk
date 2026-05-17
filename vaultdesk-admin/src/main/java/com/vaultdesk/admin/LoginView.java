@@ -10,6 +10,7 @@ import javafx.stage.Stage;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.List;
 
 public class LoginView {
 
@@ -112,6 +113,16 @@ public class LoginView {
                     int userId      = extractInt(rb, "userId");
                     int deptId      = extractInt(rb, "deptId");
 
+                    // ── Parse permissions array ───────────────────────
+                    List<String> permissions = extractList(rb, "permissions");
+
+                    SessionManager.get().login(userId, fullName,
+                            role, permissions);
+                    SessionManager.get().setDeptId(deptId);
+
+                    SessionStore.save(userId, fullName, role,
+                            username, sha256(password), deptId);
+
                     System.out.println("Login OK — user: " + fullName
                             + " role: " + role + " id: " + userId);
 
@@ -185,6 +196,23 @@ public class LoginView {
             return Integer.parseInt(
                     json.substring(start, end).trim().replace("}", ""));
         } catch (NumberFormatException e) { return 0; }
+    }
+    private List<String> extractList(String json, String key) {
+        List<String> result = new java.util.ArrayList<>();
+        String search = "\"" + key + "\":[";
+        int start = json.indexOf(search);
+        if (start == -1) return result;
+        start += search.length();
+        int end = json.indexOf("]", start);
+        if (end == -1) return result;
+        String array = json.substring(start, end);
+        if (array.trim().isEmpty()) return result;
+        for (String item : array.split(",")) {
+            String cleaned = item.trim()
+                    .replace("\"", "").trim();
+            if (!cleaned.isEmpty()) result.add(cleaned);
+        }
+        return result;
     }
     private String sha256(String input) {
         try {

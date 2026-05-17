@@ -166,10 +166,10 @@ public class TicketView {
                 } catch (Exception ignored) {}
 
                 long slaHours = switch (t.getPriority().toUpperCase()) {
-                    case "CRITICAL" -> 4;
-                    case "HIGH"     -> 8;
-                    case "MEDIUM"   -> 24;
-                    default         -> 48;
+                    case "CRITICAL" -> 2;
+                    case "HIGH"     -> 4;
+                    case "MEDIUM"   -> 12;
+                    default         -> 24;
                 };
 
                 if (hours > slaHours)
@@ -266,6 +266,355 @@ public class TicketView {
         VBox root = new VBox(10, title, mainLayout);
         VBox.setVgrow(mainLayout, Priority.ALWAYS);
         return root;
+    }
+    public VBox getEngineerView(int userId) {
+        loadUsers();
+
+        Label title = new Label("My Assigned Tickets");
+        title.getStyleClass().add("page-title");
+        Label sub = new Label(
+                "Tickets assigned to you — update status to resolve.");
+        sub.getStyleClass().add("page-subtitle");
+
+        // ── Stats row ─────────────────────────────────────────
+        Label openCount   = new Label("0");
+        Label inProgCount = new Label("0");
+        Label resolvedCount = new Label("0");
+
+        VBox openCard    = engineerStatCard("Open", openCount,
+                "#f85149", "#3d1f1e");
+        VBox inProgCard  = engineerStatCard("In Progress", inProgCount,
+                "#58a6ff", "#1a2840");
+        VBox resolvedCard = engineerStatCard("Resolved", resolvedCount,
+                "#3fb950", "#1b2d1f");
+
+        HBox statsRow = new HBox(12, openCard, inProgCard, resolvedCard);
+        statsRow.setPadding(new javafx.geometry.Insets(8, 0, 8, 0));
+
+        // ── Table ─────────────────────────────────────────────
+        table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        LoadingUtil.setLoading(table, "Loading your tickets...");
+
+        TableColumn<Ticket, String> ticketNoCol =
+                new TableColumn<>("Ticket No");
+        ticketNoCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getTicketNo()));
+
+        TableColumn<Ticket, String> titleCol = new TableColumn<>("Title");
+        titleCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getTitle()));
+
+        TableColumn<Ticket, String> categoryCol =
+                new TableColumn<>("Category");
+        categoryCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getCategory()));
+        categoryCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null); setStyle(""); return;
+                }
+                setText(item);
+                switch (item.toUpperCase()) {
+                    case "SAP"      -> setStyle(
+                            "-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "HARDWARE" -> setStyle(
+                            "-fx-text-fill: #8b949e; -fx-font-weight: bold;");
+                    case "NETWORK"  -> setStyle(
+                            "-fx-text-fill: #39d353; -fx-font-weight: bold;");
+                    case "SOFTWARE" -> setStyle(
+                            "-fx-text-fill: #a371f7; -fx-font-weight: bold;");
+                    default         -> setStyle(
+                            "-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
+                }
+            }
+        });
+
+        TableColumn<Ticket, String> priorityCol =
+                new TableColumn<>("Priority");
+        priorityCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getPriority()));
+        priorityCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null); setStyle(""); return;
+                }
+                setText(item);
+                switch (item.toUpperCase()) {
+                    case "CRITICAL" -> setStyle(
+                            "-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "HIGH"     -> setStyle(
+                            "-fx-text-fill: #d29922; -fx-font-weight: bold;");
+                    case "MEDIUM"   -> setStyle(
+                            "-fx-text-fill: #8b949e;");
+                    case "LOW"      -> setStyle(
+                            "-fx-text-fill: #6e7681;");
+                    default         -> setStyle(
+                            "-fx-text-fill: #c9d1d9;");
+                }
+            }
+        });
+
+        TableColumn<Ticket, String> statusCol =
+                new TableColumn<>("Status");
+        statusCol.setCellValueFactory(d ->
+                new SimpleStringProperty(d.getValue().getStatus()));
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null); setStyle(""); return;
+                }
+                setText(item);
+                switch (item) {
+                    case "Open"        -> setStyle(
+                            "-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    case "In Progress" -> setStyle(
+                            "-fx-text-fill: #58a6ff; -fx-font-weight: bold;");
+                    case "Resolved"    -> setStyle(
+                            "-fx-text-fill: #3fb950; -fx-font-weight: bold;");
+                    case "Closed"      -> setStyle(
+                            "-fx-text-fill: #8b949e;");
+                    default            -> setStyle(
+                            "-fx-text-fill: #c9d1d9;");
+                }
+            }
+        });
+
+        // ── SLA column ────────────────────────────────────────
+        TableColumn<Ticket, String> slaCol =
+                new TableColumn<>("Time Open");
+        slaCol.setCellValueFactory(d -> {
+            String created = d.getValue().getCreatedAt();
+            String status  = d.getValue().getStatus();
+            if (created == null || "Resolved".equals(status)
+                    || "Closed".equals(status))
+                return new SimpleStringProperty("—");
+            try {
+                java.time.LocalDateTime ct =
+                        java.time.LocalDateTime.parse(
+                                created.replace(" ", "T"));
+                long hours = java.time.Duration.between(
+                        ct, java.time.LocalDateTime.now()).toHours();
+                if (hours < 1)  return new SimpleStringProperty("< 1h");
+                if (hours < 24) return new SimpleStringProperty(hours + "h");
+                return new SimpleStringProperty(
+                        (hours / 24) + "d " + (hours % 24) + "h");
+            } catch (Exception e) {
+                return new SimpleStringProperty("—");
+            }
+        });
+        slaCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || "—".equals(item)) {
+                    setText(item);
+                    setStyle("-fx-text-fill: #484f58;");
+                    return;
+                }
+                setText(item);
+                try {
+                    Ticket t = getTableView().getItems().get(getIndex());
+                    java.time.LocalDateTime ct =
+                            java.time.LocalDateTime.parse(
+                                    t.getCreatedAt().replace(" ", "T"));
+                    long hours = java.time.Duration.between(
+                            ct, java.time.LocalDateTime.now()).toHours();
+                    long slaH = switch (t.getPriority().toUpperCase()) {
+                        case "CRITICAL" -> 4L;
+                        case "HIGH"     -> 8L;
+                        case "MEDIUM"   -> 24L;
+                        default         -> 48L;
+                    };
+                    if (hours > slaH)
+                        setStyle("-fx-text-fill: #f85149;" +
+                                " -fx-font-weight: bold;");
+                    else if (hours > slaH * 0.75)
+                        setStyle("-fx-text-fill: #d29922;" +
+                                " -fx-font-weight: bold;");
+                    else
+                        setStyle("-fx-text-fill: #3fb950;");
+                } catch (Exception ignored) {
+                    setStyle("-fx-text-fill: #484f58;");
+                }
+            }
+        });
+
+        // ── Actions ───────────────────────────────────────────
+        TableColumn<Ticket, Void> actionCol =
+                new TableColumn<>("Actions");
+        actionCol.setCellFactory(col -> new TableCell<>() {
+            private final Button updateBtn = new Button("Update Status");
+            {
+                updateBtn.getStyleClass().setAll("btn-warning");
+                updateBtn.setStyle(
+                        "-fx-background-color: #b45309;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px;" +
+                                "-fx-font-weight: bold;");
+                updateBtn.setOnAction(e -> {
+                    Ticket t = getTableView().getItems().get(getIndex());
+                    showUpdateStatusDialog(t, getTableView());
+                });
+            }
+            @Override protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : updateBtn);
+            }
+        });
+
+        table.getColumns().addAll(ticketNoCol, titleCol,
+                categoryCol, priorityCol, statusCol,
+                slaCol, actionCol);
+
+        // ── Double click → detail panel ───────────────────────
+        table.setRowFactory(tv -> {
+            TableRow<Ticket> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    openDetailPanel(row.getItem());
+            });
+            return row;
+        });
+
+        // ── Detail panel ──────────────────────────────────────
+        detailPanel = new VBox();
+        detailPanel.setVisible(false);
+        detailPanel.setManaged(false);
+        detailPanel.setPrefWidth(400);
+        detailPanel.setMinWidth(400);
+        detailPanel.setMaxWidth(400);
+        detailPanel.setStyle(
+                "-fx-background-color: #161b22;" +
+                        "-fx-border-color: #30363d;" +
+                        "-fx-border-width: 0 0 0 1;");
+
+        Label hint = new Label(
+                "Double-click a ticket to view details and comments");
+        hint.setStyle(
+                "-fx-text-fill: #484f58; -fx-font-size: 11px;");
+
+        VBox tableBox = new VBox(8, hint, table);
+        VBox.setVgrow(table, Priority.ALWAYS);
+        HBox.setHgrow(tableBox, Priority.ALWAYS);
+
+        HBox mainRow = new HBox(tableBox, detailPanel);
+        HBox.setHgrow(tableBox, Priority.ALWAYS);
+
+        // ── Load tickets ──────────────────────────────────────
+        loadEngineerTickets(userId, table,
+                openCount, inProgCount, resolvedCount);
+
+        VBox root = new VBox(12, title, sub, statsRow, mainRow);
+        VBox.setVgrow(mainRow, Priority.ALWAYS);
+        return root;
+    }
+
+    // ── Engineer stat card ────────────────────────────────────
+    private VBox engineerStatCard(String label, Label countLabel,
+                                  String color, String bg) {
+        countLabel.setStyle(
+                "-fx-text-fill: " + color + ";" +
+                        "-fx-font-size: 28px;" +
+                        "-fx-font-weight: bold;");
+        Label titleLabel = new Label(label);
+        titleLabel.setStyle(
+                "-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        VBox card = new VBox(4, countLabel, titleLabel);
+        card.setStyle(
+                "-fx-background-color: #161b22;" +
+                        "-fx-border-color: " + color + ";" +
+                        "-fx-border-width: 0 0 0 3;" +
+                        "-fx-border-radius: 8;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-padding: 16;");
+        card.setPrefWidth(160);
+        return card;
+    }
+
+    // ── Load engineer tickets ─────────────────────────────────
+    private void loadEngineerTickets(int userId,
+                                     TableView<Ticket> table,
+                                     Label openCount,
+                                     Label inProgCount,
+                                     Label resolvedCount) {
+        table.getItems().clear();
+        allTickets.clear();
+        LoadingUtil.setLoading(table, "Loading your tickets...");
+
+        try {
+            // If has VIEW_ALL_TICKETS → load all, highlight assigned
+            // If only VIEW_ASSIGNED_TICKETS → load only assigned
+            String url;
+            if (PermissionManager.canViewAllTickets()) {
+                url = ConfigManager.getBaseUrl() + "/api/tickets";
+            } else {
+                url = ConfigManager.getBaseUrl()
+                        + "/api/tickets/assignee/" + userId;
+            }
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(url)).GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = resp.body().trim();
+            body = body.substring(1, body.length() - 1);
+
+            int open = 0, inProg = 0, resolved = 0;
+
+            if (!body.isEmpty()) {
+                for (String obj : body.split("\\},\\{")) {
+                    obj = obj.replace("{", "").replace("}", "");
+                    Ticket t = new Ticket(
+                            extractInt(obj, "id"),
+                            extractValue(obj, "ticketNo"),
+                            extractValue(obj, "title"),
+                            extractValue(obj, "category"),
+                            extractValue(obj, "priority"),
+                            extractValue(obj, "status"),
+                            extractInt(obj, "assignedTo"),
+                            extractInt(obj, "reportedBy"),
+                            extractValue(obj, "createdAt"),
+                            extractValue(obj, "updatedAt")
+                    );
+                    table.getItems().add(t);
+                    allTickets.add(t);
+
+                    // Count stats
+                    switch (t.getStatus()) {
+                        case "Open"        -> open++;
+                        case "In Progress" -> inProg++;
+                        case "Resolved",
+                             "Closed"      -> resolved++;
+                    }
+                }
+            }
+
+            // Update stat labels
+            int finalOpen     = open;
+            int finalInProg   = inProg;
+            int finalResolved = resolved;
+            javafx.application.Platform.runLater(() -> {
+                openCount.setText(String.valueOf(finalOpen));
+                inProgCount.setText(String.valueOf(finalInProg));
+                resolvedCount.setText(String.valueOf(finalResolved));
+            });
+
+            if (table.getItems().isEmpty()) {
+                LoadingUtil.setEmpty(table, "✉",
+                        "No tickets assigned",
+                        "You have no tickets assigned at the moment.");
+            }
+        } catch (Exception ex) {
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load tickets",
+                    "Check server connection and try again.");
+        }
     }
 
     // ── Open detail panel ─────────────────────────────────

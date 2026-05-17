@@ -105,8 +105,7 @@ public class LicenseView {
                 "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
         HBox topBar = new HBox(10);
-        if (SessionManager.get().isAdmin()
-                || SessionManager.get().isDeptHod()) {
+        if (PermissionManager.canAddLicense()) {
             topBar.getChildren().add(addBtn);
         }
         loadLicenses(table);

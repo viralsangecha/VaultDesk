@@ -95,6 +95,7 @@ public class UserManagementView {
         TableColumn<AdminUser, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button editBtn       = new Button("Edit");
+            private final Button permBtn = new Button("Permissions");
             private final Button deactivateBtn = new Button("Deactivate");
             {
                 editBtn.getStyleClass().setAll("btn-warning");
@@ -102,6 +103,15 @@ public class UserManagementView {
                         "-fx-background-color: #b45309; -fx-text-fill: white;" +
                                 "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
                                 "-fx-font-size: 11px; -fx-font-weight: bold;");
+                permBtn.getStyleClass().setAll("btn-primary");
+                permBtn.setStyle(
+                        "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
+                                "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px; -fx-font-weight: bold;");
+                permBtn.setOnAction(e -> {
+                    AdminUser u = getTableView().getItems().get(getIndex());
+                    showPermissionDialog(u);
+                });
                 deactivateBtn.getStyleClass().setAll("btn-danger");
                 deactivateBtn.setStyle(
                         "-fx-background-color: #da3633; -fx-text-fill: white;" +
@@ -126,7 +136,8 @@ public class UserManagementView {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : new HBox(5, editBtn, deactivateBtn));
+                setGraphic(empty ? null
+                        : new HBox(5, editBtn, deactivateBtn, permBtn));
             }
         });
 
@@ -383,6 +394,228 @@ public class UserManagementView {
                 showAlert("Error", "Cannot connect: " + ex.getMessage());
             }
         }
+    }
+    private void showPermissionDialog(AdminUser user) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Permissions — " + user.getFullName());
+        dialog.setHeaderText("Manage permissions for: "
+                + user.getUsername());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefWidth(520);
+
+        // ── Preset selector ───────────────────────────────
+        Label presetLabel = new Label("Quick Preset:");
+        presetLabel.setStyle(
+                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        ComboBox<String> presetBox = new ComboBox<>();
+        presetBox.getItems().addAll(
+                "ADMIN", "ENGINEER", "DEPT_HOD", "VIEWER", "CUSTOM");
+        presetBox.setValue("CUSTOM");
+
+        HBox presetRow = new HBox(10, presetLabel, presetBox);
+        presetRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        // ── Permission groups ─────────────────────────────
+        java.util.Map<String, java.util.List<String>> groups =
+                new java.util.LinkedHashMap<>();
+        groups.put("🎫 Tickets", java.util.List.of(
+                "VIEW_ALL_TICKETS", "VIEW_ASSIGNED_TICKETS",
+                "UPDATE_TICKET_STATUS", "ASSIGN_TICKET",
+                "DELETE_TICKET"));
+        groups.put("▣ Assets", java.util.List.of(
+                "VIEW_ALL_ASSETS", "VIEW_DEPT_ASSETS",
+                "ADD_ASSET", "EDIT_ASSET", "IMPORT_ASSETS"));
+        groups.put("👤 Employees", java.util.List.of(
+                "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
+                "EDIT_EMPLOYEE", "SET_LOGIN"));
+        groups.put("🏢 Departments", java.util.List.of(
+                "VIEW_DEPARTMENTS", "ADD_DEPARTMENT"));
+        groups.put("📊 Reports & Data", java.util.List.of(
+                "VIEW_REPORTS", "VIEW_LICENSES", "ADD_LICENSE",
+                "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
+                "VIEW_MAINTENANCE", "ADD_MAINTENANCE",
+                "VIEW_VENDORS", "ADD_VENDOR"));
+        groups.put("⚙ System", java.util.List.of(
+                "MANAGE_USERS", "MANAGE_SETTINGS"));
+
+        // ── Load current permissions from server ──────────
+        java.util.Set<String> currentPerms = new java.util.HashSet<>();
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/users/" + user.getId()
+                            + "/permissions"))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = resp.body();
+            // Parse permissions array
+            String search = "\"permissions\":[";
+            int start = body.indexOf(search);
+            if (start != -1) {
+                start += search.length();
+                int end = body.indexOf("]", start);
+                if (end != -1) {
+                    String array = body.substring(start, end);
+                    for (String item : array.split(",")) {
+                        String cleaned = item.trim()
+                                .replace("\"", "").trim();
+                        if (!cleaned.isEmpty())
+                            currentPerms.add(cleaned);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.out.println("Error loading permissions: "
+                    + ex.getMessage());
+        }
+
+        // ── Build checkboxes ──────────────────────────────
+        java.util.Map<String, CheckBox> checkBoxMap =
+                new java.util.LinkedHashMap<>();
+        VBox allGroups = new VBox(12);
+
+        for (java.util.Map.Entry<String,
+                java.util.List<String>> entry : groups.entrySet()) {
+            Label groupLabel = new Label(entry.getKey());
+            groupLabel.setStyle(
+                    "-fx-text-fill: #e6edf3; -fx-font-size: 13px;" +
+                            "-fx-font-weight: bold;");
+
+            javafx.scene.layout.GridPane grid =
+                    new javafx.scene.layout.GridPane();
+            grid.setHgap(16); grid.setVgap(6);
+            grid.setPadding(new javafx.geometry.Insets(4, 0, 4, 8));
+
+            int col = 0, row = 0;
+            for (String perm : entry.getValue()) {
+                CheckBox cb = new CheckBox(
+                        perm.replace("_", " ").toLowerCase());
+                cb.setSelected(currentPerms.contains(perm));
+                cb.setStyle("-fx-text-fill: #c9d1d9;");
+                checkBoxMap.put(perm, cb);
+                grid.add(cb, col, row);
+                col++;
+                if (col >= 2) { col = 0; row++; }
+            }
+
+            VBox groupBox = new VBox(6, groupLabel, grid);
+            groupBox.setStyle(
+                    "-fx-background-color: #21262d;" +
+                            "-fx-background-radius: 6;" +
+                            "-fx-padding: 10;");
+            allGroups.getChildren().add(groupBox);
+        }
+
+        // ── Preset applies checkboxes ─────────────────────
+        presetBox.setOnAction(e -> {
+            String preset = presetBox.getValue();
+            if ("CUSTOM".equals(preset)) return;
+
+            // Uncheck all first
+            checkBoxMap.values().forEach(cb -> cb.setSelected(false));
+
+            // Apply preset
+            java.util.List<String> presetPerms =
+                    getPresetPermissions(preset);
+            for (String perm : presetPerms) {
+                CheckBox cb = checkBoxMap.get(perm);
+                if (cb != null) cb.setSelected(true);
+            }
+        });
+
+        ScrollPane scroll = new ScrollPane(allGroups);
+        scroll.setFitToWidth(true);
+        scroll.setPrefHeight(420);
+        scroll.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-background: transparent;");
+
+        VBox content = new VBox(12, presetRow, scroll);
+        dialog.getDialogPane().setContent(content);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            // Collect selected permissions
+            java.util.List<String> selected = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<String, CheckBox> entry
+                    : checkBoxMap.entrySet()) {
+                if (entry.getValue().isSelected())
+                    selected.add(entry.getKey());
+            }
+
+            // Build JSON array
+            StringBuilder json = new StringBuilder(
+                    "{\"permissions\":[");
+            for (int i = 0; i < selected.size(); i++) {
+                json.append("\"").append(selected.get(i)).append("\"");
+                if (i < selected.size() - 1) json.append(",");
+            }
+            json.append("]}");
+
+            try {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(ConfigManager.getBaseUrl()
+                                + "/api/users/" + user.getId()
+                                + "/permissions"))
+                        .header("Content-Type", "application/json")
+                        .PUT(HttpRequest.BodyPublishers.ofString(
+                                json.toString()))
+                        .build();
+                HttpResponse<String> resp = client.send(req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success",
+                            "Permissions updated for "
+                                    + user.getFullName());
+                } else {
+                    showAlert("Error",
+                            "Server returned: " + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", "Cannot connect: " + ex.getMessage());
+            }
+        }
+    }
+
+    private java.util.List<String> getPresetPermissions(String preset) {
+        return switch (preset) {
+            case "ADMIN" -> java.util.List.of(
+                    "VIEW_ALL_TICKETS", "VIEW_ASSIGNED_TICKETS",
+                    "UPDATE_TICKET_STATUS", "ASSIGN_TICKET",
+                    "DELETE_TICKET", "VIEW_ALL_ASSETS",
+                    "VIEW_DEPT_ASSETS", "ADD_ASSET", "EDIT_ASSET",
+                    "IMPORT_ASSETS", "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
+                    "EDIT_EMPLOYEE", "SET_LOGIN", "VIEW_DEPARTMENTS",
+                    "ADD_DEPARTMENT", "VIEW_REPORTS", "VIEW_LICENSES",
+                    "ADD_LICENSE", "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
+                    "VIEW_MAINTENANCE", "ADD_MAINTENANCE",
+                    "VIEW_VENDORS", "ADD_VENDOR",
+                    "MANAGE_USERS", "MANAGE_SETTINGS");
+            case "ENGINEER" -> java.util.List.of(
+                    "VIEW_ASSIGNED_TICKETS", "UPDATE_TICKET_STATUS",
+                    "VIEW_ALL_ASSETS", "VIEW_LICENSES",
+                    "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
+                    "VIEW_VENDORS");
+            case "DEPT_HOD" -> java.util.List.of(
+                    "VIEW_ALL_TICKETS", "UPDATE_TICKET_STATUS",
+                    "ASSIGN_TICKET", "VIEW_DEPT_ASSETS",
+                    "ADD_ASSET", "EDIT_ASSET", "VIEW_EMPLOYEES",
+                    "ADD_EMPLOYEE", "EDIT_EMPLOYEE", "SET_LOGIN",
+                    "VIEW_REPORTS", "VIEW_LICENSES",
+                    "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
+                    "VIEW_VENDORS");
+            case "VIEWER" -> java.util.List.of(
+                    "VIEW_ALL_TICKETS", "VIEW_ALL_ASSETS",
+                    "VIEW_EMPLOYEES", "VIEW_DEPARTMENTS",
+                    "VIEW_REPORTS", "VIEW_LICENSES",
+                    "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
+                    "VIEW_VENDORS");
+            default -> java.util.List.of();
+        };
     }
 
     private void showAlert(String title, String message) {

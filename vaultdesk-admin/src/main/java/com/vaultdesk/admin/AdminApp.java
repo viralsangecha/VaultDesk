@@ -7,6 +7,7 @@ import javafx.stage.Stage;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.List;
 import java.util.Properties;
 
 public class AdminApp extends Application {
@@ -81,12 +82,16 @@ public class AdminApp extends Application {
 
             if (resp.statusCode() == 200) {
                 // Also restore deptId from session file
-                int deptId = Integer.parseInt(
-                        session.getProperty("deptId", "0"));
+                String rb        = resp.body();
+                int deptId = Integer.parseInt(session.getProperty("deptId", "0"));
                 SessionManager.get().login(userId, fullName, role);
-                SessionManager.get().setDeptId(deptId);         // ← ADD
-                Scene dash = new DashboardView(fullName, role)
-                        .getScene(stage);
+                SessionManager.get().setDeptId(deptId);
+                List<String> permissions = extractList(rb, "permissions");
+
+                SessionManager.get().login(userId, fullName,
+                        role, permissions);
+                SessionManager.get().setDeptId(deptId);
+                Scene dash = new DashboardView(fullName, role).getScene(stage);
                 ThemeManager.apply(dash);
                 return dash;
             }else {
@@ -99,6 +104,23 @@ public class AdminApp extends Application {
         Scene loginScene = new LoginView().getScene(stage);
         ThemeManager.apply(loginScene);
         return loginScene;
+    }
+    private List<String> extractList(String json, String key) {
+        List<String> result = new java.util.ArrayList<>();
+        String search = "\"" + key + "\":[";
+        int start = json.indexOf(search);
+        if (start == -1) return result;
+        start += search.length();
+        int end = json.indexOf("]", start);
+        if (end == -1) return result;
+        String array = json.substring(start, end);
+        if (array.trim().isEmpty()) return result;
+        for (String item : array.split(",")) {
+            String cleaned = item.trim()
+                    .replace("\"", "").trim();
+            if (!cleaned.isEmpty()) result.add(cleaned);
+        }
+        return result;
     }
 
     public static void main(String[] args) {

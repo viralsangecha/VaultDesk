@@ -84,33 +84,60 @@ public class DashboardView {
         VBox newAssetBox = new VBox(btnNewAsset);
         newAssetBox.setPadding(new Insets(16));
 
-        // ── Sidebar ───────────────────────────────────────
+        // ── Sidebar ───────────────────────────────────────────
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
         sidebar.getChildren().addAll(sideHeader, userCard, btnDashboard);
 
-        if (SessionManager.get().isAdmin()
-                || SessionManager.get().isEngineer()) {
+// Tickets — shown if user can view any tickets
+        if (PermissionManager.canViewAllTickets()
+                || PermissionManager.canViewAssignedTickets()) {
             sidebar.getChildren().add(btnTickets);
         }
 
-        sidebar.getChildren().add(btnAssets);
-        sidebar.getChildren().add(btnEmployees);
+// Assets — shown if user can view assets
+        if (PermissionManager.canViewAllAssets()
+                || PermissionManager.has("VIEW_DEPT_ASSETS")) {
+            sidebar.getChildren().add(btnAssets);
+        }
 
-        if (SessionManager.get().isAdmin()) {
+// Employees
+        if (PermissionManager.canViewEmployees()) {
+            sidebar.getChildren().add(btnEmployees);
+        }
+
+// Departments
+        if (PermissionManager.canViewDepartments()) {
             sidebar.getChildren().add(btnDepartments);
         }
 
-        sidebar.getChildren().addAll(
-                btnLicenses, btnConsumables,
-                btnMaintenance, btnVendors);
+// Licenses
+        if (PermissionManager.canViewLicenses()) {
+            sidebar.getChildren().add(btnLicenses);
+        }
 
-        if (SessionManager.get().isAdmin()
-                || SessionManager.get().isDeptHod()) {
+// Consumables
+        if (PermissionManager.canViewConsumables()) {
+            sidebar.getChildren().add(btnConsumables);
+        }
+
+// Maintenance
+        if (PermissionManager.canViewMaintenance()) {
+            sidebar.getChildren().add(btnMaintenance);
+        }
+
+// Vendors
+        if (PermissionManager.canViewVendors()) {
+            sidebar.getChildren().add(btnVendors);
+        }
+
+// Reports
+        if (PermissionManager.canViewReports()) {
             sidebar.getChildren().add(btnReports);
         }
 
-        if (SessionManager.get().isAdmin()) {
+// Users
+        if (PermissionManager.canManageUsers()) {
             sidebar.getChildren().add(btnUsers);
         }
 
@@ -118,7 +145,8 @@ public class DashboardView {
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().addAll(spacer, newAssetBox);
 
-        if (SessionManager.get().isAdmin()) {
+// Settings
+        if (PermissionManager.canManageSettings()) {
             sidebar.getChildren().addAll(btnSettings, btnSupport);
         }
 
@@ -189,7 +217,15 @@ public class DashboardView {
 
         // ── Default view ──────────────────────────────────
         setActive(btnDashboard);
-        showDashboard();
+        if (!PermissionManager.canViewAllTickets()
+                && PermissionManager.canViewAssignedTickets()) {
+            currentView = "tickets";
+            currentTicketView = new TicketView();
+            setActive(btnTickets);
+            contentArea.getChildren().setAll(currentTicketView.getEngineerView(SessionManager.get().getUserId()));
+        } else {
+            showDashboard();
+        }
 
         // ── Nav actions ───────────────────────────────────
         btnDashboard.setOnAction(e -> {
@@ -219,7 +255,16 @@ public class DashboardView {
             currentAssetView = null;
             currentEmployeeView = null;
             currentTicketView = new TicketView();
-            contentArea.getChildren().setAll(currentTicketView.getView());
+
+            // ── Filter based on permissions ───────────────────
+            if (PermissionManager.canViewAllTickets()) {
+                contentArea.getChildren().setAll(
+                        currentTicketView.getView());
+            } else {
+                contentArea.getChildren().setAll(
+                        currentTicketView.getEngineerView(
+                                SessionManager.get().getUserId()));
+            }
         });
 
         btnEmployees.setOnAction(e -> {

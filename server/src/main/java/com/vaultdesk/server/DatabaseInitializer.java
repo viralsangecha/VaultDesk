@@ -4,6 +4,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
 
@@ -414,6 +417,51 @@ public class DatabaseInitializer implements CommandLineRunner {
     )
 """);
         System.out.println("✔ notifications table ready.");
+
+        // ── USER PERMISSIONS ──────────────────────────────────
+        jdbc.execute("""
+    CREATE TABLE IF NOT EXISTS user_permissions (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL,
+        permission TEXT NOT NULL,
+        granted    INTEGER DEFAULT 1,
+        UNIQUE(user_id, permission),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+""");
+        System.out.println("✔ user_permissions table ready.");
+
+// ── Auto-migrate existing users ───────────────────────
+        try {
+            List<Map<String,Object>> users = jdbc.queryForList(
+                    "SELECT id, role FROM users WHERE active = 1");
+            for (Map<String,Object> user : users) {
+                int userId = ((Number) user.get("id")).intValue();
+                String role = (String) user.get("role");
+
+                // Check if already has permissions
+                Integer count = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM user_permissions WHERE user_id = ?",
+                        Integer.class, userId);
+                if (count != null && count > 0) continue;
+
+                // Assign based on role
+                List<String> perms = getDefaultPermissions(role);
+                for (String perm : perms) {
+                    try {
+                        jdbc.update(
+                                "INSERT OR IGNORE INTO user_permissions " +
+                                        "(user_id, permission, granted) VALUES (?,?,1)",
+                                userId, perm);
+                    } catch (Exception ignored) {}
+                }
+                System.out.println("✔ Permissions set for user " + userId
+                        + " (" + role + ")");
+            }
+        } catch (Exception e) {
+            System.out.println("Permission migration: " + e.getMessage());
+        }
+
         // ─────────────────────────────────────────────
         // DEFAULT ADMIN USER
         // username: admin  |  password: admin123
@@ -434,5 +482,43 @@ public class DatabaseInitializer implements CommandLineRunner {
         System.out.println("✔ Default admin user ready.");
 
         System.out.println("=== All 15 tables ready. VaultDesk database initialized. ===");
+    }
+    private List<String> getDefaultPermissions(String role) {
+        List<String> perms = new java.util.ArrayList<>();
+        switch (role) {
+            case "ADMIN" -> perms.addAll(java.util.List.of(
+                    "VIEW_ALL_TICKETS", "VIEW_ASSIGNED_TICKETS",
+                    "UPDATE_TICKET_STATUS", "ASSIGN_TICKET",
+                    "DELETE_TICKET", "VIEW_ALL_ASSETS",
+                    "VIEW_DEPT_ASSETS", "ADD_ASSET", "EDIT_ASSET",
+                    "IMPORT_ASSETS", "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
+                    "EDIT_EMPLOYEE", "SET_LOGIN", "VIEW_DEPARTMENTS",
+                    "ADD_DEPARTMENT", "VIEW_REPORTS", "VIEW_LICENSES",
+                    "ADD_LICENSE", "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
+                    "VIEW_MAINTENANCE", "ADD_MAINTENANCE",
+                    "VIEW_VENDORS", "ADD_VENDOR",
+                    "MANAGE_USERS", "MANAGE_SETTINGS"
+            ));
+            case "ENGINEER" -> perms.addAll(java.util.List.of(
+                    "VIEW_ASSIGNED_TICKETS", "UPDATE_TICKET_STATUS",
+                    "VIEW_ALL_ASSETS", "VIEW_LICENSES",
+                    "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
+                    "VIEW_VENDORS"
+            ));
+            case "DEPT_HOD" -> perms.addAll(java.util.List.of(
+                    "VIEW_ALL_TICKETS", "UPDATE_TICKET_STATUS",
+                    "ASSIGN_TICKET", "VIEW_DEPT_ASSETS",
+                    "ADD_ASSET", "EDIT_ASSET", "VIEW_EMPLOYEES",
+                    "ADD_EMPLOYEE", "EDIT_EMPLOYEE", "SET_LOGIN",
+                    "VIEW_REPORTS", "VIEW_LICENSES",
+                    "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
+                    "VIEW_VENDORS"
+            ));
+            default -> perms.addAll(java.util.List.of(
+                    "VIEW_ASSIGNED_TICKETS", "UPDATE_TICKET_STATUS",
+                    "VIEW_ALL_ASSETS"
+            ));
+        }
+        return perms;
     }
 }

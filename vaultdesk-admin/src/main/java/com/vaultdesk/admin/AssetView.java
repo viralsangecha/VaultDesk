@@ -56,9 +56,11 @@ public class AssetView {
         HBox titleRow = new HBox(12,
                 new VBox(4, title, subtitle), titleSpacer);
 
-        if (SessionManager.get().isAdmin()
-                || SessionManager.get().isDeptHod()) {
-            titleRow.getChildren().addAll(importBtn, addBtn);
+        if (PermissionManager.canAddAsset()) {
+            titleRow.getChildren().add(addBtn);
+        }
+        if (PermissionManager.canImportAssets()) {
+            titleRow.getChildren().add(importBtn);
         }
         titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
@@ -169,27 +171,38 @@ public class AssetView {
         TableColumn<Asset, Void> actionCol =
                 new TableColumn<>("ACTIONS");
         actionCol.setCellFactory(col -> new TableCell<>() {
-            private final Button editBtn = new Button("Edit Status");
-            {
-                editBtn.getStyleClass().setAll("btn-warning");
-                editBtn.setStyle(
-                        "-fx-background-color: #b45309;" +
-                                "-fx-text-fill: white;" +
-                                "-fx-background-radius: 6;" +
-                                "-fx-padding: 5 12 5 12;" +
-                                "-fx-font-weight: bold; -fx-font-size: 12px;");
-                editBtn.setOnAction(e -> {
-                    Asset asset = getTableView().getItems()
-                            .get(getIndex());
-                    showEditStatusDialog(asset, getTableView());
+                    private final Button editBtn = new Button("Edit Status");
+
+                    {
+                        editBtn.getStyleClass().setAll("btn-warning");
+                        editBtn.setStyle(
+                                "-fx-background-color: #b45309;" +
+                                        "-fx-text-fill: white;" +
+                                        "-fx-background-radius: 6;" +
+                                        "-fx-padding: 5 12 5 12;" +
+                                        "-fx-font-weight: bold; -fx-font-size: 12px;");
+                        editBtn.setOnAction(e -> {
+                            Asset asset = getTableView().getItems()
+                                    .get(getIndex());
+                            showEditStatusDialog(asset, getTableView());
+                        });
+                    }
+
+                    // Wrap edit button in permission check:
+                    @Override
+                    protected void updateItem(Void item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty) {
+                            setGraphic(null);
+                            return;
+                        }
+                        if (PermissionManager.canEditAsset()) {
+                            setGraphic(editBtn);
+                        } else {
+                            setGraphic(null);
+                        }
+                    }
                 });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : editBtn);
-            }
-        });
 
         table.getColumns().addAll(assetTagCol, categoryCol,
                 nameCol, brandCol, locationCol, statusCol, actionCol);
