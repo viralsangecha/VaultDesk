@@ -70,6 +70,19 @@ public class MaintenanceLogDAO {
         );
     }
 
+    public int updateLog(MaintenanceLog log) {
+        return jdbc.update(
+                "UPDATE maintenance_log SET " +
+                        "maintenance_type = ?, description = ?, " +
+                        "cost = ?, maintenance_date = ?, " +
+                        "next_due_date = ?, status = ?, " +
+                        "notes = ? WHERE id = ?",
+                log.maintenanceType(), log.description(),
+                log.cost(), log.maintenanceDate(),
+                log.nextDueDate(), log.status(),
+                log.notes(), log.id());
+    }
+
     public List<MaintenanceLog> getLogsByDept(int deptId) {
         List<Map<String,Object>> rows = jdbc.queryForList(
                 "SELECT m.* FROM maintenance_log m " +

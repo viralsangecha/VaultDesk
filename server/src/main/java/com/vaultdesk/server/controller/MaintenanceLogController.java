@@ -34,4 +34,12 @@ public class MaintenanceLogController {
     public ResponseEntity<?> getByDept(@PathVariable int deptId) {
         return ResponseEntity.ok(maintenanceLogDAO.getLogsByDept(deptId));
     }
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(
+            @PathVariable int id,
+            @RequestBody MaintenanceLog log) {
+        int rows = maintenanceLogDAO.updateLog(log);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("Maintenance log updated");
+    }
 }

@@ -70,6 +70,17 @@ public class VendorContactDAO
 
     }
 
+    public int updateVendor(VendorContact v) {
+        return jdbc.update(
+                "UPDATE vendor_contacts SET " +
+                        "name = ?, contact_person = ?, phone = ?, " +
+                        "email = ?, category = ?, address = ?, " +
+                        "notes = ? WHERE id = ?",
+                v.name(), v.contactPerson(), v.phone(),
+                v.email(), v.category(), v.address(),
+                v.notes(), v.id());
+    }
+
     public void saveVendor(VendorContact v)
     {
         jdbc.update(

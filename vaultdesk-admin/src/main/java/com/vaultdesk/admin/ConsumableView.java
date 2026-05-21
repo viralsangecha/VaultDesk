@@ -9,14 +9,17 @@ import javafx.scene.layout.VBox;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class ConsumableView {
 
+    private TableView<Consumable> table;
     public VBox getView() {
         Label title = new Label("Consumables");
         title.getStyleClass().add("section-title");
-        TableView<Consumable> table = new TableView<>();
+        table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<Consumable, Integer> idCol = new TableColumn<>("ID");
@@ -113,8 +116,39 @@ public class ConsumableView {
         addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
                 "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
-        HBox topBar = new HBox(10);
-        topBar.getChildren().add(addBtn);
+
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 6 12 6 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> {
+            List<String> headers = List.of(
+                    "Name", "Category", "Unit",
+                    "In Stock", "Reorder Level", "Stock Level");
+            List<List<String>> rows = new ArrayList<>();
+            for (Consumable c : table.getItems()) {
+                String level = c.getQuantityInStock() == 0
+                        ? "Out of Stock"
+                        : c.getQuantityInStock()
+                        <= c.getReorderLevel() ? "Low" : "OK";
+                rows.add(List.of(
+                        c.getName(),
+                        c.getCategory(),
+                        c.getUnit(),
+                        String.valueOf(c.getQuantityInStock()),
+                        String.valueOf(c.getReorderLevel()),
+                        level
+                ));
+            }
+            ExcelExporter.export("Consumables", headers, rows);
+        });
+
+        HBox topBar = new HBox(10, addBtn, exportBtn);
 
         loadConsumables(table);
 

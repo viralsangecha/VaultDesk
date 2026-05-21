@@ -60,6 +60,20 @@ public class LicenseDAO {
                 "     WHERE id = ?",seatsUsed,id);
     }
 
+    public int updateLicense(License l) {
+        return jdbc.update(
+                "UPDATE licenses SET " +
+                        "software_name = ?, license_type = ?, " +
+                        "license_key = ?, seats_total = ?, " +
+                        "seats_used = ?, vendor = ?, " +
+                        "purchase_date = ?, expiry_date = ?, " +
+                        "cost = ?, notes = ? WHERE id = ?",
+                l.softwareName(), l.licenseType(),
+                l.licenseKey(), l.seatsTotal(),
+                l.seatsUsed(), l.vendor(),
+                l.purchaseDate(), l.expiryDate(),
+                l.cost(), l.notes(), l.id());
+    }
 
     private License mapRowToLicense(Map<String,Object> row) {
         return new License(

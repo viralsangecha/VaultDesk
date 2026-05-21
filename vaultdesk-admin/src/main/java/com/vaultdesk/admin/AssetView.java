@@ -12,6 +12,8 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class AssetView {
@@ -45,6 +47,17 @@ public class AssetView {
                         "-fx-font-weight: bold; -fx-font-size: 13px;" +
                         "-fx-cursor: hand;");
 
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 14 8 14;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> exportAssets());
+
         Button importBtn = new Button("⬆ Import CSV");
         importBtn.getStyleClass().setAll("btn-primary");
         importBtn.setStyle(
@@ -59,10 +72,8 @@ public class AssetView {
                 new VBox(4, title, subtitle), titleSpacer);
 
         if (PermissionManager.canAddAsset()) {
-            titleRow.getChildren().add(addBtn);
-        }
-        if (PermissionManager.canImportAssets()) {
-            titleRow.getChildren().add(importBtn);
+            titleRow.getChildren().addAll(
+                    importBtn, exportBtn, addBtn);
         }
         titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
@@ -365,6 +376,26 @@ public class AssetView {
                     || category.equalsIgnoreCase(a.getCategory());
             return ms && mc;
         }));
+    }
+
+    private void exportAssets() {
+        List<String> headers = List.of(
+                "Asset Tag", "Name", "Category", "Brand",
+                "Serial No", "Status", "Location", "Notes");
+        List<List<String>> rows = new ArrayList<>();
+        for (Asset a : allAssets) {
+            rows.add(List.of(
+                    a.getAssetTag(),
+                    a.getName(),
+                    a.getCategory(),
+                    a.getBrand(),
+                    a.getSerialNumber(),
+                    a.getStatus(),
+                    a.getLocation(),
+                    a.getNotes() != null ? a.getNotes() : ""
+            ));
+        }
+        ExcelExporter.export("Assets", headers, rows);
     }
 
     private void loadAssets() {

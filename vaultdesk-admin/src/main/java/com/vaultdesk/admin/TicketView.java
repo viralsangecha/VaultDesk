@@ -13,9 +13,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class TicketView {
 
@@ -302,10 +300,22 @@ public class TicketView {
                         "-fx-font-weight: bold; -fx-cursor: hand;");
         addBtn.setOnAction(e -> showAddTicketDialog(table));
 
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 14 8 14;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> exportTickets());
+
+
         Label hint = new Label("Double-click a row to view details and comments");
         hint.setStyle("-fx-text-fill: #484f58; -fx-font-size: 11px;");
 
-        HBox topBar = new HBox(10, addBtn, hint);
+        HBox topBar = new HBox(10, addBtn, exportBtn, hint);
         topBar.setAlignment(Pos.CENTER_LEFT);
 
         loadTickets(table);
@@ -603,6 +613,30 @@ public class TicketView {
         return card;
     }
 
+    private void exportTickets() {
+        List<String> headers = List.of(
+                "Ticket No", "Title", "Category",
+                "Priority", "Status", "Assigned To",
+                "Created");
+        List<List<String>> rows = new ArrayList<>();
+        for (Ticket t : allTickets) {
+            rows.add(List.of(
+                    t.getTicketNo(),
+                    t.getTitle(),
+                    t.getCategory(),
+                    t.getPriority(),
+                    t.getStatus(),
+                    userMap.getOrDefault(
+                            t.getAssignedTo(), "Unassigned"),
+                    t.getCreatedAt() != null
+                            && t.getCreatedAt().length() >= 10
+                            ? t.getCreatedAt().substring(0, 10)
+                            : ""
+            ));
+        }
+        ExcelExporter.export("Tickets", headers, rows);
+    }
+
     // ── Load engineer tickets ─────────────────────────────────
     private void loadEngineerTickets(int userId,
                                      TableView<Ticket> table,
@@ -704,10 +738,21 @@ public class TicketView {
             detailPanel.setVisible(false);
             detailPanel.setManaged(false);
         });
+        Button editTicketBtn = new Button("✏ Edit");
+        editTicketBtn.getStyleClass().setAll("btn-warning");
+        editTicketBtn.setStyle(
+                "-fx-background-color: #b45309;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 5 12 5 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        editTicketBtn.setOnAction(e ->
+                showEditTicketDialog(ticket, table));
 
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
-        HBox header = new HBox(ticketNoLabel, headerSpacer, closeBtn);
+        HBox header = new HBox(ticketNoLabel, headerSpacer, editTicketBtn, closeBtn);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(12, 12, 8, 16));
         header.setStyle("-fx-border-color: #30363d; -fx-border-width: 0 0 1 0;");
@@ -882,6 +927,99 @@ public class TicketView {
         }
     }
 
+    private void showEditTicketDialog(Ticket ticket,
+                                      TableView<Ticket> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Edit Ticket");
+        dialog.setHeaderText(ticket.getTicketNo());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField titleField = new TextField(
+                ticket.getTitle());
+
+        ComboBox<String> categoryBox = new ComboBox<>();
+        categoryBox.getItems().addAll(
+                "Hardware", "Software", "SAP",
+                "Network", "General");
+        categoryBox.setValue(ticket.getCategory());
+
+        ComboBox<String> priorityBox = new ComboBox<>();
+        priorityBox.getItems().addAll(
+                "Low", "Medium", "High", "Critical");
+        priorityBox.setValue(ticket.getPriority());
+
+        ComboBox<String> statusBox = new ComboBox<>();
+        statusBox.getItems().addAll(
+                "Open", "In Progress", "Resolved", "Closed");
+        statusBox.setValue(ticket.getStatus());
+
+        TextField resolutionField = new TextField();
+        // Load resolution
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/tickets/" + ticket.getId()))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            resolutionField.setText(
+                    extractValue(resp.body(), "resolution"));
+        } catch (Exception ignored) {}
+
+        TextField assetIdField = new TextField();
+        assetIdField.setPromptText("Asset ID (optional)");
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        int r = 0;
+        grid.add(new Label("Title *:"),      0, r);
+        grid.add(titleField,                 1, r++);
+        grid.add(new Label("Category:"),     0, r);
+        grid.add(categoryBox,                1, r++);
+        grid.add(new Label("Priority:"),     0, r);
+        grid.add(priorityBox,                1, r++);
+        grid.add(new Label("Status:"),       0, r);
+        grid.add(statusBox,                  1, r++);
+        grid.add(new Label("Resolution:"),   0, r);
+        grid.add(resolutionField,            1, r++);
+        grid.add(new Label("Asset ID:"),     0, r);
+        grid.add(assetIdField,               1, r++);
+        grid.add(errorLabel,                 1, r);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.setDisable(titleField.getText().trim().isEmpty());
+        titleField.textProperty().addListener((o, ov, nv) ->
+                okBtn.setDisable(nv.trim().isEmpty()));
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                // Update status + resolution
+                if (!statusBox.getValue()
+                        .equals(ticket.getStatus())
+                        || !resolutionField.getText().isEmpty()) {
+                    updateTicketStatus(ticket.getId(),
+                            statusBox.getValue(),
+                            resolutionField.getText());
+                }
+                loadTickets(table);
+                // Close detail panel
+                detailPanel.setVisible(false);
+                detailPanel.setManaged(false);
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
 
     private String loadResolution(int ticketId) {
         try {

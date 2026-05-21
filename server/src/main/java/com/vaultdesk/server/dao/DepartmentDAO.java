@@ -40,6 +40,13 @@ public class DepartmentDAO {
         }
     }
 
+    public int updateDepartment(Department dept) {
+        return jdbc.update(
+                "UPDATE departments SET " +
+                        "name = ?, location = ? WHERE id = ?",
+                dept.name(), dept.location(), dept.id());
+    }
+
     public Department getDepartmentById(int id)
     {
         try {

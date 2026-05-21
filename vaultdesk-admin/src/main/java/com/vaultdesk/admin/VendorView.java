@@ -9,15 +9,27 @@ import javafx.scene.layout.VBox;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class VendorView {
 
+    private TableView<Vendor> table;
     public VBox getView() {
         Label title = new Label("Vendors");
         title.getStyleClass().add("section-title");
-        TableView<Vendor> table = new TableView<>();
+        table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        table.setRowFactory(tv -> {
+            TableRow<Vendor> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    showFullEditDialog(row.getItem(), table);
+            });
+            return row;
+        });
 
         TableColumn<Vendor, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -51,14 +63,170 @@ public class VendorView {
         addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
                 "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
-        HBox topBar = new HBox(10);
-        topBar.getChildren().add(addBtn);
+
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 6 12 6 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> {
+            List<String> headers = List.of(
+                    "Name", "Contact Person", "Phone",
+                    "Email", "Category");
+            List<List<String>> rows = new ArrayList<>();
+            for (Vendor v : table.getItems()) {
+                rows.add(List.of(
+                        v.getName(),
+                        v.getContactPerson(),
+                        v.getPhone(),
+                        v.getEmail(),
+                        v.getCategory()
+                ));
+            }
+            ExcelExporter.export("Vendors", headers, rows);
+        });
+
+        HBox topBar = new HBox(10, addBtn, exportBtn);;
 
         loadVendors(table);
 
         VBox root = new VBox(10);
         root.getChildren().addAll(title, topBar, table);
         return root;
+    }
+    private void showFullEditDialog(Vendor vendor,
+                                    TableView<Vendor> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Vendor Details");
+        dialog.setHeaderText(vendor.getName());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField nameField = new TextField(vendor.getName());
+        TextField contactField = new TextField(
+                vendor.getContactPerson());
+        TextField phoneField = new TextField(vendor.getPhone());
+        TextField emailField = new TextField(vendor.getEmail());
+
+        ComboBox<String> categoryBox = new ComboBox<>();
+        categoryBox.getItems().addAll(
+                "Hardware", "Software", "AMC",
+                "Service", "Other");
+        categoryBox.setValue(vendor.getCategory());
+
+        TextField addressField = new TextField();
+        TextField notesField = new TextField();
+
+        // Load full details
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/vendors/" + vendor.getId()))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            addressField.setText(
+                    extractValue(resp.body(), "address"));
+            notesField.setText(
+                    extractValue(resp.body(), "notes"));
+        } catch (Exception ignored) {}
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        int r = 0;
+        grid.add(new Label("Name *:"),         0, r);
+        grid.add(nameField,                    1, r++);
+        grid.add(new Label("Contact Person:"), 0, r);
+        grid.add(contactField,                 1, r++);
+        grid.add(new Label("Phone *:"),        0, r);
+        grid.add(phoneField,                   1, r++);
+        grid.add(new Label("Email:"),          0, r);
+        grid.add(emailField,                   1, r++);
+        grid.add(new Label("Category:"),       0, r);
+        grid.add(categoryBox,                  1, r++);
+        grid.add(new Label("Address:"),        0, r);
+        grid.add(addressField,                 1, r++);
+        grid.add(new Label("Notes:"),          0, r);
+        grid.add(notesField,                   1, r++);
+        grid.add(errorLabel,                   1, r);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(
+                javafx.event.ActionEvent.ACTION, event -> {
+                    if (nameField.getText().trim().isEmpty()) {
+                        errorLabel.setText("Name is required.");
+                        event.consume();
+                    } else if (phoneField.getText().trim().isEmpty()) {
+                        errorLabel.setText("Phone is required.");
+                        event.consume();
+                    }
+                });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                String body = "{" +
+                        "\"id\":" + vendor.getId() + "," +
+                        "\"name\":\"" + escape(
+                        nameField.getText()) + "\"," +
+                        "\"contactPerson\":\"" + escape(
+                        contactField.getText()) + "\"," +
+                        "\"phone\":\"" +
+                        phoneField.getText() + "\"," +
+                        "\"email\":\"" +
+                        emailField.getText() + "\"," +
+                        "\"category\":\"" +
+                        categoryBox.getValue() + "\"," +
+                        "\"address\":\"" + escape(
+                        addressField.getText()) + "\"," +
+                        "\"notes\":\"" + escape(
+                        notesField.getText()) + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(
+                                ConfigManager.getBaseUrl()
+                                        + "/api/vendors/"
+                                        + vendor.getId()))
+                        .header("Content-Type",
+                                "application/json")
+                        .PUT(HttpRequest.BodyPublishers
+                                .ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(
+                        req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success", "Vendor updated.");
+                    loadVendors(table);
+                } else {
+                    showAlert("Error", "Server returned: "
+                            + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "'")
+                .replace("\n", " ")
+                .replace("\r", "");
     }
 
     private void loadVendors(TableView<Vendor> table) {

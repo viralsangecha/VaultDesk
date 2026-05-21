@@ -9,15 +9,26 @@ import javafx.scene.layout.VBox;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class LicenseView {
-
+    private TableView<License> table;
     public VBox getView() {
         Label title = new Label("Licenses");
         title.getStyleClass().add("section-title");
-        TableView<License> table = new TableView<>();
+        table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        table.setRowFactory(tv -> {
+            TableRow<License> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    showFullEditDialog(row.getItem(), table);
+            });
+            return row;
+        });
 
         TableColumn<License, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -104,15 +115,226 @@ public class LicenseView {
         addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
                 "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 6 12 6 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> {
+            List<String> headers = List.of(
+                    "Software", "Type", "Vendor",
+                    "Expiry", "Total Seats", "Used Seats");
+            List<List<String>> rows = new ArrayList<>();
+            for (License l : table.getItems()) {
+                rows.add(List.of(
+                        l.getSoftwareName(),
+                        l.getLicenseType(),
+                        l.getVendor(),
+                        l.getExpiryDate(),
+                        String.valueOf(l.getSeatsTotal()),
+                        String.valueOf(l.getSeatsUsed())
+                ));
+            }
+            ExcelExporter.export("Licenses", headers, rows);
+        });
         HBox topBar = new HBox(10);
         if (PermissionManager.canAddLicense()) {
             topBar.getChildren().add(addBtn);
+            topBar.getChildren().add(exportBtn);
         }
         loadLicenses(table);
 
         VBox root = new VBox(10);
         root.getChildren().addAll(title, topBar, table);
         return root;
+    }
+
+    private void showFullEditDialog(License license,
+                                    TableView<License> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("License Details");
+        dialog.setHeaderText(license.getSoftwareName());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField softwareNameField = new TextField(
+                license.getSoftwareName());
+
+        ComboBox<String> licenseTypeBox = new ComboBox<>();
+        licenseTypeBox.getItems().addAll(
+                "Perpetual", "Subscription", "OEM", "Trial");
+        licenseTypeBox.setValue(license.getLicenseType());
+
+        TextField licenseKeyField = new TextField();
+        TextField vendorField = new TextField(
+                license.getVendor());
+        TextField purchaseDateField = new TextField();
+        TextField expiryDateField = new TextField(
+                license.getExpiryDate());
+        NumberField seatsTotalField = new NumberField();
+        seatsTotalField.setText(
+                String.valueOf(license.getSeatsTotal()));
+        NumberField costField = new NumberField(true);
+        TextField notesField = new TextField();
+
+        // Load full details
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/licenses"))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            // Parse to find this license
+            String body = resp.body();
+            // Find by id — simplified
+            licenseKeyField.setText(
+                    extractValueFromId(body,
+                            license.getId(), "licenseKey"));
+            purchaseDateField.setText(
+                    extractValueFromId(body,
+                            license.getId(), "purchaseDate"));
+            costField.setText(
+                    extractValueFromId(body,
+                            license.getId(), "cost"));
+            notesField.setText(
+                    extractValueFromId(body,
+                            license.getId(), "notes"));
+        } catch (Exception ignored) {}
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        int r = 0;
+        grid.add(new Label("Software Name *:"), 0, r);
+        grid.add(softwareNameField,             1, r++);
+        grid.add(new Label("License Type:"),    0, r);
+        grid.add(licenseTypeBox,                1, r++);
+        grid.add(new Label("License Key:"),     0, r);
+        grid.add(licenseKeyField,               1, r++);
+        grid.add(new Label("Total Seats *:"),   0, r);
+        grid.add(seatsTotalField,               1, r++);
+        grid.add(new Label("Vendor:"),          0, r);
+        grid.add(vendorField,                   1, r++);
+        grid.add(new Label("Purchase Date:"),   0, r);
+        grid.add(DatePickerUtil.dateField(
+                purchaseDateField),             1, r++);
+        grid.add(new Label("Expiry Date:"),     0, r);
+        grid.add(DatePickerUtil.dateField(
+                expiryDateField),               1, r++);
+        grid.add(new Label("Cost (₹):"),         0, r);
+        grid.add(costField,                     1, r++);
+        grid.add(new Label("Notes:"),           0, r);
+        grid.add(notesField,                    1, r++);
+        grid.add(errorLabel,                    1, r);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(
+                javafx.event.ActionEvent.ACTION, event -> {
+                    if (softwareNameField.getText().trim().isEmpty()) {
+                        errorLabel.setText(
+                                "Software name is required.");
+                        event.consume();
+                    } else if (seatsTotalField.getIntValue() <= 0) {
+                        errorLabel.setText(
+                                "Total seats must be greater than 0.");
+                        event.consume();
+                    }
+                });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                String body = "{" +
+                        "\"id\":" + license.getId() + "," +
+                        "\"softwareName\":\"" + escape(
+                        softwareNameField.getText()) + "\"," +
+                        "\"licenseType\":\"" +
+                        licenseTypeBox.getValue() + "\"," +
+                        "\"licenseKey\":\"" + escape(
+                        licenseKeyField.getText()) + "\"," +
+                        "\"seatsTotal\":" +
+                        seatsTotalField.getIntValue() + "," +
+                        "\"seatsUsed\":" +
+                        license.getSeatsUsed() + "," +
+                        "\"vendor\":\"" + escape(
+                        vendorField.getText()) + "\"," +
+                        "\"purchaseDate\":\"" +
+                        purchaseDateField.getText() + "\"," +
+                        "\"expiryDate\":\"" +
+                        expiryDateField.getText() + "\"," +
+                        "\"cost\":" +
+                        costField.getDoubleValue() + "," +
+                        "\"notes\":\"" + escape(
+                        notesField.getText()) + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(
+                                ConfigManager.getBaseUrl()
+                                        + "/api/licenses/"
+                                        + license.getId()))
+                        .header("Content-Type",
+                                "application/json")
+                        .PUT(HttpRequest.BodyPublishers
+                                .ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(
+                        req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success", "License updated.");
+                    loadLicenses(table);
+                } else {
+                    showAlert("Error", "Server returned: "
+                            + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private String extractValueFromId(String json,
+                                      int id, String key) {
+        // Find the object with matching id
+        for (String obj : json.split("\\},\\{")) {
+            obj = obj.replace("[", "").replace("]", "")
+                    .replace("{", "").replace("}", "");
+            String idStr = extractIntStr(obj, "id");
+            if (String.valueOf(id).equals(idStr.trim())) {
+                return extractValue(obj, key);
+            }
+        }
+        return "";
+    }
+
+    private String extractIntStr(String json, String key) {
+        String search = "\"" + key + "\":";
+        int start = json.indexOf(search) + search.length();
+        int end = json.indexOf(",", start);
+        if (end == -1) end = json.length();
+        return json.substring(start, end)
+                .trim().replace("}", "");
+    }
+
+    private String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "'")
+                .replace("\n", " ")
+                .replace("\r", "");
     }
 
     private void loadLicenses(TableView<License> table) {

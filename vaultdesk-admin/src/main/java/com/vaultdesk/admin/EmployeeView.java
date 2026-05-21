@@ -13,6 +13,8 @@ import javafx.scene.layout.VBox;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class EmployeeView {
@@ -51,6 +53,46 @@ public class EmployeeView {
         allEmployees = FXCollections.observableArrayList();
         table.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY);
+
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 6 12 6 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> {
+            List<String> headers = List.of(
+                    "ID", "Name", "Emp Code",
+                    "Designation", "Email", "Phone",
+                    "Status");
+            List<List<String>> rows = new ArrayList<>();
+            for (Employee emp : allEmployees) {
+                rows.add(List.of(
+                        String.valueOf(emp.getId()),
+                        emp.getName(),
+                        emp.getEmpCode(),
+                        emp.getDesignation(),
+                        emp.getEmail(),
+                        emp.getPhone(),
+                        emp.isActive() ? "Active" : "Inactive"
+                ));
+            }
+            ExcelExporter.export(
+                    active ? "Active_Employees"
+                            : "Inactive_Employees",
+                    headers, rows);
+        });
+        table.setRowFactory(tv -> {
+            TableRow<Employee> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    showFullEditDialog(row.getItem(), table);
+            });
+            return row;
+        });
 
         // ── All existing columns stay the same ────────────────
         TableColumn<Employee, Integer> idCol =
@@ -241,6 +283,7 @@ public class EmployeeView {
         HBox topBar = new HBox(10);
         if (active && (PermissionManager.canAddEmployee())) {
             topBar.getChildren().add(addBtn);
+            topBar.getChildren().add(exportBtn);
         }
         topBar.getChildren().add(searchField);
 
@@ -254,6 +297,174 @@ public class EmployeeView {
         VBox.setVgrow(table, Priority.ALWAYS);
         content.setPadding(new Insets(10));
         return content;
+    }
+
+    private void showFullEditDialog(Employee emp,
+                                    TableView<Employee> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Employee Details");
+        dialog.setHeaderText(emp.getName()
+                + " — " + emp.getEmpCode());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefWidth(480);
+
+        TextField nameField = new TextField(emp.getName());
+        TextField empCodeField = new TextField(
+                emp.getEmpCode());
+        empCodeField.setEditable(false);
+        empCodeField.setStyle(
+                "-fx-opacity: 0.6;");
+
+        TextField deptField = new TextField();
+        deptField.setPromptText("Department ID");
+
+        TextField designationField = new TextField(
+                emp.getDesignation());
+        TextField emailField = new TextField(emp.getEmail());
+        TextField phoneField = new TextField(emp.getPhone());
+
+        TextField joinDateField = new TextField();
+        TextField leaveDateField = new TextField();
+        TextField notesField = new TextField();
+
+        // Load full details
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/employees/" + emp.getId()))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = resp.body();
+            deptField.setText(extractIntStr(body,
+                    "departmentId"));
+            joinDateField.setText(extractValue(body,
+                    "joinDate"));
+            leaveDateField.setText(extractValue(body,
+                    "leaveDate"));
+            notesField.setText(extractValue(body, "notes"));
+        } catch (Exception ignored) {}
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+        int r = 0;
+        grid.add(new Label("Name *:"),        0, r);
+        grid.add(nameField,                   1, r++);
+        grid.add(new Label("Emp Code:"),      0, r);
+        grid.add(empCodeField,                1, r++);
+        grid.add(new Label("Dept ID:"),       0, r);
+        grid.add(deptField,                   1, r++);
+        grid.add(new Label("Designation *:"), 0, r);
+        grid.add(designationField,            1, r++);
+        grid.add(new Label("Email:"),         0, r);
+        grid.add(emailField,                  1, r++);
+        grid.add(new Label("Phone:"),         0, r);
+        grid.add(phoneField,                  1, r++);
+        grid.add(new Label("Join Date:"),     0, r);
+        grid.add(DatePickerUtil.dateField(
+                joinDateField),               1, r++);
+        grid.add(new Label("Leave Date:"),    0, r);
+        grid.add(DatePickerUtil.dateField(
+                leaveDateField),              1, r++);
+        grid.add(new Label("Notes:"),         0, r);
+        grid.add(notesField,                  1, r++);
+        grid.add(errorLabel,                  1, r);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(
+                javafx.event.ActionEvent.ACTION, event -> {
+                    if (nameField.getText().trim().isEmpty()) {
+                        errorLabel.setText("Name is required.");
+                        event.consume();
+                    } else if (designationField.getText()
+                            .trim().isEmpty()) {
+                        errorLabel.setText(
+                                "Designation is required.");
+                        event.consume();
+                    }
+                });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                int deptId = deptField.getText()
+                        .trim().isEmpty() ? 0
+                        : Integer.parseInt(
+                        deptField.getText().trim());
+                String body = "{" +
+                        "\"id\":" + emp.getId() + "," +
+                        "\"name\":\"" + escape(
+                        nameField.getText()) + "\"," +
+                        "\"empCode\":\"" +
+                        emp.getEmpCode() + "\"," +
+                        "\"departmentId\":" + deptId + "," +
+                        "\"designation\":\"" + escape(
+                        designationField.getText()) + "\"," +
+                        "\"email\":\"" +
+                        emailField.getText() + "\"," +
+                        "\"phone\":\"" +
+                        phoneField.getText() + "\"," +
+                        "\"joinDate\":\"" +
+                        joinDateField.getText() + "\"," +
+                        "\"leaveDate\":\"" +
+                        leaveDateField.getText() + "\"," +
+                        "\"active\":1," +
+                        "\"notes\":\"" + escape(
+                        notesField.getText()) + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(
+                                ConfigManager.getBaseUrl()
+                                        + "/api/employees/"
+                                        + emp.getId()))
+                        .header("Content-Type",
+                                "application/json")
+                        .PUT(HttpRequest.BodyPublishers
+                                .ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(
+                        req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success",
+                            "Employee updated.");
+                    loadEmployees(table);
+                } else {
+                    showAlert("Error", "Server returned: "
+                            + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private String extractIntStr(String json, String key) {
+        String search = "\"" + key + "\":";
+        int start = json.indexOf(search) + search.length();
+        int end = json.indexOf(",", start);
+        if (end == -1) end = json.length();
+        return json.substring(start, end)
+                .trim().replace("}", "");
+    }
+
+    private String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "'")
+                .replace("\n", " ")
+                .replace("\r", "");
     }
 
     private void reactivateEmployee(Employee emp,

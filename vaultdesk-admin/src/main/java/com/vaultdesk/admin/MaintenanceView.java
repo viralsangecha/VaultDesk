@@ -10,15 +10,27 @@ import javafx.scene.layout.VBox;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class MaintenanceView {
 
+    private TableView<Maintenance> table;
     public VBox getView() {
         Label title = new Label("Maintenance");
         title.getStyleClass().add("section-title");
-        TableView<Maintenance> table = new TableView<>();
+        table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        table.setRowFactory(tv -> {
+            TableRow<Maintenance> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    showFullEditDialog(row.getItem(), table);
+            });
+            return row;
+        });
 
         TableColumn<Maintenance, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
@@ -70,14 +82,172 @@ public class MaintenanceView {
         addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
                 "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
-        HBox topBar = new HBox(10);
-        topBar.getChildren().add(addBtn);
+        Button exportBtn = new Button("⬇ Export");
+        exportBtn.getStyleClass().setAll("btn-primary");
+        exportBtn.setStyle(
+                "-fx-background-color: #6e40c9;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 6 12 6 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;");
+        exportBtn.setOnAction(e -> {
+            List<String> headers = List.of(
+                    "Asset ID", "Type", "Description",
+                    "Cost", "Date", "Status");
+            List<List<String>> rows = new ArrayList<>();
+            for (Maintenance m : table.getItems()) {
+                rows.add(List.of(
+                        String.valueOf(m.getAssetId()),
+                        m.getMaintenanceType(),
+                        m.getDescription(),
+                        String.valueOf(m.getCost()),
+                        m.getMaintenanceDate(),
+                        m.getStatus()
+                ));
+            }
+            ExcelExporter.export("Maintenance", headers, rows);
+        });
+
+        HBox topBar = new HBox(10, addBtn, exportBtn);
 
         loadMaintenance(table);
 
         VBox root = new VBox(10);
         root.getChildren().addAll(title, topBar, table);
         return root;
+    }
+    private void showFullEditDialog(Maintenance m,
+                                    TableView<Maintenance> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Maintenance Details");
+        dialog.setHeaderText("Asset #" + m.getAssetId());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField assetIdField = new TextField(
+                String.valueOf(m.getAssetId()));
+        assetIdField.setEditable(false);
+        assetIdField.setStyle("-fx-opacity: 0.6;");
+
+        ComboBox<String> typeBox = new ComboBox<>();
+        typeBox.getItems().addAll("Repair", "AMC Visit",
+                "Preventive", "Upgrade", "Cleaning", "Other");
+        typeBox.setValue(m.getMaintenanceType());
+
+        TextField descField = new TextField(
+                m.getDescription());
+        NumberField costField = new NumberField(true);
+        costField.setText(String.valueOf(m.getCost()));
+
+        TextField dateField = new TextField(
+                m.getMaintenanceDate());
+        TextField nextDueDateField = new TextField();
+        TextField notesField = new TextField();
+
+        ComboBox<String> statusBox = new ComboBox<>();
+        statusBox.getItems().addAll(
+                "Completed", "Pending", "In Progress");
+        statusBox.setValue(m.getStatus());
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        int r = 0;
+        grid.add(new Label("Asset ID:"),      0, r);
+        grid.add(assetIdField,                1, r++);
+        grid.add(new Label("Type:"),          0, r);
+        grid.add(typeBox,                     1, r++);
+        grid.add(new Label("Description:"),   0, r);
+        grid.add(descField,                   1, r++);
+        grid.add(new Label("Cost (₹):"),       0, r);
+        grid.add(costField,                   1, r++);
+        grid.add(new Label("Date *:"),        0, r);
+        grid.add(DatePickerUtil.dateField(
+                dateField),                   1, r++);
+        grid.add(new Label("Next Due Date:"), 0, r);
+        grid.add(DatePickerUtil.dateField(
+                nextDueDateField),            1, r++);
+        grid.add(new Label("Status:"),        0, r);
+        grid.add(statusBox,                   1, r++);
+        grid.add(new Label("Notes:"),         0, r);
+        grid.add(notesField,                  1, r++);
+        grid.add(errorLabel,                  1, r);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(
+                javafx.event.ActionEvent.ACTION, event -> {
+                    if (dateField.getText().trim().isEmpty()) {
+                        errorLabel.setText("Date is required.");
+                        event.consume();
+                    }
+                });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                String body = "{" +
+                        "\"id\":" + m.getId() + "," +
+                        "\"assetId\":" + m.getAssetId() + "," +
+                        "\"maintenanceType\":\"" +
+                        typeBox.getValue() + "\"," +
+                        "\"description\":\"" + escape(
+                        descField.getText()) + "\"," +
+                        "\"doneByInternal\":0," +
+                        "\"doneByVendor\":0," +
+                        "\"cost\":" +
+                        costField.getDoubleValue() + "," +
+                        "\"maintenanceDate\":\"" +
+                        dateField.getText() + "\"," +
+                        "\"nextDueDate\":\"" +
+                        nextDueDateField.getText() + "\"," +
+                        "\"status\":\"" +
+                        statusBox.getValue() + "\"," +
+                        "\"notes\":\"" + escape(
+                        notesField.getText()) + "\"," +
+                        "\"loggedBy\":" +
+                        SessionManager.get().getUserId() +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(
+                                ConfigManager.getBaseUrl()
+                                        + "/api/maintenance/"
+                                        + m.getId()))
+                        .header("Content-Type",
+                                "application/json")
+                        .PUT(HttpRequest.BodyPublishers
+                                .ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(
+                        req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success",
+                            "Maintenance log updated.");
+                    loadMaintenance(table);
+                } else {
+                    showAlert("Error", "Server returned: "
+                            + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "'")
+                .replace("\n", " ")
+                .replace("\r", "");
     }
 
     private void loadMaintenance(TableView<Maintenance> table) {

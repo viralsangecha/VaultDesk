@@ -34,4 +34,12 @@ public class DepartmentController {
         return ResponseEntity.status(201).body("Department added");
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDepartment(
+            @PathVariable int id,
+            @RequestBody Department dept) {
+        int rows = departmentDAO.updateDepartment(dept);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("Department updated");
+    }
 }

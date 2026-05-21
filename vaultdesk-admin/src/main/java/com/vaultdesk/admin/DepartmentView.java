@@ -19,6 +19,15 @@ public class DepartmentView {
         TableView<Department> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        table.setRowFactory(tv -> {
+            TableRow<Department> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    showFullEditDialog(row.getItem(), table);
+            });
+            return row;
+        });
+
         TableColumn<Department, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
                 new SimpleIntegerProperty(data.getValue().getId()).asObject());
@@ -77,6 +86,86 @@ public class DepartmentView {
         VBox root = new VBox(10);
         root.getChildren().addAll(title, topBar, table);
         return root;
+    }
+
+    private void showFullEditDialog(Department dept,
+                                    TableView<Department> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Edit Department");
+        dialog.setHeaderText(dept.getName());
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField nameField = new TextField(dept.getName());
+        TextField locationField = new TextField(
+                dept.getLocation());
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        grid.add(new Label("Name *:"),    0, 0);
+        grid.add(nameField,               1, 0);
+        grid.add(new Label("Location:"),  0, 1);
+        grid.add(locationField,           1, 1);
+        grid.add(errorLabel,              1, 2);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(
+                javafx.event.ActionEvent.ACTION, event -> {
+                    if (nameField.getText().trim().isEmpty()) {
+                        errorLabel.setText("Name is required.");
+                        event.consume();
+                    }
+                });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                String body = "{" +
+                        "\"id\":" + dept.getId() + "," +
+                        "\"name\":\"" + escape(
+                        nameField.getText()) + "\"," +
+                        "\"location\":\"" + escape(
+                        locationField.getText()) + "\"" +
+                        "}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(
+                                ConfigManager.getBaseUrl()
+                                        + "/api/departments/"
+                                        + dept.getId()))
+                        .header("Content-Type",
+                                "application/json")
+                        .PUT(HttpRequest.BodyPublishers
+                                .ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(
+                        req,
+                        HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    showAlert("Success",
+                            "Department updated.");
+                    loadDepartments(table);
+                } else {
+                    showAlert("Error", "Server returned: "
+                            + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "'");
     }
 
     private void loadDepartments(TableView<Department> table) {

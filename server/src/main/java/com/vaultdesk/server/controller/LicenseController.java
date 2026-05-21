@@ -42,4 +42,12 @@ public class LicenseController {
         return ResponseEntity.ok("Licence updated");
 
     }
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateLicense(
+            @PathVariable int id,
+            @RequestBody License license) {
+        int rows = licenseDAO.updateLicense(license);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("License updated");
+    }
 }
