@@ -215,6 +215,73 @@ public class TicketView {
                 categoryCol, priorityCol, statusCol,
                 assignedToCol, createdCol,slaCol, actionCol);
 
+        // ── Bulk action bar ───────────────────────────────────
+        Label bulkLabel = new Label("Bulk Actions:");
+        bulkLabel.setStyle(
+                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+
+        ComboBox<String> bulkStatusBox = new ComboBox<>();
+        bulkStatusBox.getItems().addAll(
+                "In Progress", "Resolved", "Closed");
+        bulkStatusBox.setPromptText("Select status...");
+        bulkStatusBox.setStyle(
+                "-fx-background-color: #21262d;" +
+                        "-fx-text-fill: #c9d1d9;" +
+                        "-fx-border-color: #30363d;" +
+                        "-fx-border-radius: 6;");
+
+        Button bulkApplyBtn = new Button("Apply to Selected");
+        bulkApplyBtn.getStyleClass().setAll("btn-warning");
+        bulkApplyBtn.setStyle(
+                "-fx-background-color: #b45309; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+
+        Label bulkResultLabel = new Label("");
+        bulkResultLabel.setStyle(
+                "-fx-text-fill: #3fb950; -fx-font-size: 11px;");
+
+        HBox bulkBar = new HBox(10, bulkLabel, bulkStatusBox,
+                bulkApplyBtn, bulkResultLabel);
+        bulkBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        bulkBar.getStyleClass().add("filter-bar");
+
+        // ── Enable multi-select on table ──────────────────────
+        table.getSelectionModel().setSelectionMode(
+                SelectionMode.MULTIPLE);
+
+        bulkApplyBtn.setOnAction(e -> {
+            String status = bulkStatusBox.getValue();
+            if (status == null || status.isEmpty()) {
+                bulkResultLabel.setText("Select a status first.");
+                bulkResultLabel.setStyle(
+                        "-fx-text-fill: #f85149; -fx-font-size: 11px;");
+                return;
+            }
+            var selected = table.getSelectionModel()
+                    .getSelectedItems();
+            if (selected.isEmpty()) {
+                bulkResultLabel.setText("Select tickets first.");
+                bulkResultLabel.setStyle(
+                        "-fx-text-fill: #f85149; -fx-font-size: 11px;");
+                return;
+            }
+
+            int success = 0;
+            for (Ticket t : selected) {
+                if (updateTicketStatus(t.getId(), status, "")) {
+                    success++;
+                }
+            }
+
+            int finalSuccess = success;
+            bulkResultLabel.setText(
+                    "✔ Updated " + finalSuccess + " tickets.");
+            bulkResultLabel.setStyle(
+                    "-fx-text-fill: #3fb950; -fx-font-size: 11px;");
+            loadTickets(table);
+            table.getSelectionModel().clearSelection();
+        });
         // ── Click row to open detail panel ────────────────
         table.setRowFactory(tv -> {
             TableRow<Ticket> row = new TableRow<>();
@@ -256,7 +323,7 @@ public class TicketView {
                         "-fx-border-width: 0 0 0 1;");
 
         // ── Main layout: table left, detail right ─────────
-        VBox tableBox = new VBox(10, topBar, table);
+        VBox tableBox = new VBox(10, topBar,bulkBar, table);
         VBox.setVgrow(table, Priority.ALWAYS);
         HBox.setHgrow(tableBox, Priority.ALWAYS);
 
@@ -623,6 +690,7 @@ public class TicketView {
         detailPanel.setVisible(true);
         detailPanel.setManaged(true);
 
+
         // ── Header ────────────────────────────────────────
         Label ticketNoLabel = new Label(ticket.getTicketNo());
         ticketNoLabel.setStyle(
@@ -697,6 +765,7 @@ public class TicketView {
         descLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 12px;");
         descLabel.setWrapText(true);
 
+
         // ── Separator ─────────────────────────────────────
         Separator sep = new Separator();
 
@@ -705,7 +774,7 @@ public class TicketView {
         commentsTitle.setStyle(
                 "-fx-text-fill: #e6edf3; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-        VBox commentsFeed = new VBox(8);
+        final VBox commentsFeed = new VBox(8);
         ScrollPane commentsScroll = new ScrollPane(commentsFeed);
         commentsScroll.setFitToWidth(true);
         commentsScroll.setPrefHeight(200);
@@ -755,6 +824,76 @@ public class TicketView {
 
         detailPanel.getChildren().addAll(header, contentScroll);
         VBox.setVgrow(contentScroll, Priority.ALWAYS);
+
+        // ── Auto-refresh comments every 10 seconds ────────────
+        javafx.animation.Timeline commentRefresh =
+                new javafx.animation.Timeline(
+                        new javafx.animation.KeyFrame(
+                                javafx.util.Duration.seconds(10),
+                                ev -> loadComments(ticket.getId(),
+                                        commentsFeed)));
+        commentRefresh.setCycleCount(
+                javafx.animation.Timeline.INDEFINITE);
+        commentRefresh.play();
+
+// Stop when panel closes
+        closeBtn.setOnAction(e -> {
+            commentRefresh.stop();
+            detailPanel.setVisible(false);
+            detailPanel.setManaged(false);
+        });
+
+        // ── Resolution (shown prominently when resolved) ──────
+        if ("Resolved".equals(ticket.getStatus())
+                || "Closed".equals(ticket.getStatus())) {
+            // Load resolution from server
+            String resolution = loadResolution(ticket.getId());
+            if (resolution != null && !resolution.isEmpty()) {
+                Label resTitle = new Label("✅ Resolution");
+                resTitle.setStyle(
+                        "-fx-text-fill: #3fb950;" +
+                                "-fx-font-size: 13px;" +
+                                "-fx-font-weight: bold;");
+                Label resLabel = new Label(resolution);
+                resLabel.setStyle(
+                        "-fx-text-fill: #c9d1d9;" +
+                                "-fx-font-size: 13px;");
+                resLabel.setWrapText(true);
+                Label resDate = new Label(
+                        "Resolved: " + (ticket.getUpdatedAt() != null
+                                && ticket.getUpdatedAt().length() >= 10
+                                ? ticket.getUpdatedAt().substring(0, 10)
+                                : "-"));
+                resDate.setStyle(
+                        "-fx-text-fill: #484f58;" +
+                                "-fx-font-size: 11px;");
+
+                VBox resCard = new VBox(6,
+                        resTitle, resLabel, resDate);
+                resCard.setStyle(
+                        "-fx-background-color: #1b2d1f;" +
+                                "-fx-background-radius: 8;" +
+                                "-fx-border-color: #3fb950;" +
+                                "-fx-border-width: 0 0 0 3;" +
+                                "-fx-border-radius: 8;" +
+                                "-fx-padding: 12;");
+                content.getChildren().add(3, resCard);
+            }
+        }
+    }
+
+
+    private String loadResolution(int ticketId) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/tickets/" + ticketId))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            return extractValue(resp.body(), "resolution");
+        } catch (Exception e) { return ""; }
     }
 
     // ── Load comments from API ────────────────────────────

@@ -386,3 +386,45 @@
 .dialog-pane .label {
     -fx-text-fill: #24292f !important;
 }
+
+/* ── NOTIFICATION BELL LIGHT ─────────────────────────── */
+.notification-toast {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #0969da !important;
+}
+
+/* ── SETTINGS RADIO BUTTON LIGHT ────────────────────── */
+.radio-button {
+    -fx-text-fill: #24292f !important;
+}
+
+.radio-button .radio {
+    -fx-background-color: #ffffff !important;
+    -fx-border-color: #d0d7de !important;
+}
+
+.radio-button:selected .radio {
+    -fx-background-color: #0969da !important;
+}
+
+/* ── SETTINGS CARD CONTENT LIGHT ────────────────────── */
+.settings-card .label {
+    -fx-text-fill: #24292f !important;
+}
+
+/* ── TEXT AREA LIGHT ─────────────────────────────────── */
+.text-area,
+.text-area .content {
+    -fx-control-inner-background: #f6f8fa !important;
+    -fx-text-fill: #24292f !important;
+    -fx-background-color: #f6f8fa !important;
+}
+
+.text-area:focused {
+    -fx-border-color: #0969da !important;
+}
+
+/* ── UNDECORATED STAGE (Toast) LIGHT ─────────────────── */
+.root {
+    -fx-background-color: #f6f8fa;
+}

@@ -172,6 +172,25 @@ public class EmployeeDAO {
                 newHash, id);
     }
 
+    public List<Employee> getInactiveEmployees() {
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                    "SELECT * FROM employees WHERE active = 0");
+            List<Employee> employees = new ArrayList<>();
+            for (Map<String, Object> row : rows) {
+                employees.add(mapRowToEmployee(row));
+            }
+            return employees;
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public int reactivateEmployee(int id) {
+        return jdbc.update(
+                "UPDATE employees SET active = 1 WHERE id = ?",
+                id);
+    }
 
     private Employee mapRowToEmployee(Map<String, Object> row) {
         return new Employee(
@@ -179,7 +198,8 @@ public class EmployeeDAO {
                 (String) row.get("name"),
                 (String) row.get("emp_code"),
                 row.get("department_id") != null
-                        ? ((Number) row.get("department_id")).intValue() : 0,
+                        ? ((Number) row.get("department_id"))
+                        .intValue() : 0,
                 (String) row.get("designation"),
                 (String) row.get("email"),
                 (String) row.get("phone"),

@@ -102,6 +102,28 @@ public class AssetDAO {
         }
     }
 
+    public int updateAsset(Asset asset) {
+        return jdbc.update(
+                "UPDATE assets SET " +
+                        "name = ?, category = ?, brand = ?, model = ?, " +
+                        "serial_number = ?, department_id = ?, " +
+                        "location = ?, status = ?, assigned_to = ?, " +
+                        "assigned_date = ?, purchase_date = ?, " +
+                        "warranty_expiry = ?, vendor_id = ?, " +
+                        "purchase_cost = ?, notes = ?, " +
+                        "updated_at = datetime('now') WHERE id = ?",
+                asset.name(), asset.category(), asset.brand(),
+                asset.model(), asset.serialNumber(),
+                asset.departmentId() == 0 ? null : asset.departmentId(),
+                asset.location(), asset.status(),
+                asset.assignedTo() == 0 ? null : asset.assignedTo(),
+                asset.assignedDate(), asset.purchaseDate(),
+                asset.warrantyExpiry(),
+                asset.vendorId() == 0 ? null : asset.vendorId(),
+                asset.purchaseCost(), asset.notes(),
+                asset.id());
+    }
+
     private Asset mapRowToAsset(Map<String,Object> row) {
         return new Asset(
                 ((Number) row.get("id")).intValue(),

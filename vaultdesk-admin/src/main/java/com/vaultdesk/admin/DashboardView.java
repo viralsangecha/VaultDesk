@@ -7,7 +7,13 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
+
 public class DashboardView {
+
+    private javafx.animation.Timeline sessionTimer;
+    private long lastActivityTime = System.currentTimeMillis();
+    private static final long TIMEOUT_MS = 30 * 60 * 1000; // 30 min
+
     private String fullName;
     private String role;
     private Button activeBtn = null;
@@ -64,9 +70,11 @@ public class DashboardView {
         Button btnDepartments = sidebarBtn("🏢  Departments");
         btnLicenses          = sidebarBtn("🔑  Licenses");
         Button btnConsumables = sidebarBtn("📦  Consumables");
+        Button btnUsageLog = sidebarBtn("📋  Usage Log");
         Button btnMaintenance = sidebarBtn("🔧  Maintenance");
         Button btnVendors     = sidebarBtn("🤝  Vendors");
         Button btnReports     = sidebarBtn("📊  Reports");
+        Button btnActivity = sidebarBtn("📋  Activity Log");
         Button btnUsers       = sidebarBtn("👥  Users");
         Button btnSettings    = sidebarBtn("⚙  Settings");
         Button btnSupport     = sidebarBtn("？  Support");
@@ -84,10 +92,14 @@ public class DashboardView {
         VBox newAssetBox = new VBox(btnNewAsset);
         newAssetBox.setPadding(new Insets(16));
 
+
         // ── Sidebar ───────────────────────────────────────────
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
         sidebar.getChildren().addAll(sideHeader, userCard, btnDashboard);
+        if (SessionManager.get().isAdmin()) {
+            sidebar.getChildren().add(btnActivity); // ← add
+        }
 
 // Tickets — shown if user can view any tickets
         if (PermissionManager.canViewAllTickets()
@@ -119,8 +131,8 @@ public class DashboardView {
 // Consumables
         if (PermissionManager.canViewConsumables()) {
             sidebar.getChildren().add(btnConsumables);
+            sidebar.getChildren().add(btnUsageLog);
         }
-
 // Maintenance
         if (PermissionManager.canViewMaintenance()) {
             sidebar.getChildren().add(btnMaintenance);
@@ -311,6 +323,17 @@ public class DashboardView {
                     new ConsumableView().getView());
         });
 
+        btnUsageLog.setOnAction(e -> {
+            searchField.clear();
+            currentView = "usagelog";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
+            setActive(btnUsageLog);
+            contentArea.getChildren().setAll(
+                    new ConsumableUsageView().getView());
+        });
+
         btnMaintenance.setOnAction(e -> {
             searchField.clear();
             currentView = "maintenance";
@@ -353,6 +376,16 @@ public class DashboardView {
             setActive(btnUsers);
             contentArea.getChildren().setAll(
                     new UserManagementView().getView());
+        });
+        btnActivity.setOnAction(e -> {
+            searchField.clear();
+            currentView = "activity";
+            currentAssetView = null;
+            currentTicketView = null;
+            currentEmployeeView = null;
+            setActive(btnActivity);
+            contentArea.getChildren().setAll(
+                    new ActivityLogView().getView());
         });
 
         btnSettings.setOnAction(e -> {
@@ -406,6 +439,24 @@ public class DashboardView {
 
         Scene scene = new Scene(mainLayout, 1200, 800);
         ThemeManager.apply(scene);
+
+        // ── Track user activity ───────────────────────────────
+        scene.setOnMouseMoved(e ->
+                lastActivityTime = System.currentTimeMillis());
+        scene.setOnKeyPressed(e ->
+                lastActivityTime = System.currentTimeMillis());
+        scene.setOnMouseClicked(e ->
+                lastActivityTime = System.currentTimeMillis());
+
+        // ── Start session timer ───────────────────────────────
+        startSessionTimer(stage);
+
+        // ── Stop timer on close ───────────────────────────────
+        stage.setOnCloseRequest(e -> {
+            if (sessionTimer != null) sessionTimer.stop();
+            bell.stopPolling();
+        });
+
         return scene;
     }
 
@@ -496,6 +547,37 @@ public class DashboardView {
         HBox.setHgrow(card4, Priority.ALWAYS);
 
         return new VBox(16, title, sub, row1, row2);
+    }
+    private void startSessionTimer(Stage stage) {
+        sessionTimer = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(
+                        javafx.util.Duration.seconds(60),
+                        e -> checkSessionTimeout(stage)));
+        sessionTimer.setCycleCount(
+                javafx.animation.Timeline.INDEFINITE);
+        sessionTimer.play();
+    }
+
+    private void checkSessionTimeout(Stage stage) {
+        long elapsed = System.currentTimeMillis() - lastActivityTime;
+        if (elapsed >= TIMEOUT_MS) {
+            sessionTimer.stop();
+            javafx.application.Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Session Expired");
+                alert.setHeaderText(null);
+                alert.setContentText(
+                        "Your session has expired due to inactivity.\n" +
+                                "Please log in again.");
+                alert.showAndWait();
+                SessionStore.clear();
+                SessionManager.get().logout();
+                PermissionManager.clear();
+                Scene loginScene = new LoginView().getScene(stage);
+                ThemeManager.apply(loginScene);
+                stage.setScene(loginScene);
+            });
+        }
     }
 
     private VBox supportCard(String heading, String desc,

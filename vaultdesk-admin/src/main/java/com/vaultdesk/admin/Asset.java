@@ -10,8 +10,9 @@ public class Asset {
     private String notes;
     private String status;
     private String location;
+    private int assignedTo;
 
-    public Asset(int id, String assetTag, String name, String category, String brand, String serialNumber, String notes, String status, String location) {
+    public Asset(int id, String assetTag, String name, String category, String brand, String serialNumber, String notes, String status, String location, int assignedTo) {
         this.id = id;
         this.assetTag = assetTag;
         this.name = name;
@@ -21,6 +22,7 @@ public class Asset {
         this.notes = notes;
         this.status = status;
         this.location = location;
+        this.assignedTo = assignedTo;
     }
 
     public int getId() {
@@ -57,5 +59,9 @@ public class Asset {
 
     public String getLocation() {
         return location;
+    }
+
+    public int getAssignedTo() {
+        return assignedTo;
     }
 }

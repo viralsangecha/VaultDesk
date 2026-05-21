@@ -37,6 +37,10 @@ public class SettingsView {
         root.getChildren().add(sectionCard("🔒  Change Password",
                 buildPasswordSection()));
 
+        // ── Section: Backup ──────────────────────────────
+        root.getChildren().add(sectionCard(
+                "💾  Database Backup", buildBackupSection()));
+
         // ── Section: Data ─────────────────────────────────
         root.getChildren().add(sectionCard("📁  Data & Import",
                 buildDataSection()));
@@ -346,12 +350,38 @@ public class SettingsView {
                         "Note: First row is treated as header and skipped.\n" +
                         "Wrap values with commas in double quotes."
         );
+        formatArea.setText(
+                "ASSETS (11 columns):\n" +
+                        "assetTag, name, category, brand, model,\n" +
+                        "serialNumber, departmentId, location,\n" +
+                        "status, purchaseCost, notes\n\n" +
+                        "EMPLOYEES (8 columns):\n" +
+                        "name, empCode, departmentId, designation,\n" +
+                        "email, phone, joinDate (YYYY-MM-DD), notes\n\n" +
+                        "DEPARTMENTS (2 columns):\n" +
+                        "name, location\n\n" +
+                        "VENDORS (7 columns):\n" +
+                        "name, contactPerson, phone, email,\n" +
+                        "category, address, notes\n\n" +
+                        "LICENSES (9 columns):\n" +
+                        "softwareName, licenseType, licenseKey,\n" +
+                        "seatsTotal, vendor, purchaseDate (YYYY-MM-DD),\n" +
+                        "expiryDate (YYYY-MM-DD), cost, notes\n\n" +
+                        "CONSUMABLES (8 columns):\n" +
+                        "name, category, compatibleModels,\n" +
+                        "quantityInStock, reorderLevel, unit,\n" +
+                        "unitCost, storageLocation\n\n" +
+                        "NOTES:\n" +
+                        "- First row is header (skipped)\n" +
+                        "- Wrap values containing commas in double quotes\n" +
+                        "- Dates must be YYYY-MM-DD format\n" +
+                        "- IDs must match existing records in database"
+        );
         formatArea.setEditable(false);
         formatArea.setPrefRowCount(12);
         formatArea.setStyle(
-                "-fx-control-inner-background: #21262d;" +
-                        "-fx-text-fill: #c9d1d9; -fx-font-family: monospace;" +
-                        "-fx-font-size: 12px;");
+                "-fx-font-family: monospace; -fx-font-size: 12px;");
+        formatArea.setPrefRowCount(16);
 
         return new VBox(12, infoLabel, formatTitle, formatArea);
     }
@@ -402,6 +432,133 @@ public class SettingsView {
         return new VBox(10,
                 appName, version, desc, sep,
                 techTitle, tech, sep2, loggedIn);
+    }
+    private VBox buildBackupSection() {
+        Label infoLabel = new Label("Loading database info...");
+        infoLabel.setStyle(
+                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-size: 12px;");
+
+        // ── Load DB info ──────────────────────────────────────
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/backup/info"))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 200) {
+                String body = resp.body();
+                String size = extractValue(body, "sizeKb");
+                String modified = extractValue(body, "lastModified");
+                infoLabel.setText(
+                        "Database size: " + size + " KB" +
+                                "  •  Last modified: " + modified);
+            }
+        } catch (Exception ex) {
+            infoLabel.setText("Could not load database info.");
+        }
+
+        Button backupBtn = new Button("⬇  Download Backup");
+        backupBtn.getStyleClass().setAll("btn-primary");
+        backupBtn.setStyle(
+                "-fx-background-color: #238636; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+
+        backupBtn.setOnAction(e -> {
+            LoadingUtil.setButtonLoading(backupBtn, "Downloading...");
+            Thread t = new Thread(() -> {
+                try {
+                    HttpClient client = HttpClient.newHttpClient();
+                    HttpRequest req = HttpRequest.newBuilder()
+                            .uri(URI.create(ConfigManager.getBaseUrl()
+                                    + "/api/backup/download"))
+                            .GET().build();
+                    HttpResponse<byte[]> resp = client.send(req,
+                            HttpResponse.BodyHandlers.ofByteArray());
+
+                    if (resp.statusCode() == 200) {
+                        // ── Save to Downloads folder ──────────
+                        String home = System.getProperty("user.home");
+                        String timestamp = java.time.LocalDateTime
+                                .now().format(java.time.format
+                                        .DateTimeFormatter.ofPattern(
+                                                "yyyyMMdd_HHmmss"));
+                        java.io.File out = new java.io.File(
+                                home + "\\Downloads\\vaultdesk_backup_"
+                                        + timestamp + ".db");
+                        java.nio.file.Files.write(
+                                out.toPath(), resp.body());
+
+                        javafx.application.Platform.runLater(() -> {
+                            statusLabel.setText(
+                                    "✔ Backup saved to Downloads: "
+                                            + out.getName());
+                            statusLabel.setStyle(
+                                    "-fx-text-fill: #3fb950;" +
+                                            "-fx-font-size: 12px;");
+                            LoadingUtil.resetButton(
+                                    backupBtn, "⬇  Download Backup");
+                        });
+                    } else {
+                        javafx.application.Platform.runLater(() -> {
+                            statusLabel.setText(
+                                    "✘ Backup failed: "
+                                            + resp.statusCode());
+                            statusLabel.setStyle(
+                                    "-fx-text-fill: #f85149;" +
+                                            "-fx-font-size: 12px;");
+                            LoadingUtil.resetButton(
+                                    backupBtn, "⬇  Download Backup");
+                        });
+                    }
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> {
+                        statusLabel.setText(
+                                "✘ Error: " + ex.getMessage());
+                        statusLabel.setStyle(
+                                "-fx-text-fill: #f85149;" +
+                                        "-fx-font-size: 12px;");
+                        LoadingUtil.resetButton(
+                                backupBtn, "⬇  Download Backup");
+                    });
+                }
+            });
+            t.setDaemon(true);
+            t.start();
+        });
+
+        Label noteLabel = new Label(
+                "Backup is saved to your Downloads folder.\n" +
+                        "Keep backups regularly — recommended weekly.");
+        noteLabel.setStyle(
+                "-fx-text-fill: #484f58; -fx-font-size: 11px;");
+        noteLabel.setWrapText(true);
+
+        return new VBox(10, infoLabel, backupBtn,
+                statusLabel, noteLabel);
+    }
+
+    private String extractValue(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) {
+            // Try without quotes (number)
+            search = "\"" + key + "\":";
+            start = json.indexOf(search);
+            if (start == -1) return "";
+            start += search.length();
+            int end = json.indexOf(",", start);
+            if (end == -1) end = json.indexOf("}", start);
+            if (end == -1) end = json.length();
+            return json.substring(start, end).trim();
+        }
+        start += search.length();
+        return json.substring(start, json.indexOf("\"", start));
     }
 
     // ── Section card wrapper ──────────────────────────────

@@ -57,7 +57,7 @@ public class TicketController {
         return ResponseEntity.ok(ticket);
     }
 
-    @PostMapping
+    /*@PostMapping
     public ResponseEntity<?> savetickets(@RequestBody TicketRequest request) {
         ticketDAO.saveTicket(request.title(), request.description(),
                 request.category(), request.priority(), request.reportedBy());
@@ -73,9 +73,9 @@ public class TicketController {
                 "TICKET_CREATED", newTicketId);
 
         return ResponseEntity.status(201).body("Ticket added");
-    }
+    }*/
 
-    @PutMapping("/{id}/status")
+    /*@PutMapping("/{id}/status")
     public ResponseEntity<?> updateticketstatus(
             @PathVariable int id,
             @RequestParam String status,
@@ -112,7 +112,7 @@ public class TicketController {
         }
 
         return ResponseEntity.ok("Ticket assigned");
-    }
+    }*/
 
     @GetMapping("/department/{deptId}")
     public ResponseEntity<?> getByDept(@PathVariable int deptId) {
@@ -125,7 +125,7 @@ public class TicketController {
         return ResponseEntity.ok(ticketDAO.getComments(id));
     }
 
-    @PostMapping("/{id}/comments")
+    /*@PostMapping("/{id}/comments")
     public ResponseEntity<?> addComment(
             @PathVariable int id,
             @RequestBody Map<String, String> body) {
@@ -153,6 +153,128 @@ public class TicketController {
                         "COMMENT_ADDED", id);
             }
         }
+
+        return ResponseEntity.status(201).body("Comment added");
+    }*/
+    private void logActivity(int userId, String action,
+                             String tableName, int recordId,
+                             String details) {
+        try {
+            jdbc.update(
+                    "INSERT INTO activity_log " +
+                            "(user_id, action, table_name, " +
+                            "record_id, details, logged_at) " +
+                            "VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                    userId, action, tableName, recordId, details);
+        } catch (Exception e) {
+            System.out.println("Activity log error: " + e.getMessage());
+        }
+    }
+    @PostMapping
+    public ResponseEntity<?> savetickets(@RequestBody TicketRequest request) {
+        ticketDAO.saveTicket(request.title(), request.description(),
+                request.category(), request.priority(),
+                request.reportedBy());
+
+        List<Ticket> all = ticketDAO.getAllTickets();
+        int newTicketId = all != null && !all.isEmpty()
+                ? all.get(0).id() : 0;
+
+        notificationDAO.notifyAllAdmins(jdbc,
+                "New ticket raised: " + request.title(),
+                "TICKET_CREATED", newTicketId);
+
+        // ── Log activity ──────────────────────────────────
+        logActivity(request.reportedBy(), "CREATE",
+                "tickets", newTicketId,
+                "Ticket created: " + request.title());
+
+        return ResponseEntity.status(201).body("Ticket added");
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateticketstatus(
+            @PathVariable int id,
+            @RequestParam String status,
+            @RequestParam String resolution) {
+        int rows = ticketDAO.updateTicketStatus(id, status, resolution);
+        if (rows == 0) return ResponseEntity.notFound().build();
+
+        Ticket ticket = ticketDAO.getTicketById(id);
+        if (ticket != null && ticket.reportedBy() > 0) {
+            notificationDAO.notifyEmployee(
+                    ticket.reportedBy(),
+                    "Your ticket '" + ticket.title()
+                            + "' status changed to: " + status,
+                    "STATUS_CHANGED", id);
+        }
+
+        // ── Log activity ──────────────────────────────────
+        logActivity(0, "UPDATE", "tickets", id,
+                "Status changed to: " + status);
+
+        return ResponseEntity.ok("Ticket Status Updated!");
+    }
+
+    @PutMapping("/{id}/assign")
+    public ResponseEntity<?> assignticket(
+            @PathVariable int id,
+            @RequestParam int userId) {
+        int rows = ticketDAO.assignTicket(id, userId);
+        if (rows == 0) return ResponseEntity.notFound().build();
+
+        Ticket ticket = ticketDAO.getTicketById(id);
+        if (ticket != null) {
+            notificationDAO.notifyUser(userId,
+                    "Ticket assigned to you: " + ticket.title(),
+                    "TICKET_ASSIGNED", id);
+        }
+
+        // ── Log activity ──────────────────────────────────
+        logActivity(userId, "UPDATE", "tickets", id,
+                "Ticket assigned to user #" + userId);
+
+        return ResponseEntity.ok("Ticket assigned");
+    }
+
+    @GetMapping("/asset/{assetId}")
+    public ResponseEntity<?> getByAsset(
+            @PathVariable int assetId) {
+        return ResponseEntity.ok(
+                ticketDAO.getTicketsByAsset(assetId));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<?> addComment(
+            @PathVariable int id,
+            @RequestBody Map<String, String> body) {
+        String comment = body.get("comment");
+        int addedBy = body.get("addedBy") != null
+                ? Integer.parseInt(body.get("addedBy")) : 0;
+        if (comment == null || comment.trim().isEmpty())
+            return ResponseEntity.badRequest()
+                    .body("Comment required");
+
+        ticketDAO.saveComment(id, comment, addedBy);
+
+        Ticket ticket = ticketDAO.getTicketById(id);
+        if (ticket != null) {
+            if (ticket.assignedTo() > 0) {
+                notificationDAO.notifyUser(ticket.assignedTo(),
+                        "New comment on ticket: " + ticket.title(),
+                        "COMMENT_ADDED", id);
+            }
+            if (ticket.reportedBy() > 0
+                    && addedBy != ticket.reportedBy()) {
+                notificationDAO.notifyEmployee(ticket.reportedBy(),
+                        "New comment on your ticket: " + ticket.title(),
+                        "COMMENT_ADDED", id);
+            }
+        }
+
+        // ── Log activity ──────────────────────────────────
+        logActivity(addedBy, "CREATE", "ticket_comments", id,
+                "Comment added on ticket #" + id);
 
         return ResponseEntity.status(201).body("Comment added");
     }

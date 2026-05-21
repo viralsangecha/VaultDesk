@@ -6,6 +6,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Stage;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -18,6 +19,7 @@ public class AssetView {
     private ObservableList<Asset> allAssets =
             FXCollections.observableArrayList();
     private TableView<Asset> table;
+    private Stage detailStage = null;
 
     public VBox getView() {
 
@@ -89,6 +91,16 @@ public class AssetView {
         // ── Table ─────────────────────────────────────────
         table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        table.setRowFactory(tv -> {
+            TableRow<Asset> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty()) {
+                    openAssetDetail(row.getItem());
+                }
+            });
+            return row;
+        });
 
         TableColumn<Asset, String> assetTagCol =
                 new TableColumn<>("ASSET TAG");
@@ -204,6 +216,69 @@ public class AssetView {
                     }
                 });
 
+        // ── Bulk action bar ───────────────────────────────────
+        Label bulkLabel = new Label("Bulk Actions:");
+        bulkLabel.setStyle(
+                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+
+        ComboBox<String> bulkStatusBox = new ComboBox<>();
+        bulkStatusBox.getItems().addAll(
+                "Active", "In Repair", "Retired", "Disposed");
+        bulkStatusBox.setPromptText("Select status...");
+        bulkStatusBox.setStyle(
+                "-fx-background-color: #21262d;" +
+                        "-fx-text-fill: #c9d1d9;" +
+                        "-fx-border-color: #30363d;" +
+                        "-fx-border-radius: 6;");
+
+        Button bulkApplyBtn = new Button("Apply to Selected");
+        bulkApplyBtn.getStyleClass().setAll("btn-warning");
+        bulkApplyBtn.setStyle(
+                "-fx-background-color: #b45309; -fx-text-fill: white;" +
+                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14;" +
+                        "-fx-font-weight: bold; -fx-cursor: hand;");
+
+        Label bulkResultLabel = new Label("");
+        bulkResultLabel.setStyle(
+                "-fx-text-fill: #3fb950; -fx-font-size: 11px;");
+
+        HBox bulkBar = new HBox(10, bulkLabel, bulkStatusBox,
+                bulkApplyBtn, bulkResultLabel);
+        bulkBar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        bulkBar.getStyleClass().add("filter-bar");
+
+// ── Enable multi select ───────────────────────────────
+        table.getSelectionModel().setSelectionMode(
+                SelectionMode.MULTIPLE);
+
+        bulkApplyBtn.setOnAction(e -> {
+            String status = bulkStatusBox.getValue();
+            if (status == null || status.isEmpty()) {
+                bulkResultLabel.setText("Select a status first.");
+                bulkResultLabel.setStyle(
+                        "-fx-text-fill: #f85149; -fx-font-size: 11px;");
+                return;
+            }
+            var selected = table.getSelectionModel()
+                    .getSelectedItems();
+            if (selected.isEmpty()) {
+                bulkResultLabel.setText("Select assets first.");
+                bulkResultLabel.setStyle(
+                        "-fx-text-fill: #f85149; -fx-font-size: 11px;");
+                return;
+            }
+            int success = 0;
+            for (Asset a : selected) {
+                if (updateAssetStatus(a.getId(), status)) success++;
+            }
+            int finalSuccess = success;
+            bulkResultLabel.setText(
+                    "✔ Updated " + finalSuccess + " assets.");
+            bulkResultLabel.setStyle(
+                    "-fx-text-fill: #3fb950; -fx-font-size: 11px;");
+            loadAssets();
+            table.getSelectionModel().clearSelection();
+        });
         table.getColumns().addAll(assetTagCol, categoryCol,
                 nameCol, brandCol, locationCol, statusCol, actionCol);
 
@@ -257,7 +332,7 @@ public class AssetView {
 
         loadAssets();
 
-        VBox root = new VBox(12, breadcrumb, titleRow, filterBar, table);
+        VBox root = new VBox(12, breadcrumb, titleRow, filterBar, bulkBar, table);
         VBox.setVgrow(table, Priority.ALWAYS);
         return root;
     }
@@ -322,7 +397,8 @@ public class AssetView {
                             extractValue(obj, "serialNumber"),
                             extractValue(obj, "notes"),
                             extractValue(obj, "status"),
-                            extractValue(obj, "location")
+                            extractValue(obj, "location"),
+                            extractInt(obj, "assignedTo")
                     );
                     allAssets.add(a);
                     table.getItems().add(a);
@@ -564,6 +640,29 @@ public class AssetView {
             showAlert("Error", "Cannot connect: " + ex.getMessage());
             return false;
         }
+    }
+
+    private void openAssetDetail(Asset asset) {
+        if (detailStage != null) detailStage.close();
+
+        detailStage = new Stage();
+        detailStage.setTitle(
+                "Asset Detail — " + asset.getName());
+        detailStage.setWidth(800);
+        detailStage.setHeight(700);
+        detailStage.setResizable(true);
+
+        AssetDetailView detail = new AssetDetailView(
+                asset, () -> {
+            loadAssets();
+            detailStage.close();
+        });
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(
+                detail.getView());
+        ThemeManager.apply(scene);
+        detailStage.setScene(scene);
+        detailStage.show();
     }
 
     private void showAlert(String title, String message) {

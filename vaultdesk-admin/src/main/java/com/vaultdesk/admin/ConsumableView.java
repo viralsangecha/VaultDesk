@@ -73,9 +73,23 @@ public class ConsumableView {
         TableColumn<Consumable, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button updateQtyBtn = new Button("Update Qty");
+            private final Button issueBtn = new Button("Issue");
             private final HBox box = new HBox(5, updateQtyBtn);
             {
                 updateQtyBtn.getStyleClass().setAll("btn-warning");
+                issueBtn.getStyleClass().setAll("btn-primary");
+                issueBtn.setStyle(
+                        "-fx-background-color: #238636;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 6 10 6 10;" +
+                                "-fx-font-size: 11px;" +
+                                "-fx-font-weight: bold;");
+                issueBtn.setOnAction(e -> {
+                    Consumable c = getTableView()
+                            .getItems().get(getIndex());
+                    showIssueDialog(c, getTableView());
+                });
                 updateQtyBtn.setStyle("-fx-background-color: #b45309; -fx-text-fill: white;" +
                         "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
                 updateQtyBtn.setOnAction(e -> {
@@ -86,7 +100,8 @@ public class ConsumableView {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : box);
+                setGraphic(empty ? null
+                        : new HBox(5, updateQtyBtn, issueBtn));
             }
         });
 
@@ -329,6 +344,128 @@ public class ConsumableView {
                 }
             } catch (Exception ex) {
                 showAlert("Error", "Cannot connect: " + ex.getMessage());
+            }
+        }
+    }
+    private void showIssueDialog(Consumable c,
+                                 TableView<Consumable> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Issue Consumable");
+        dialog.setHeaderText(c.getName()
+                + " (In Stock: " + c.getQuantityInStock()
+                + " " + c.getUnit() + ")");
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        NumberField qtyField = new NumberField();
+        qtyField.setText("1");
+        qtyField.setPromptText("Quantity to issue");
+
+        TextField assetIdField = new TextField();
+        assetIdField.setPromptText(
+                "Asset ID (optional)");
+
+        TextField empIdField = new TextField();
+        empIdField.setPromptText(
+                "Employee ID (optional)");
+
+        TextField notesField = new TextField();
+        notesField.setPromptText(
+                "e.g. Installed in HP Printer");
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle(
+                "-fx-text-fill: #f85149;" +
+                        "-fx-font-size: 12px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        int r = 0;
+        grid.add(new Label("Quantity *:"),  0, r);
+        grid.add(qtyField,                 1, r++);
+        grid.add(new Label("Asset ID:"),   0, r);
+        grid.add(assetIdField,             1, r++);
+        grid.add(new Label("Employee ID:"),0, r);
+        grid.add(empIdField,               1, r++);
+        grid.add(new Label("Notes:"),      0, r);
+        grid.add(notesField,               1, r++);
+        grid.add(errorLabel,               1, r);
+        dialog.getDialogPane().setContent(grid);
+
+        Button okBtn = (Button) dialog.getDialogPane()
+                .lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(
+                javafx.event.ActionEvent.ACTION, event -> {
+                    int qty = qtyField.getIntValue();
+                    if (qty <= 0) {
+                        errorLabel.setText(
+                                "Quantity must be greater than 0.");
+                        event.consume();
+                        return;
+                    }
+                    if (qty > c.getQuantityInStock()) {
+                        errorLabel.setText("Not enough stock. " +
+                                "Available: "
+                                + c.getQuantityInStock());
+                        event.consume();
+                    }
+                });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent()
+                && result.get() == ButtonType.OK) {
+            try {
+                int assetId = assetIdField.getText()
+                        .trim().isEmpty() ? 0
+                        : Integer.parseInt(
+                        assetIdField.getText().trim());
+                int empId = empIdField.getText()
+                        .trim().isEmpty() ? 0
+                        : Integer.parseInt(
+                        empIdField.getText().trim());
+
+                String body = "{" +
+                        "\"quantityUsed\":" +
+                        qtyField.getIntValue() + "," +
+                        "\"assetId\":" + assetId + "," +
+                        "\"employeeId\":" + empId + "," +
+                        "\"usedBy\":" +
+                        SessionManager.get().getUserId() + "," +
+                        "\"notes\":\"" +
+                        notesField.getText() + "\"" +
+                        "}";
+
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(
+                                ConfigManager.getBaseUrl()
+                                        + "/api/consumables/"
+                                        + c.getId() + "/usage"))
+                        .header("Content-Type",
+                                "application/json")
+                        .POST(HttpRequest.BodyPublishers
+                                .ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(
+                        req,
+                        HttpResponse.BodyHandlers.ofString());
+
+                if (resp.statusCode() == 201) {
+                    showAlert("Success",
+                            qtyField.getIntValue()
+                                    + " " + c.getUnit()
+                                    + " issued successfully.\n"
+                                    + "Stock auto-updated.");
+                    loadConsumables(table);
+                } else if (resp.statusCode() == 400) {
+                    showAlert("Error",
+                            "Insufficient stock on server.");
+                } else {
+                    showAlert("Error", "Server returned: "
+                            + resp.statusCode());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
             }
         }
     }

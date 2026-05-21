@@ -4,6 +4,7 @@ import com.vaultdesk.server.dao.UserDAO;
 import com.vaultdesk.server.dao.UserPermissionDAO;
 import com.vaultdesk.server.model.User;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
@@ -16,11 +17,14 @@ public class LoginController {
 
     private final UserDAO userDAO;
     private final UserPermissionDAO permissionDAO;
+    private final JdbcTemplate jdbc;
 
     public LoginController(UserDAO userDAO,
-                           UserPermissionDAO permissionDAO) {
+                           UserPermissionDAO permissionDAO,
+                           JdbcTemplate jdbc) {
         this.userDAO       = userDAO;
         this.permissionDAO = permissionDAO;
+        this.jdbc          = jdbc;
     }
 
     private static String sha256(String input) {
@@ -45,6 +49,17 @@ public class LoginController {
         if (userDAO.validateLogin(username, hashed)) {
             User user = userDAO.getUserByUsername(username);
             userDAO.updateLastLogin(user.id());
+            try {
+                jdbc.update(
+                        "INSERT INTO activity_log " +
+                                "(user_id, action, table_name, " +
+                                "record_id, details, logged_at) " +
+                                "VALUES (?, 'LOGIN', 'users', ?, ?, datetime('now'))",
+                        user.id(), user.id(),
+                        "Login: " + user.username());
+            } catch (Exception ignored) {}
+            logActivity(user.id(), "LOGIN", "users", user.id(),
+                    "User logged in: " + user.username());
             List<String> permissions =
                     permissionDAO.getPermissions(user.id());
             return ResponseEntity.ok(Map.of(
@@ -88,5 +103,14 @@ public class LoginController {
             ));
         }
         return ResponseEntity.status(401).build();
+    }
+    private void logActivity(int userId, String action,
+                             String tableName, int recordId,
+                             String details) {
+        try {
+            // Use a direct JDBC call
+            // LoginController doesn't have JdbcTemplate
+            // so we skip logging here and rely on other controllers
+        } catch (Exception e) { }
     }
 }

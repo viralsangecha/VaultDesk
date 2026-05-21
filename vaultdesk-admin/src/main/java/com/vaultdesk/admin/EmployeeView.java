@@ -4,9 +4,11 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.net.URI;
@@ -21,165 +23,329 @@ public class EmployeeView {
 
     public VBox getView() {
         Label title = new Label("Employees");
-        title.getStyleClass().add("section-title");
+        title.getStyleClass().add("page-title");
+
+        // ── Tabs ──────────────────────────────────────────────
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(
+                TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        Tab activeTab   = new Tab("Active Employees");
+        Tab inactiveTab = new Tab("Inactive Employees");
+
+        activeTab.setContent(
+                buildEmployeeTable(true));
+        inactiveTab.setContent(
+                buildEmployeeTable(false));
+
+        tabPane.getTabs().addAll(activeTab, inactiveTab);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
+
+        VBox root = new VBox(10, title, tabPane);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
+        return root;
+    }
+
+    private VBox buildEmployeeTable(boolean active) {
         table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        allEmployees = FXCollections.observableArrayList();
+        table.setColumnResizePolicy(
+                TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<Employee, Integer> idCol = new TableColumn<>("ID");
+        // ── All existing columns stay the same ────────────────
+        TableColumn<Employee, Integer> idCol =
+                new TableColumn<>("ID");
         idCol.setCellValueFactory(data ->
-                new SimpleIntegerProperty(data.getValue().getId()).asObject());
+                new SimpleIntegerProperty(
+                        data.getValue().getId()).asObject());
 
-        TableColumn<Employee, String> nameCol = new TableColumn<>("Name");
+        TableColumn<Employee, String> nameCol =
+                new TableColumn<>("Name");
         nameCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getName()));
+                new SimpleStringProperty(
+                        data.getValue().getName()));
 
-        TableColumn<Employee, String> empCodeCol = new TableColumn<>("Emp Code");
+        TableColumn<Employee, String> empCodeCol =
+                new TableColumn<>("Emp Code");
         empCodeCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getEmpCode()));
+                new SimpleStringProperty(
+                        data.getValue().getEmpCode()));
 
-        TableColumn<Employee, String> designationCol = new TableColumn<>("Designation");
+        TableColumn<Employee, String> designationCol =
+                new TableColumn<>("Designation");
         designationCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getDesignation()));
+                new SimpleStringProperty(
+                        data.getValue().getDesignation()));
 
-        TableColumn<Employee, String> emailCol = new TableColumn<>("Email");
+        TableColumn<Employee, String> emailCol =
+                new TableColumn<>("Email");
         emailCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getEmail()));
+                new SimpleStringProperty(
+                        data.getValue().getEmail()));
 
-        TableColumn<Employee, String> phoneCol = new TableColumn<>("Phone");
+        TableColumn<Employee, String> phoneCol =
+                new TableColumn<>("Phone");
         phoneCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().getPhone()));
+                new SimpleStringProperty(
+                        data.getValue().getPhone()));
 
-        // ── Active status — colored text ──────────────────────
-        TableColumn<Employee, String> activeCol = new TableColumn<>("Status");
+        TableColumn<Employee, String> activeCol =
+                new TableColumn<>("Status");
         activeCol.setCellValueFactory(data ->
-                new SimpleStringProperty(data.getValue().isActive() ? "Active" : "Inactive"));
+                new SimpleStringProperty(
+                        data.getValue().isActive()
+                                ? "Active" : "Inactive"));
         activeCol.setCellFactory(col -> new TableCell<>() {
             @Override
-            protected void updateItem(String item, boolean empty) {
+            protected void updateItem(String item,
+                                      boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); return; }
+                if (empty || item == null) {
+                    setText(null); setStyle(""); return;
+                }
                 setText(item);
                 if ("Active".equals(item))
-                    setStyle("-fx-text-fill: #3fb950; -fx-font-weight: bold;");
+                    setStyle("-fx-text-fill: #3fb950;" +
+                            " -fx-font-weight: bold;");
                 else
-                    setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
+                    setStyle("-fx-text-fill: #f85149;" +
+                            " -fx-font-weight: bold;");
             }
         });
 
-        TableColumn<Employee, Void> actionCol = new TableColumn<>("Actions");
+        // ── Action column changes based on active/inactive ────
+        TableColumn<Employee, Void> actionCol =
+                new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<>() {
-            private final Button editBtn       = new Button("Edit");
-            private final Button setLoginBtn = new Button("Set Login");
-            private final Button deactivateBtn = new Button("Deactivate");
-            private final HBox box = new HBox(5, editBtn, deactivateBtn,setLoginBtn);
+            private final Button editBtn =
+                    new Button("Edit");
+            private final Button deactivateBtn =
+                    new Button("Deactivate");
+            private final Button reactivateBtn =
+                    new Button("Reactivate");
+            private final Button setLoginBtn =
+                    new Button("Set Login");
+
             {
                 editBtn.getStyleClass().setAll("btn-warning");
-                editBtn.setStyle("-fx-background-color: #b45309; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
-                deactivateBtn.getStyleClass().setAll("btn-danger");
-                deactivateBtn.setStyle("-fx-background-color: #da3633; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
-                editBtn.setOnAction(e -> {
-                    Employee emp = getTableView().getItems().get(getIndex());
-                    showEditDialog(emp, getTableView());
-                });
+                editBtn.setStyle(
+                        "-fx-background-color: #b45309;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px;" +
+                                "-fx-font-weight: bold;");
+
+                deactivateBtn.getStyleClass()
+                        .setAll("btn-danger");
+                deactivateBtn.setStyle(
+                        "-fx-background-color: #da3633;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px;" +
+                                "-fx-font-weight: bold;");
+
+                reactivateBtn.getStyleClass()
+                        .setAll("btn-primary");
+                reactivateBtn.setStyle(
+                        "-fx-background-color: #238636;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px;" +
+                                "-fx-font-weight: bold;");
+
                 setLoginBtn.getStyleClass().setAll("btn-primary");
                 setLoginBtn.setStyle(
-                        "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                                "-fx-background-radius: 6; -fx-padding: 6 10 6 10;" +
-                                "-fx-font-size: 11px; -fx-font-weight: bold;");
-                setLoginBtn.setOnAction(e -> {
-                    Employee emp = getTableView().getItems().get(getIndex());
-                    showSetLoginDialog(emp);
+                        "-fx-background-color: #1f6feb;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 5 10 5 10;" +
+                                "-fx-font-size: 11px;" +
+                                "-fx-font-weight: bold;");
+
+                editBtn.setOnAction(e -> {
+                    Employee emp = getTableView()
+                            .getItems().get(getIndex());
+                    showEditDialog(emp, getTableView());
                 });
                 deactivateBtn.setOnAction(e -> {
-                    Employee emp = getTableView().getItems().get(getIndex());
+                    Employee emp = getTableView()
+                            .getItems().get(getIndex());
                     showDeactivateConfirm(emp, getTableView());
                 });
+                reactivateBtn.setOnAction(e -> {
+                    Employee emp = getTableView()
+                            .getItems().get(getIndex());
+                    reactivateEmployee(emp, getTableView());
+                });
+                setLoginBtn.setOnAction(e -> {
+                    Employee emp = getTableView()
+                            .getItems().get(getIndex());
+                    showSetLoginDialog(emp);
+                });
             }
-            // Wrap in permission checks:
+
             @Override
-            protected void updateItem(Void item, boolean empty) {
+            protected void updateItem(Void item,
+                                      boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) { setGraphic(null); return; }
                 HBox box = new HBox(5);
-                if (PermissionManager.canEditEmployee())
-                    box.getChildren().add(editBtn);
-                if (PermissionManager.has("DELETE_TICKET"))
-                    box.getChildren().add(deactivateBtn);
-                if (PermissionManager.canSetLogin())
-                    box.getChildren().add(setLoginBtn);
-                setGraphic(box.getChildren().isEmpty() ? null : box);
+                if (active) {
+                    if (PermissionManager.canEditEmployee())
+                        box.getChildren().add(editBtn);
+                    if (PermissionManager.canSetLogin())
+                        box.getChildren().add(setLoginBtn);
+                    if (PermissionManager.has("DELETE_TICKET"))
+                        box.getChildren().add(deactivateBtn);
+                } else {
+                    box.getChildren().add(reactivateBtn);
+                }
+                setGraphic(box.getChildren().isEmpty()
+                        ? null : box);
             }
         });
 
-        table.getColumns().addAll(idCol, nameCol, empCodeCol,
-                designationCol, emailCol, phoneCol,activeCol, actionCol);
+        table.getColumns().addAll(idCol, nameCol,
+                empCodeCol, designationCol,
+                emailCol, phoneCol, activeCol, actionCol);
 
+        // ── Buttons ───────────────────────────────────────────
         Button addBtn = new Button("+ Add Employee");
         addBtn.getStyleClass().setAll("btn-primary");
-        addBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white;" +
-                "-fx-background-radius: 6; -fx-padding: 6 14 6 14; -fx-font-weight: bold;");
+        addBtn.setStyle(
+                "-fx-background-color: #238636;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 6 14 6 14;" +
+                        "-fx-font-weight: bold;");
         addBtn.setOnAction(e -> showAddDialog(table));
 
         TextField searchField = new TextField();
         searchField.setPromptText("Search by name...");
-        searchField.textProperty().addListener((obs, oldVal, newVal) ->
-                filterTable(table, newVal));
-
-        Button importBtn = new Button("⬆ Import CSV");
-        importBtn.getStyleClass().setAll("btn-primary");
-        importBtn.setStyle(
-                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 14 8 14;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
-        importBtn.setOnAction(e -> {
-            CsvImporter.importCsv("Import Employees CSV", true, fields -> {
-                // CSV columns: name,empCode,departmentId,designation,
-                //              email,phone,joinDate,notes
-                if (fields.length < 8)
-                    throw new Exception("Expected 8 columns");
-                String body = "{" +
-                        "\"name\":\"" + fields[0] + "\"," +
-                        "\"empCode\":\"" + fields[1] + "\"," +
-                        "\"departmentId\":" + (fields[2].isEmpty() ? 0
-                        : Integer.parseInt(fields[2])) + "," +
-                        "\"designation\":\"" + fields[3] + "\"," +
-                        "\"email\":\"" + fields[4] + "\"," +
-                        "\"phone\":\"" + fields[5] + "\"," +
-                        "\"joinDate\":\"" + fields[6] + "\"," +
-                        "\"leaveDate\":null," +
-                        "\"active\":1," +
-                        "\"notes\":\"" + fields[7] + "\"" +
-                        "}";
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/employees"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(body)).build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
-                if (resp.statusCode() != 201)
-                    throw new Exception("Server returned " + resp.statusCode());
-            });
-            loadEmployees(table);
-        });
+        searchField.textProperty().addListener(
+                (obs, ov, nv) -> {
+                    if (nv.isEmpty()) {
+                        table.getItems().setAll(allEmployees);
+                    } else {
+                        String lower = nv.toLowerCase();
+                        table.getItems().setAll(
+                                allEmployees.filtered(e ->
+                                        e.getName().toLowerCase()
+                                                .contains(lower)));
+                    }
+                });
 
         HBox topBar = new HBox(10);
+        if (active && (PermissionManager.canAddEmployee())) {
+            topBar.getChildren().add(addBtn);
+        }
         topBar.getChildren().add(searchField);
 
-        if (PermissionManager.canAddEmployee()) {
-            topBar.getChildren().add(0, addBtn);
-        }
-        if (PermissionManager.has("IMPORT_ASSETS")) {
-            topBar.getChildren().add(importBtn);
+        if (active) {
+            loadEmployees(table);
+        } else {
+            loadInactiveEmployees(table);
         }
 
-        loadEmployees(table);
+        VBox content = new VBox(10, topBar, table);
+        VBox.setVgrow(table, Priority.ALWAYS);
+        content.setPadding(new Insets(10));
+        return content;
+    }
 
-        VBox root = new VBox(10);
-        root.getChildren().addAll(title, topBar, table);
-        return root;
+    private void reactivateEmployee(Employee emp,
+                                    TableView<Employee> table) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Reactivate Employee");
+        confirm.setHeaderText(null);
+        confirm.setContentText("Reactivate " + emp.getName()
+                + "? They will be set as active again.");
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                try {
+                    HttpClient client =
+                            HttpClient.newHttpClient();
+                    HttpRequest req =
+                            HttpRequest.newBuilder()
+                                    .uri(URI.create(
+                                            ConfigManager.getBaseUrl()
+                                                    + "/api/employees/"
+                                                    + emp.getId()
+                                                    + "/reactivate"))
+                                    .PUT(HttpRequest.BodyPublishers
+                                            .noBody())
+                                    .build();
+                    HttpResponse<String> resp = client.send(
+                            req,
+                            HttpResponse.BodyHandlers
+                                    .ofString());
+                    if (resp.statusCode() == 200) {
+                        showAlert("Success",
+                                emp.getName()
+                                        + " reactivated.");
+                        loadInactiveEmployees(table);
+                    } else {
+                        showAlert("Error",
+                                "Server returned: "
+                                        + resp.statusCode());
+                    }
+                } catch (Exception ex) {
+                    showAlert("Error", ex.getMessage());
+                }
+            }
+        });
+    }
+
+    private void loadInactiveEmployees(
+            TableView<Employee> table) {
+        table.getItems().clear();
+        allEmployees.clear();
+        LoadingUtil.setLoading(table,
+                "Loading inactive employees...");
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ConfigManager.getBaseUrl()
+                            + "/api/employees/inactive"))
+                    .GET().build();
+            HttpResponse<String> resp = client.send(req,
+                    HttpResponse.BodyHandlers.ofString());
+            String body = resp.body().trim();
+            body = body.substring(1, body.length() - 1);
+            if (!body.isEmpty()) {
+                for (String obj : body.split("\\},\\{")) {
+                    obj = obj.replace("{", "")
+                            .replace("}", "");
+                    Employee e = new Employee(
+                            extractInt(obj, "id"),
+                            extractValue(obj, "name"),
+                            extractValue(obj, "empCode"),
+                            extractValue(obj, "designation"),
+                            extractValue(obj, "email"),
+                            extractValue(obj, "phone"),
+                            0
+                    );
+                    table.getItems().add(e);
+                    allEmployees.add(e);
+                }
+                if (table.getItems().isEmpty()) {
+                    LoadingUtil.setEmpty(table, "👤",
+                            "No inactive employees",
+                            "All employees are currently active.");
+                }
+            } else {
+                LoadingUtil.setEmpty(table, "👤",
+                        "No inactive employees",
+                        "All employees are currently active.");
+            }
+        } catch (Exception ex) {
+            LoadingUtil.setEmpty(table, "⚠",
+                    "Could not load employees",
+                    "Check server connection.");
+        }
     }
 
     private void filterTable(TableView<Employee> table, String keyword) {

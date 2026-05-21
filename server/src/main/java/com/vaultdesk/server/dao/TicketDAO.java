@@ -151,6 +151,17 @@ public class TicketDAO {
         return tickets;
     }
 
+    public List<Ticket> getTicketsByAsset(int assetId) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT * FROM tickets WHERE asset_id = ? " +
+                        "ORDER BY created_at DESC", assetId);
+        List<Ticket> tickets = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            tickets.add(mapRowToTicket(row));
+        }
+        return tickets;
+    }
+
     private Ticket mapRowToTicket(Map<String,Object> row) {
         return new Ticket(
                 ((Number) row.get("id")).intValue(),
