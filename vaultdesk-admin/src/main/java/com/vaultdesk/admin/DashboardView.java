@@ -167,13 +167,14 @@ public class DashboardView {
         // ── Top bar ───────────────────────────────────────
         searchField = new TextField();
         searchField.setPromptText(
-                "🔍  Search assets, tickets, or employees...");
-        searchField.getStyleClass().add("search-bar");
+                "Search assets, tickets, or employees...");
+        HBox searchBarBox = UIComponents.searchBar(searchField);
+        HBox.setHgrow(searchBarBox, Priority.ALWAYS);
 
         NotificationBell bell = new NotificationBell();
         StackPane bellView = bell.getView();
 
-        HBox topBar = new HBox(searchField, bellView);
+        HBox topBar = new HBox(searchBarBox, bellView);
         topBar.getStyleClass().add("top-bar");
         topBar.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(searchField, Priority.ALWAYS);
@@ -511,6 +512,10 @@ public class DashboardView {
         Button btn = new Button(text);
         btn.getStyleClass().add("sidebar-btn");
         return btn;
+    }
+    private void setContent(javafx.scene.Node view) {
+        contentArea.getChildren().setAll(view);
+        AnimationUtil.fadeIn(view);
     }
 
     private void setActive(Button btn) {

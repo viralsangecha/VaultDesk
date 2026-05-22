@@ -83,6 +83,8 @@ public class NotificationBell {
                     badgeLabel.setText(
                             count > 99 ? "99+" : String.valueOf(count));
                     badgeLabel.setVisible(true);
+                    AnimationUtil.pulse(badgeLabel);
+                    AnimationUtil.popIn(badgeLabel);
                     bellLabel.setStyle(
                             "-fx-font-size: 18px; -fx-cursor: hand;" +
                                     "-fx-effect: dropshadow(gaussian," +

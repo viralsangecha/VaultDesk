@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.net.URI;
@@ -72,18 +73,25 @@ public class LicenseView {
         });
         usageCol.setCellFactory(col -> new TableCell<>() {
             @Override
-            protected void updateItem(String item, boolean empty) {
+            protected void updateItem(String item,
+                                      boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); return; }
-                setText(item);
-                if (item.startsWith("Full"))
-                    setStyle("-fx-text-fill: #f85149; -fx-font-weight: bold;");
-                else if (item.startsWith("High"))
-                    setStyle("-fx-text-fill: #d29922; -fx-font-weight: bold;");
-                else if (item.startsWith("Medium"))
-                    setStyle("-fx-text-fill: #58a6ff;");
-                else
-                    setStyle("-fx-text-fill: #3fb950;");
+                if (empty || item == null) {
+                    setGraphic(null); return;
+                }
+                License l = getTableView()
+                        .getItems().get(getIndex());
+                if (l.getSeatsTotal() == 0) {
+                    setText(item); setGraphic(null); return;
+                }
+                double pct = (double) l.getSeatsUsed()
+                        / l.getSeatsTotal() * 100;
+                String color = pct >= 100 ? "#f85149"
+                        : pct >= 80 ? "#d29922" : "#3fb950";
+                StackPane ring = UIComponents.progressRing(
+                        pct, color);
+                setText(null);
+                setGraphic(ring);
             }
         });
 
@@ -391,29 +399,35 @@ public class LicenseView {
         licenseTypeBox.getItems().addAll("Perpetual", "Subscription", "OEM", "Trial");
         licenseTypeBox.setValue("Subscription");
         TextField licenseKeyField    = new TextField();
-        TextField seatsTotalField    = new TextField();
+        NumberField seatsTotalField    = new NumberField();
         TextField vendorField        = new TextField();
         TextField purchaseDateField  = new TextField();
-        purchaseDateField.setPromptText("YYYY-MM-DD");
         TextField expiryDateField    = new TextField();
-        expiryDateField.setPromptText("YYYY-MM-DD");
-        TextField costField          = new TextField();
-        costField.setPromptText("0.0");
+        NumberField costField          = new NumberField();
         TextField notesField         = new TextField();
         Label errorLabel             = new Label("");
         errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Software Name *:"), 0, 0); grid.add(softwareNameField, 1, 0);
-        grid.add(new Label("License Type:"),    0, 1); grid.add(licenseTypeBox,    1, 1);
-        grid.add(new Label("License Key:"),     0, 2); grid.add(licenseKeyField,   1, 2);
-        grid.add(new Label("Total Seats *:"),   0, 3); grid.add(seatsTotalField,   1, 3);
-        grid.add(new Label("Vendor:"),          0, 4); grid.add(vendorField,       1, 4);
-        grid.add(new Label("Purchase Date:"),   0, 5); grid.add(purchaseDateField, 1, 5);
-        grid.add(new Label("Expiry Date:"),     0, 6); grid.add(expiryDateField,   1, 6);
-        grid.add(new Label("Cost:"),            0, 7); grid.add(costField,         1, 7);
-        grid.add(new Label("Notes:"),           0, 8); grid.add(notesField,        1, 8);
+        grid.add(new Label("Software Name *:"), 0, 0);
+        grid.add(softwareNameField, 1, 0);
+        grid.add(new Label("License Type:"),    0, 1);
+        grid.add(licenseTypeBox,    1, 1);
+        grid.add(new Label("License Key:"),     0, 2);
+        grid.add(licenseKeyField,   1, 2);
+        grid.add(new Label("Total Seats *:"),   0, 3);
+        grid.add(seatsTotalField,   1, 3);
+        grid.add(new Label("Vendor:"),          0, 4);
+        grid.add(vendorField,       1, 4);
+        grid.add(new Label("Purchase Date:"), 0, 5);
+        grid.add(DatePickerUtil.dateField(purchaseDateField), 1, 5);
+        grid.add(new Label("Expiry Date:"),   0, 6);
+        grid.add(DatePickerUtil.dateField(expiryDateField),   1, 6);
+        grid.add(new Label("Cost:"),            0, 7);
+        grid.add(costField,         1, 7);
+        grid.add(new Label("Notes:"),           0, 8);
+        grid.add(notesField,        1, 8);
         grid.add(errorLabel,                    1, 9);
         dialog.getDialogPane().setContent(grid);
 

@@ -155,6 +155,31 @@ public class EmployeeView {
             }
         });
 
+        // Add avatar column:
+        TableColumn<Employee, Void> avatarCol =
+                new TableColumn<>("");
+        avatarCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Void item,
+                                      boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) { setGraphic(null); return; }
+                Employee emp = getTableView()
+                        .getItems().get(getIndex());
+                String[] colors = {
+                        "#58a6ff", "#3fb950", "#d29922",
+                        "#f85149", "#a371f7", "#39d353"};
+                String color = colors[
+                        Math.abs(emp.getName().hashCode())
+                                % colors.length];
+                setGraphic(UIComponents.avatar(
+                        emp.getName(), color));
+            }
+        });
+        avatarCol.setMaxWidth(50);
+        avatarCol.setMinWidth(50);
+        table.getColumns().add(0, avatarCol);
+
         // ── Action column changes based on active/inactive ────
         TableColumn<Employee, Void> actionCol =
                 new TableColumn<>("Actions");
@@ -228,6 +253,7 @@ public class EmployeeView {
                     showSetLoginDialog(emp);
                 });
             }
+
 
             @Override
             protected void updateItem(Void item,
@@ -649,21 +675,28 @@ public class EmployeeView {
         TextField emailField       = new TextField();
         TextField phoneField       = new TextField();
         TextField joinDateField    = new TextField();
-        joinDateField.setPromptText("YYYY-MM-DD");
         TextField notesField       = new TextField();
         Label errorLabel           = new Label("");
         errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Name *:"),        0, 0); grid.add(nameField,        1, 0);
-        grid.add(new Label("Emp Code *:"),    0, 1); grid.add(empCodeField,     1, 1);
-        grid.add(new Label("Dept ID:"),       0, 2); grid.add(deptField,        1, 2);
-        grid.add(new Label("Designation *:"), 0, 3); grid.add(designationField, 1, 3);
-        grid.add(new Label("Email:"),         0, 4); grid.add(emailField,       1, 4);
-        grid.add(new Label("Phone:"),         0, 5); grid.add(phoneField,       1, 5);
-        grid.add(new Label("Join Date:"),     0, 6); grid.add(joinDateField,    1, 6);
-        grid.add(new Label("Notes:"),         0, 7); grid.add(notesField,       1, 7);
+        grid.add(new Label("Name *:"),        0, 0);
+        grid.add(nameField,        1, 0);
+        grid.add(new Label("Emp Code *:"),    0, 1);
+        grid.add(empCodeField,     1, 1);
+        grid.add(new Label("Dept ID:"),       0, 2);
+        grid.add(deptField,        1, 2);
+        grid.add(new Label("Designation *:"), 0, 3);
+        grid.add(designationField, 1, 3);
+        grid.add(new Label("Email:"),         0, 4);
+        grid.add(emailField,       1, 4);
+        grid.add(new Label("Phone:"),         0, 5);
+        grid.add(phoneField,       1, 5);
+        grid.add(new Label("Join Date:"), 0, 6);
+        grid.add(DatePickerUtil.dateField(joinDateField), 1, 6);
+        grid.add(new Label("Notes:"),         0, 7);
+        grid.add(notesField,       1, 7);
         grid.add(errorLabel,                  1, 8);
         dialog.getDialogPane().setContent(grid);
 

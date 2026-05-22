@@ -32,19 +32,25 @@ public class DashboardStatsView {
         pageSub.getStyleClass().add("page-subtitle");
 
         // ── Stat cards ────────────────────────────────────
-        VBox cardAssets    = statCard("⊞", "0", "TOTAL ASSETS",
-                "Loading...", "+12.4%", "stat-badge-green",
-                "stat-card-blue", "stat-icon-box-blue", "#58a6ff");
-        VBox cardTickets   = statCard("✉", "0", "OPEN TICKETS",
-                "Loading...", "Urgent", "stat-badge-red",
-                "stat-card-red", "stat-icon-box-red", "#f85149");
-        VBox cardLicenses  = statCard("🔑", "0", "EXPIRING LICENSES",
-                "Within 30 days", "30 Days", "stat-badge-orange",
-                "stat-card-orange", "stat-icon-box-orange", "#d29922");
-        VBox cardEmployees = statCard("👤", "0", "ACTIVE EMPLOYEES",
-                "Loading...", "Global", "stat-badge-blue",
-                "stat-card-green", "stat-icon-box-green", "#3fb950");
+        VBox cardAssets = UIComponents.infoCard(
+                "⊞", "TOTAL ASSETS", "0", "#58a6ff");
+        VBox cardTickets = UIComponents.infoCard(
+                "✉", "OPEN TICKETS", "0", "#f85149");
+        VBox cardLicenses = UIComponents.infoCard(
+                "🔑", "EXPIRING LICENSES", "0", "#d29922");
+        VBox cardEmployees = UIComponents.infoCard(
+                "👤", "ACTIVE EMPLOYEES", "0", "#3fb950");
 
+        // After statsRow is built:
+        AnimationUtil.staggerFadeIn(
+                new VBox(cardAssets, cardTickets,
+                        cardLicenses, cardEmployees));
+
+        // Add hover to each card:
+        AnimationUtil.addHoverScale(cardAssets);
+        AnimationUtil.addHoverScale(cardTickets);
+        AnimationUtil.addHoverScale(cardLicenses);
+        AnimationUtil.addHoverScale(cardEmployees);
         // ── Card click navigation ─────────────────────────
         cardAssets.setOnMouseClicked(e -> navigateTo("assets"));
         cardTickets.setOnMouseClicked(e -> navigateTo("tickets"));
@@ -303,9 +309,11 @@ public class DashboardStatsView {
     private void setStatNumber(VBox card, int value) {
         card.getChildren().stream()
                 .filter(n -> n instanceof Label
-                        && "stat-num".equals(((Label) n).getId()))
+                        && ((Label) n).getStyle()
+                        .contains("font-size: 18px"))
                 .findFirst()
-                .ifPresent(n -> ((Label) n).setText(String.valueOf(value)));
+                .ifPresent(n -> AnimationUtil.countUp(
+                        (Label) n, 0, value));
     }
 
     private void setStatSublabel(VBox card, String text) {

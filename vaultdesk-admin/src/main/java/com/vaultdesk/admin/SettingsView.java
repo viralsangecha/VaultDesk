@@ -65,8 +65,8 @@ public class SettingsView {
         Label portLabel = new Label("Server Port");
         portLabel.getStyleClass().add("login-label");
 
-        TextField portField = new TextField(
-                prefs.get("server.port", "2008"));
+        NumberField portField = new NumberField();
+        portField.setText(prefs.get("server.port", "2008"));
         portField.setPromptText("e.g. 2008");
         portField.setPrefWidth(120);
 

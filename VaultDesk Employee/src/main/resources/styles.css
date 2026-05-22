@@ -908,3 +908,74 @@
 .dialog-pane .label {
     -fx-text-fill: #c9d1d9 !important;
 }
+/* ── NEON GLOW EFFECTS ───────────────────────────────── */
+.stat-card-blue {
+    -fx-border-color: #1f6feb;
+    -fx-effect: dropshadow(gaussian,
+        rgba(31,111,235,0.15), 12, 0, 0, 0);
+}
+
+.stat-card-red {
+    -fx-border-color: #da3633;
+    -fx-effect: dropshadow(gaussian,
+        rgba(218,54,51,0.15), 12, 0, 0, 0);
+}
+
+.stat-card-orange {
+    -fx-border-color: #d29922;
+    -fx-effect: dropshadow(gaussian,
+        rgba(210,153,34,0.15), 12, 0, 0, 0);
+}
+
+.stat-card-green {
+    -fx-border-color: #238636;
+    -fx-effect: dropshadow(gaussian,
+        rgba(35,134,54,0.15), 12, 0, 0, 0);
+}
+
+/* ── SIDEBAR ACTIVE GLOW ─────────────────────────────── */
+.sidebar-btn-active {
+    -fx-background-color: #21262d;
+    -fx-text-fill: #58a6ff;
+    -fx-border-color: #58a6ff;
+    -fx-border-width: 0 0 0 3;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian,
+        rgba(88,166,255,0.2), 8, 0, 0, 0);
+}
+
+/* ── TABLE ROW HOVER GLOW ────────────────────────────── */
+.table-row-cell:hover {
+    -fx-background-color: #1c2128;
+    -fx-effect: dropshadow(gaussian,
+        rgba(88,166,255,0.05), 4, 0, 0, 0);
+}
+
+/* ── BUTTON GLOW ON HOVER ────────────────────────────── */
+.btn-primary:hover {
+    -fx-effect: dropshadow(gaussian,
+        rgba(35,134,54,0.6), 12, 0, 0, 2);
+}
+
+.btn-warning:hover {
+    -fx-effect: dropshadow(gaussian,
+        rgba(180,83,9,0.6), 12, 0, 0, 2);
+}
+
+.btn-danger:hover {
+    -fx-effect: dropshadow(gaussian,
+        rgba(218,54,51,0.6), 12, 0, 0, 2);
+}
+
+/* ── SEARCH BAR GLOW ─────────────────────────────────── */
+.search-bar:focused {
+    -fx-border-color: #58a6ff;
+    -fx-effect: dropshadow(gaussian,
+        rgba(88,166,255,0.25), 10, 0, 0, 0);
+}
+
+/* ── NOTIFICATION BADGE ──────────────────────────────── */
+.notification-badge {
+    -fx-effect: dropshadow(gaussian,
+        rgba(248,81,73,0.5), 6, 0, 0, 0);
+}

@@ -168,6 +168,9 @@ public class DashboardView {
         VBox cardAssets  = homeCard("▣", "My Assets",
                 "View assets assigned to you",
                 "#d29922", "#2d2008");
+        AnimationUtil.addHoverScale(cardTickets);
+        AnimationUtil.addHoverScale(cardRaise);
+        AnimationUtil.addHoverScale(cardAssets);
 
         cardTickets.setOnMouseClicked(e -> {
             setActive(btnMyTickets);
@@ -241,6 +244,11 @@ public class DashboardView {
                         "-fx-cursor: hand;");
         HBox.setHgrow(card, Priority.ALWAYS);
         return card;
+    }
+
+    private void setContent(javafx.scene.Node view) {
+        contentArea.getChildren().setAll(view);
+        AnimationUtil.fadeIn(view);
     }
 
     // ── Info row ──────────────────────────────────────────

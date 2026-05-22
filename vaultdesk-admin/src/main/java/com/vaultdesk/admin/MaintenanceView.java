@@ -307,7 +307,7 @@ public class MaintenanceView {
                 "Upgrade", "Cleaning", "Other");
         typeBox.setValue("Repair");
         TextField descField        = new TextField();
-        TextField costField        = new TextField();
+        NumberField costField        = new NumberField();
         costField.setPromptText("0.0");
         TextField dateField        = new TextField();
         dateField.setPromptText("YYYY-MM-DD");
@@ -326,8 +326,10 @@ public class MaintenanceView {
         grid.add(new Label("Type:"),          0, 1); grid.add(typeBox,         1, 1);
         grid.add(new Label("Description:"),   0, 2); grid.add(descField,       1, 2);
         grid.add(new Label("Cost:"),          0, 3); grid.add(costField,       1, 3);
-        grid.add(new Label("Date *:"),        0, 4); grid.add(dateField,       1, 4);
-        grid.add(new Label("Next Due Date:"), 0, 5); grid.add(nextDueDateField,1, 5);
+        grid.add(new Label("Date *:"),        0, 4);
+        grid.add(DatePickerUtil.dateField(dateField),        1, 4);
+        grid.add(new Label("Next Due Date:"), 0, 5);
+        grid.add(DatePickerUtil.dateField(nextDueDateField), 1, 5);
         grid.add(new Label("Status:"),        0, 6); grid.add(statusBox,       1, 6);
         grid.add(new Label("Notes:"),         0, 7); grid.add(notesField,      1, 7);
         grid.add(errorLabel,                  1, 8);

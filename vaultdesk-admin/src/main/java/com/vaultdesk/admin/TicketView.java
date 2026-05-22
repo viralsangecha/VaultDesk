@@ -723,6 +723,7 @@ public class TicketView {
         detailPanel.getChildren().clear();
         detailPanel.setVisible(true);
         detailPanel.setManaged(true);
+        AnimationUtil.slideInRight(detailPanel);
 
 
         // ── Header ────────────────────────────────────────

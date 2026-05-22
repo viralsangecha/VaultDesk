@@ -74,6 +74,7 @@ public class AssetDetailView {
                 "-fx-background-color: #0d1117;");
 
         buildContent();
+        AnimationUtil.fadeIn(root);
         return root;
     }
 
@@ -796,6 +797,7 @@ public class AssetDetailView {
 
             saveSpecs(specs);
             buildContent(); // Refresh
+            AnimationUtil.fadeIn(root);
         }
     }
 

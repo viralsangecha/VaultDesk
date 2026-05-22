@@ -214,7 +214,7 @@ public class UserManagementView {
         roleBox.getItems().addAll("ADMIN", "ENGINEER", "DEPT_HOD");
         roleBox.setValue("ENGINEER");
 
-        TextField deptIdField = new TextField();
+        NumberField deptIdField = new NumberField();
         deptIdField.setPromptText("Required for DEPT_ADMIN");
 
         Label errorLabel = new Label("");
@@ -265,8 +265,7 @@ public class UserManagementView {
                         "\"password\":\"" + passwordField.getText() + "\"," +
                         "\"fullName\":\"" + fullNameField.getText() + "\"," +
                         "\"role\":\"" + roleBox.getValue() + "\"," +
-                        "\"deptId\":" + (deptIdField.getText().trim().isEmpty()
-                        ? 0 : Integer.parseInt(deptIdField.getText().trim())) +
+                        "\"deptId\":" + deptIdField.getIntValue() +
                         "}";
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()

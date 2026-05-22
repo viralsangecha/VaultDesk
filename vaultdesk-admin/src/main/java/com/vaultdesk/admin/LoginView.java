@@ -78,6 +78,7 @@ public class LoginView {
                 themeBtn
         );
 
+        AnimationUtil.popIn(card);
         StackPane root = new StackPane(card);
         StackPane.setAlignment(card, Pos.CENTER);
         root.getStyleClass().add("login-bg");

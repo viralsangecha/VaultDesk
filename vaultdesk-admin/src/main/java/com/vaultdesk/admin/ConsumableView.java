@@ -211,15 +211,12 @@ public class ConsumableView {
                 "Battery", "Cleaning Kit", "Other");
         categoryBox.setValue("Toner");
         TextField compatibleField = new TextField();
-        TextField qtyField        = new TextField();
-        qtyField.setPromptText("0");
-        TextField reorderField    = new TextField();
-        reorderField.setPromptText("0");
+        NumberField qtyField        = new NumberField();
+        NumberField reorderField    = new NumberField();
         ComboBox<String> unitBox  = new ComboBox<>();
         unitBox.getItems().addAll("pieces", "boxes", "reams", "meters");
         unitBox.setValue("pieces");
-        TextField costField       = new TextField();
-        costField.setPromptText("0.0");
+        NumberField costField       = new NumberField();
         TextField locationField   = new TextField();
         TextField notesField      = new TextField();
         Label errorLabel          = new Label("");
