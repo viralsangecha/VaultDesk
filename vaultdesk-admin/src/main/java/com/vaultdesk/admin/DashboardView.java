@@ -73,8 +73,6 @@ public class DashboardView {
         Button btnUsageLog = sidebarBtn("📋  Usage Log");
         Button btnMaintenance = sidebarBtn("🔧  Maintenance");
         Button btnVendors     = sidebarBtn("🤝  Vendors");
-        Button btnReports     = sidebarBtn("📊  Reports");
-        Button btnActivity = sidebarBtn("📋  Activity Log");
         Button btnUsers       = sidebarBtn("👥  Users");
         Button btnSettings    = sidebarBtn("⚙  Settings");
         Button btnSupport     = sidebarBtn("？  Support");
@@ -97,9 +95,6 @@ public class DashboardView {
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
         sidebar.getChildren().addAll(sideHeader, userCard, btnDashboard);
-        if (SessionManager.get().isAdmin()) {
-            sidebar.getChildren().add(btnActivity); // ← add
-        }
 
 // Tickets — shown if user can view any tickets
         if (PermissionManager.canViewAllTickets()
@@ -143,10 +138,6 @@ public class DashboardView {
             sidebar.getChildren().add(btnVendors);
         }
 
-// Reports
-        if (PermissionManager.canViewReports()) {
-            sidebar.getChildren().add(btnReports);
-        }
 
 // Users
         if (PermissionManager.canManageUsers()) {
@@ -357,16 +348,6 @@ public class DashboardView {
                     new VendorView().getView());
         });
 
-        btnReports.setOnAction(e -> {
-            searchField.clear();
-            currentView = "reports";
-            currentAssetView = null;
-            currentTicketView = null;
-            currentEmployeeView = null;
-            setActive(btnReports);
-            contentArea.getChildren().setAll(
-                    new ReportView().getView());
-        });
 
         btnUsers.setOnAction(e -> {
             searchField.clear();
@@ -377,16 +358,6 @@ public class DashboardView {
             setActive(btnUsers);
             contentArea.getChildren().setAll(
                     new UserManagementView().getView());
-        });
-        btnActivity.setOnAction(e -> {
-            searchField.clear();
-            currentView = "activity";
-            currentAssetView = null;
-            currentTicketView = null;
-            currentEmployeeView = null;
-            setActive(btnActivity);
-            contentArea.getChildren().setAll(
-                    new ActivityLogView().getView());
         });
 
         btnSettings.setOnAction(e -> {

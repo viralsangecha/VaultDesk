@@ -285,7 +285,14 @@ public class TicketView {
             TableRow<Ticket> row = new TableRow<>();
             row.setOnMouseClicked(e -> {
                 if (e.getClickCount() == 2 && !row.isEmpty()) {
-                    openDetailPanel(row.getItem());
+                    if (PermissionManager.canViewTicketDetails())
+                    {
+                        openDetailPanel(row.getItem());
+                    }
+                    else {
+                        showAlert("Access Denied",
+                                "You don't have permission to view Ticket details.\nContact your administrator.");
+                    }
                 }
             });
             return row;
@@ -553,7 +560,14 @@ public class TicketView {
             TableRow<Ticket> row = new TableRow<>();
             row.setOnMouseClicked(e -> {
                 if (e.getClickCount() == 2 && !row.isEmpty())
-                    openDetailPanel(row.getItem());
+                    if (PermissionManager.canViewTicketDetails())
+                    {
+                        openDetailPanel(row.getItem());
+                    }
+                    else {
+                        showAlert("Access Denied",
+                                "You don't have permission to view Ticket details.\nContact your administrator.");
+                    }
             });
             return row;
         });

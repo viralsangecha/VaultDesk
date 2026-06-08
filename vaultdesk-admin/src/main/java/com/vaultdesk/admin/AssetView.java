@@ -107,7 +107,14 @@ public class AssetView {
             TableRow<Asset> row = new TableRow<>();
             row.setOnMouseClicked(e -> {
                 if (e.getClickCount() == 2 && !row.isEmpty()) {
-                    openAssetDetail(row.getItem());
+                    if (PermissionManager.canViewAssetDetails())
+                    {
+                        openAssetDetail(row.getItem());
+                    }
+                    else {
+                        showAlert("Access Denied",
+                                "You don't have permission to view asset details.\nContact your administrator.");
+                    }
                 }
             });
             return row;

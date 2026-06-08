@@ -202,6 +202,8 @@ public class UserManagementView {
                 .addAll(ButtonType.OK, ButtonType.CANCEL);
 
         TextField usernameField = new TextField();
+        TextField emailField = new TextField();
+        emailField.setPromptText("User email address");
         usernameField.setPromptText("Login username");
         TextField fullNameField = new TextField();
         fullNameField.setPromptText("Full display name");
@@ -223,13 +225,21 @@ public class UserManagementView {
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
-        grid.add(new Label("Username *:"),  0, 0); grid.add(usernameField, 1, 0);
-        grid.add(new Label("Full Name *:"), 0, 1); grid.add(fullNameField, 1, 1);
-        grid.add(new Label("Password *:"),  0, 2); grid.add(passwordField, 1, 2);
-        grid.add(new Label("Confirm *:"),   0, 3); grid.add(confirmField,  1, 3);
-        grid.add(new Label("Role:"),        0, 4); grid.add(roleBox,       1, 4);
-        grid.add(new Label("Dept ID:"),     0, 5); grid.add(deptIdField,   1, 5);
-        grid.add(errorLabel,                1, 6);
+        grid.add(new Label("Email *:"),0,0);
+        grid.add(emailField,1,0);
+        grid.add(new Label("Username *:"),  0, 1);
+        grid.add(usernameField, 1, 1);
+        grid.add(new Label("Full Name *:"), 0, 2);
+        grid.add(fullNameField, 1, 2);
+        grid.add(new Label("Password *:"),  0, 3);
+        grid.add(passwordField, 1, 3);
+        grid.add(new Label("Confirm *:"),   0, 4);
+        grid.add(confirmField,  1, 4);
+        grid.add(new Label("Role:"),        0, 5);
+        grid.add(roleBox,       1, 5);
+        grid.add(new Label("Dept ID:"),     0, 6);
+        grid.add(deptIdField,   1, 6);
+        grid.add(errorLabel,                1, 7);
         dialog.getDialogPane().setContent(grid);
 
         Button okButton = (Button) dialog.getDialogPane()
@@ -237,7 +247,8 @@ public class UserManagementView {
         okButton.setDisable(true);
 
         Runnable check = () -> okButton.setDisable(
-                usernameField.getText().trim().isEmpty()
+                emailField.getText().trim().isEmpty()
+                        || usernameField.getText().trim().isEmpty()
                         || fullNameField.getText().trim().isEmpty()
                         || passwordField.getText().isEmpty());
 
@@ -261,9 +272,10 @@ public class UserManagementView {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 String body = "{" +
-                        "\"username\":\"" + usernameField.getText() + "\"," +
+                        "\"email\":\"" + emailField.getText().trim() + "\"," +
+                        "\"username\":\"" + usernameField.getText().trim() + "\"," +
                         "\"password\":\"" + passwordField.getText() + "\"," +
-                        "\"fullName\":\"" + fullNameField.getText() + "\"," +
+                        "\"fullName\":\"" + fullNameField.getText().trim() + "\"," +
                         "\"role\":\"" + roleBox.getValue() + "\"," +
                         "\"deptId\":" + deptIdField.getIntValue() +
                         "}";
@@ -421,10 +433,10 @@ public class UserManagementView {
         groups.put("🎫 Tickets", java.util.List.of(
                 "VIEW_ALL_TICKETS", "VIEW_ASSIGNED_TICKETS",
                 "UPDATE_TICKET_STATUS", "ASSIGN_TICKET",
-                "DELETE_TICKET"));
+                "DELETE_TICKET","VIEW_TICKET_DETAILS"));
         groups.put("▣ Assets", java.util.List.of(
                 "VIEW_ALL_ASSETS", "VIEW_DEPT_ASSETS",
-                "ADD_ASSET", "EDIT_ASSET", "IMPORT_ASSETS"));
+                "ADD_ASSET", "EDIT_ASSET", "IMPORT_ASSETS","VIEW_ASSET_DETAILS"));
         groups.put("👤 Employees", java.util.List.of(
                 "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
                 "EDIT_EMPLOYEE", "SET_LOGIN"));

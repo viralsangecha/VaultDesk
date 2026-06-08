@@ -111,6 +111,10 @@ public class PermissionManager {
         return has("MANAGE_SETTINGS");
     }
 
+    public static boolean canViewAssetDetails() {return has("VIEW_ASSET_DETAILS");}
+
+    public static boolean canViewTicketDetails() {return has("VIEW_TICKET_DETAILS");}
+
     public static Set<String> getAll() {
         return java.util.Collections.unmodifiableSet(permissions);
     }
