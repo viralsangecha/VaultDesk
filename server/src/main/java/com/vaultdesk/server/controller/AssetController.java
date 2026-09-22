@@ -2,12 +2,14 @@ package com.vaultdesk.server.controller;
 
 import com.vaultdesk.server.dao.AssetDAO;
 import com.vaultdesk.server.dao.AssetHistoryDAO;
+import com.vaultdesk.server.dao.AssetLinkDAO;
 import com.vaultdesk.server.model.Asset;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/assets")
@@ -16,13 +18,15 @@ public class AssetController {
     private final AssetDAO assetDAO;
     private final AssetHistoryDAO historyDAO;
     private final JdbcTemplate jdbc;
+    private final AssetLinkDAO assetLinkDAO;
 
     public AssetController(AssetDAO assetDAO,
                            AssetHistoryDAO historyDAO,
-                           JdbcTemplate jdbc) {
+                           JdbcTemplate jdbc, AssetLinkDAO assetLinkDAO) {
         this.assetDAO   = assetDAO;
         this.historyDAO = historyDAO;
         this.jdbc       = jdbc;
+        this.assetLinkDAO = assetLinkDAO;
     }
 
     @GetMapping
@@ -135,6 +139,29 @@ public class AssetController {
                         + " status changed to: " + status);
 
         return ResponseEntity.ok("Assets Status updated");
+    }
+
+    @GetMapping("/{id}/links")
+    public ResponseEntity<?> getLinks(@PathVariable int id) {
+        return ResponseEntity.ok(assetLinkDAO.getLinksForAsset(id));
+    }
+
+    @PostMapping("/{id}/links")
+    public ResponseEntity<?> addLink(@PathVariable int id, @RequestBody Map<String, Object> body) {
+        int linkedAssetId = ((Number) body.get("linkedAssetId")).intValue();
+        String linkType = (String) body.getOrDefault("linkType", "");
+        int newId = assetLinkDAO.addLink(id, linkedAssetId, linkType);
+        if (newId == 0) {
+            return ResponseEntity.badRequest().body("Already linked, or cannot link an asset to itself.");
+        }
+        return ResponseEntity.status(201).body(Map.of("id", newId));
+    }
+
+    @DeleteMapping("/links/{linkId}")
+    public ResponseEntity<?> removeLink(@PathVariable int linkId) {
+        int rows = assetLinkDAO.removeLink(linkId);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("Link removed");
     }
 
     private void logActivity(int userId, String action,

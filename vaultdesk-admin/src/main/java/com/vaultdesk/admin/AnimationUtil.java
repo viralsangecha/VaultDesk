@@ -158,6 +158,20 @@ public class AnimationUtil {
         }
     }
 
+    // ── Live pulse dot — a small breathing indicator for "real-time" badges ──
+    public static javafx.scene.shape.Circle livePulseDot(String color) {
+        javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4);
+        dot.setFill(javafx.scene.paint.Color.web(color));
+        Timeline tl = new Timeline(
+                new KeyFrame(Duration.ZERO, new KeyValue(dot.opacityProperty(), 1.0)),
+                new KeyFrame(Duration.millis(900), new KeyValue(dot.opacityProperty(), 0.25)),
+                new KeyFrame(Duration.millis(1800), new KeyValue(dot.opacityProperty(), 1.0))
+        );
+        tl.setCycleCount(Timeline.INDEFINITE);
+        tl.play();
+        return dot;
+    }
+
     // ── Loading spinner ───────────────────────────────────
     public static javafx.scene.shape.Arc loadingSpinner() {
         javafx.scene.shape.Arc arc =

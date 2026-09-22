@@ -115,6 +115,29 @@ public class PermissionManager {
 
     public static boolean canViewTicketDetails() {return has("VIEW_TICKET_DETAILS");}
 
+    public static boolean canAddConsumable() {
+        return has("ADD_CONSUMABLE");
+    }
+
+    public static boolean canAddMaintenance() {
+        return has("ADD_MAINTENANCE");
+    }
+
+    public static boolean canAddVendor() {
+        return has("ADD_VENDOR");
+    }
+
+    public static boolean canAddDepartment() {
+        return has("ADD_DEPARTMENT");
+    }
+
+    public static boolean canImportEmployees() {
+        return has("IMPORT_EMPLOYEES");
+    }
+
+    public static boolean canDeactivateEmployee() {
+        return has("EDIT_EMPLOYEE");
+    }
     public static Set<String> getAll() {
         return java.util.Collections.unmodifiableSet(permissions);
     }

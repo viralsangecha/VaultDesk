@@ -1,6 +1,7 @@
 package com.vaultdesk.admin;
 
 import javafx.scene.Scene;
+import javafx.scene.control.Dialog;
 
 public class ThemeManager {
 
@@ -28,4 +29,14 @@ public class ThemeManager {
             scene.getStylesheets().add(light);
         }
     }
+    public static void applyToDialog(Dialog<?> dialog) {
+        dialog.getDialogPane().getStylesheets().clear();
+        dialog.getDialogPane().getStylesheets().add(
+                ThemeManager.class.getResource("/styles.css").toExternalForm());
+        if (current == Theme.LIGHT) {
+            dialog.getDialogPane().getStylesheets().add(
+                    ThemeManager.class.getResource("/styles-light.css").toExternalForm());
+        }
+    }
+
 }

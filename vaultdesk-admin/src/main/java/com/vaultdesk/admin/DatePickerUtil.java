@@ -10,18 +10,16 @@ import java.time.format.DateTimeFormatter;
 public class DatePickerUtil {
 
     private static final DateTimeFormatter FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ── Returns a TextField + calendar button combo ───────
     public static HBox dateField(TextField textField) {
-        textField.setPromptText("YYYY-MM-DD");
+        textField.setPromptText("dd-MM-yyyy");
 
         Button calBtn = new Button("📅");
+        calBtn.getStyleClass().add("btn-primary");
         calBtn.setStyle(
-                "-fx-background-color: #21262d;" +
-                        "-fx-text-fill: #c9d1d9;" +
-                        "-fx-border-color: #30363d;" +
-                        "-fx-border-radius: 0 6 6 0;" +
+                "-fx-border-radius: 0 6 6 0;" +
                         "-fx-background-radius: 0 6 6 0;" +
                         "-fx-padding: 6 10 6 10;" +
                         "-fx-cursor: hand;");
@@ -44,15 +42,16 @@ public class DatePickerUtil {
 
     private static void showPicker(TextField textField) {
         Dialog<LocalDate> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog); // This will now properly apply Light or Dark CSS
         dialog.setTitle("Select Date");
         dialog.setHeaderText(null);
         dialog.getDialogPane().getButtonTypes()
                 .addAll(ButtonType.OK, ButtonType.CANCEL);
 
         DatePicker picker = new DatePicker();
-        picker.setStyle(
-                "-fx-background-color: #21262d;" +
-                        "-fx-text-fill: #c9d1d9;");
+
+        // Removed picker.setStyle(...) hardcoded background colors completely
+        // so it defaults to the stylesheet's .combo-box / .text-field styles
 
         // Pre-fill if field has valid date
         try {
@@ -78,6 +77,26 @@ public class DatePickerUtil {
 
         dialog.showAndWait().ifPresent(date ->
                 textField.setText(date.format(FMT)));
+    }
+    /** Converts the field's displayed "dd-MM-yyyy" text to "yyyy-MM-dd" for sending to the server. Returns "" if blank/unparseable. */
+    public static String toIso(String ddMMyyyy) {
+        if (ddMMyyyy == null || ddMMyyyy.trim().isEmpty()) return "";
+        try {
+            return LocalDate.parse(ddMMyyyy.trim(), FMT).toString(); // LocalDate.toString() is ISO yyyy-MM-dd
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Converts a server-stored "yyyy-MM-dd" (or "yyyy-MM-dd HH:mm:ss") value to display "dd-MM-yyyy". Returns "" if blank/unparseable. */
+    public static String fromIso(String isoOrDateTime) {
+        if (isoOrDateTime == null || isoOrDateTime.trim().isEmpty()) return "";
+        try {
+            String datePart = isoOrDateTime.trim().substring(0, 10);
+            return LocalDate.parse(datePart).format(FMT);
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     // ── Quick standalone picker ───────────────────────────

@@ -64,7 +64,7 @@ public class UserPermissionDAO {
                 "ADD_LICENSE", "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
                 "VIEW_MAINTENANCE", "ADD_MAINTENANCE",
                 "VIEW_VENDORS", "ADD_VENDOR",
-                "MANAGE_USERS", "MANAGE_SETTINGS"
+                "MANAGE_USERS", "MANAGE_SETTINGS","VIEW_ASSET_DETAILS","VIEW_TICKET_DETAILS"
         );
     }
 }

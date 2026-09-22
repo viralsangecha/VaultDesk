@@ -1,17 +1,26 @@
 package com.vaultdesk.admin;
 
 import javafx.beans.property.SimpleStringProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
-import java.net.URI;
 import java.net.http.*;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ConsumableUsageView {
 
     public VBox getView() {
+        Label bcRoot = new Label("INVENTORY");
+        bcRoot.getStyleClass().add("breadcrumb-root");
+        Label bcSep = new Label("  /  ");
+        bcSep.getStyleClass().add("breadcrumb-sep");
+        Label bcCurrent = new Label("USAGE HISTORY");
+        bcCurrent.getStyleClass().add("breadcrumb-current");
+        HBox breadcrumb = new HBox(bcRoot, bcSep, bcCurrent);
+
         Label title = new Label("Consumable Usage History");
         title.getStyleClass().add("page-title");
         Label sub = new Label(
@@ -62,14 +71,8 @@ public class ConsumableUsageView {
                 usedByCol, notesCol);
 
         Button refreshBtn = new Button("↻ Refresh");
-        refreshBtn.getStyleClass().setAll("btn-primary");
-        refreshBtn.setStyle(
-                "-fx-background-color: #1f6feb;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-background-radius: 6;" +
-                        "-fx-padding: 6 14 6 14;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-cursor: hand;");
+        refreshBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(refreshBtn);
         refreshBtn.setOnAction(e -> loadUsage(table));
 
         HBox topBar = new HBox(10, refreshBtn);
@@ -77,65 +80,75 @@ public class ConsumableUsageView {
 
         loadUsage(table);
 
-        VBox root = new VBox(10,
-                title, sub, topBar, table);
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
         VBox.setVgrow(table, Priority.ALWAYS);
+        VBox.setVgrow(tableWrapper, Priority.ALWAYS);
+
+        VBox root = new VBox(12, breadcrumb,
+                new VBox(4, title, sub), topBar, tableWrapper);
         return root;
     }
 
     private void loadUsage(TableView<String[]> table) {
         table.getItems().clear();
         LoadingUtil.setLoading(table, "Loading usage log...");
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/consumables/usage/all"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-            body = body.substring(1, body.length() - 1);
 
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "")
-                            .replace("}", "");
-                    String date = extractValue(
-                            obj, "usage_date");
-                    table.getItems().add(new String[]{
-                            date.length() >= 10
-                                    ? date.substring(0, 10)
-                                    : date,
-                            extractValue(obj,
-                                    "consumable_name"),
-                            extractValue(obj,
-                                    "quantity_used"),
-                            extractValue(obj, "asset_name"),
-                            extractValue(obj,
-                                    "employee_name"),
-                            extractValue(obj,
-                                    "used_by_name"),
-                            extractValue(obj, "notes")
-                    });
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> result = new ArrayList<>();
+
+                String url = ConfigManager.getBaseUrl() + "/api/consumables/usage/all";
+                HttpResponse<String> resp = ApiClient.get(url);
+                String body = resp.body().trim();
+
+                if (body.equals("[]") || body.isEmpty()) {
+                    return result;
                 }
-                if (table.getItems().isEmpty()) {
-                    LoadingUtil.setEmpty(table, "📦",
-                            "No usage recorded yet",
-                            "Use the Issue button in " +
-                                    "Consumables to record usage.");
+
+                if (body.startsWith("[")) body = body.substring(1);
+                if (body.endsWith("]")) body = body.substring(0, body.length() - 1);
+                body = body.trim();
+
+                if (!body.isEmpty()) {
+                    String[] jsonObjects = body.split("\\},\\s*\\{");
+                    for (String obj : jsonObjects) {
+                        String cleanedObj = obj.replace("{", "").replace("}", "");
+
+                        String[] row = new String[]{
+                                DateTimeFormatUtil.toIndianDateTime(extractValue(cleanedObj, "usage_date")),
+                                extractValue(cleanedObj, "consumable_name"),
+                                extractValue(cleanedObj, "quantity_used"),
+                                extractValue(cleanedObj, "asset_name"),
+                                extractValue(cleanedObj, "employee_name"),
+                                extractValue(cleanedObj, "used_by_name"),
+                                extractValue(cleanedObj, "notes")
+                        };
+
+                        result.add(row);
+                    }
                 }
-            } else {
-                LoadingUtil.setEmpty(table, "📦",
-                        "No usage recorded yet",
-                        "Use the Issue button in " +
-                                "Consumables to record usage.");
+                return result;
             }
-        } catch (Exception ex) {
-            LoadingUtil.setEmpty(table, "⚠",
-                    "Could not load usage log",
-                    "Check server connection.");
-        }
+        };
+
+        task.setOnSucceeded(e -> {
+            List<String[]> rows = task.getValue();
+            table.getItems().addAll(rows);
+            if (rows.isEmpty()) {
+                LoadingUtil.setEmpty(table, "📦", "No usage recorded yet", "Use the Issue button in Consumables to record usage.");
+            }
+        });
+
+        task.setOnFailed(e -> {
+            LoadingUtil.setEmpty(table, "⚠", "Could not load usage log", "Check server connection.");
+            task.getException().printStackTrace();
+        });
+
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     private String extractValue(String json, String key) {

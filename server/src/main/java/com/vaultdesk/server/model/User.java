@@ -9,5 +9,6 @@ public record User(
         int active,
         String createdAt,
         String lastLogin,
-        int deptId
+        int deptId,
+        String email
 ) {}

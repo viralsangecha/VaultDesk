@@ -22,7 +22,8 @@ public class ServerConfigView {
         Label infoLabel = new Label(
                 "Enter the IP address of the machine running VaultDesk server.\n" +
                         "If running on this machine, use: localhost");
-        infoLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        infoLabel.getStyleClass().add("text-muted");
+        infoLabel.setStyle("-fx-font-size: 12px;");
         infoLabel.setWrapText(true);
 
         Label hostLabel = new Label("Server IP / Hostname");
@@ -42,20 +43,13 @@ public class ServerConfigView {
         statusLabel.setStyle("-fx-font-size: 12px;");
 
         Button testBtn = new Button("Test Connection");
-        testBtn.getStyleClass().setAll("btn-primary");
-        testBtn.setStyle(
-                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 10 20 10 20;" +
-                        "-fx-font-size: 13px; -fx-font-weight: bold;" +
-                        "-fx-pref-width: 340px; -fx-cursor: hand;");
+        testBtn.getStyleClass().add("btn-primary");
+        testBtn.setStyle("-fx-pref-width: 340px;");
+        AnimationUtil.addHoverScale(testBtn);
 
         Button saveBtn = new Button("Save & Continue to Login →");
-        saveBtn.getStyleClass().setAll("login-btn");
-        saveBtn.setStyle(
-                "-fx-background-color: #238636; -fx-text-fill: white;" +
-                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
-                        "-fx-pref-width: 340px; -fx-pref-height: 42px;" +
-                        "-fx-background-radius: 6; -fx-cursor: hand;");
+        saveBtn.getStyleClass().add("login-btn");
+        saveBtn.setStyle("-fx-pref-width: 340px; -fx-pref-height: 42px;");
         saveBtn.setDisable(true);
 
         testBtn.setOnAction(e -> {
@@ -66,7 +60,7 @@ public class ServerConfigView {
                 statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
                 return;
             }
-            String url = "http://" + host + ":" + port + "/api/dashboard/stats";
+            String url = "http://" + host + ":" + port + "/api/health";
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()

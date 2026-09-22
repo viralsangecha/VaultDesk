@@ -1,5 +1,7 @@
 package com.vaultdesk.admin;
 
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -9,28 +11,72 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
+import java.util.function.Function;
 
 public class ExcelExporter {
 
-    // ── Generic export ────────────────────────────────────
-    public static void export(String sheetName,
-                              List<String> headers,
-                              List<List<String>> rows) {
+    /** Simple, fast path — use when rows are already fully built in memory (no per-row work needed). */
+    public static void export(String sheetName, List<String> headers, List<List<String>> rows) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Excel Report");
         chooser.setInitialFileName(sheetName + ".xlsx");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Excel Files", "*.xlsx"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel Files", "*.xlsx"));
         File file = chooser.showSaveDialog(new Stage());
         if (file == null) return;
 
+        ProgressDialogUtil.Handle progress = ProgressDialogUtil.show("Exporting " + sheetName);
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                writeWorkbook(file, sheetName, headers, rows, progress);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> { progress.close(); showSuccess("Exported to: " + file.getName()); });
+        task.setOnFailed(e -> { progress.close(); showError("Export failed: " + task.getException().getMessage()); });
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Use when each row needs per-item work (e.g. resolving a name from a map) — still runs off the FX thread. */
+    public static <T> void exportWithMapping(String sheetName, List<String> headers,
+                                             List<T> items, Function<T, List<String>> rowMapper) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save Excel Report");
+        chooser.setInitialFileName(sheetName + ".xlsx");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel Files", "*.xlsx"));
+        File file = chooser.showSaveDialog(new Stage());
+        if (file == null) return;
+
+        ProgressDialogUtil.Handle progress = ProgressDialogUtil.show("Exporting " + sheetName);
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                java.util.List<List<String>> rows = new java.util.ArrayList<>();
+                int total = items.size();
+                for (int i = 0; i < total; i++) {
+                    rows.add(rowMapper.apply(items.get(i)));
+                    progress.update(i + 1, total, "Preparing row " + (i + 1) + " of " + total);
+                }
+                writeWorkbook(file, sheetName, headers, rows, progress);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> { progress.close(); showSuccess("Exported to: " + file.getName()); });
+        task.setOnFailed(e -> { progress.close(); showError("Export failed: " + task.getException().getMessage()); });
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private static void writeWorkbook(File file, String sheetName, List<String> headers,
+                                      List<List<String>> rows, ProgressDialogUtil.Handle progress) throws Exception {
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet(sheetName);
 
-            // ── Header style ──────────────────────────────
             CellStyle headerStyle = wb.createCellStyle();
-            headerStyle.setFillForegroundColor(
-                    IndexedColors.DARK_BLUE.getIndex());
+            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             headerStyle.setBorderBottom(BorderStyle.THIN);
             Font headerFont = wb.createFont();
@@ -39,13 +85,10 @@ public class ExcelExporter {
             headerFont.setFontHeightInPoints((short) 11);
             headerStyle.setFont(headerFont);
 
-            // ── Alt row style ─────────────────────────────
             CellStyle altStyle = wb.createCellStyle();
-            altStyle.setFillForegroundColor(
-                    IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+            altStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
             altStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // ── Write headers ─────────────────────────────
             Row headerRow = sheet.createRow(0);
             for (int i = 0; i < headers.size(); i++) {
                 Cell cell = headerRow.createCell(i);
@@ -54,8 +97,8 @@ public class ExcelExporter {
                 sheet.setColumnWidth(i, 5000);
             }
 
-            // ── Write data rows ───────────────────────────
-            for (int r = 0; r < rows.size(); r++) {
+            int total = rows.size();
+            for (int r = 0; r < total; r++) {
                 Row row = sheet.createRow(r + 1);
                 List<String> rowData = rows.get(r);
                 for (int c = 0; c < rowData.size(); c++) {
@@ -63,46 +106,28 @@ public class ExcelExporter {
                     cell.setCellValue(rowData.get(c));
                     if (r % 2 == 1) cell.setCellStyle(altStyle);
                 }
+                if (r % 20 == 0) progress.update(r + 1, total, "Writing row " + (r + 1) + " of " + total);
             }
 
-            // ── Auto-size columns ─────────────────────────
-            for (int i = 0; i < headers.size(); i++) {
-                sheet.autoSizeColumn(i);
-            }
+            for (int i = 0; i < headers.size(); i++) sheet.autoSizeColumn(i);
 
-            // ── Save ──────────────────────────────────────
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 wb.write(fos);
             }
-
-            showSuccess("Exported to: " + file.getName());
-
-        } catch (Exception ex) {
-            showError("Export failed: " + ex.getMessage());
         }
     }
 
     private static void showSuccess(String msg) {
-        javafx.application.Platform.runLater(() -> {
-            javafx.scene.control.Alert a =
-                    new javafx.scene.control.Alert(
-                            javafx.scene.control.Alert.AlertType.INFORMATION);
-            a.setTitle("Export Successful");
-            a.setHeaderText(null);
-            a.setContentText(msg);
-            a.showAndWait();
+        Platform.runLater(() -> {
+            javafx.scene.control.Alert a = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+            a.setTitle("Export Successful"); a.setHeaderText(null); a.setContentText(msg); a.showAndWait();
         });
     }
 
     private static void showError(String msg) {
-        javafx.application.Platform.runLater(() -> {
-            javafx.scene.control.Alert a =
-                    new javafx.scene.control.Alert(
-                            javafx.scene.control.Alert.AlertType.ERROR);
-            a.setTitle("Export Failed");
-            a.setHeaderText(null);
-            a.setContentText(msg);
-            a.showAndWait();
+        Platform.runLater(() -> {
+            javafx.scene.control.Alert a = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            a.setTitle("Export Failed"); a.setHeaderText(null); a.setContentText(msg); a.showAndWait();
         });
     }
 }

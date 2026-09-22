@@ -1,14 +1,18 @@
 package com.vaultdesk.server.controller;
 
-import com.vaultdesk.server.dao.NotificationDAO;
-import com.vaultdesk.server.dao.TicketDAO;
-import com.vaultdesk.server.dao.UserDAO;
+import com.vaultdesk.server.dao.*;
+import com.vaultdesk.server.model.Asset;
 import com.vaultdesk.server.model.Ticket;
 import com.vaultdesk.server.model.TicketRequest;
+import com.vaultdesk.server.security.AuthContext;
+import com.vaultdesk.server.service.EmailService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.SqlOutParameter;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,15 +24,23 @@ public class TicketController {
     private final NotificationDAO notificationDAO;
     private final UserDAO userDAO;
     private final JdbcTemplate jdbc;
+    private final EmailService emailService;
+    private final EmployeeDAO employeeDAO;
+    private final AssetDAO assetDAO;
+    private final AssetLinkDAO assetLinkDAO;
 
     public TicketController(TicketDAO ticketDAO,
                             NotificationDAO notificationDAO,
                             UserDAO userDAO,
-                            JdbcTemplate jdbc) {
+                            JdbcTemplate jdbc, EmailService emailService, EmployeeDAO employeeDAO, AssetDAO assetDAO, AssetLinkDAO assetLinkDAO) {
         this.ticketDAO        = ticketDAO;
         this.notificationDAO  = notificationDAO;
         this.userDAO          = userDAO;
         this.jdbc             = jdbc;
+        this.emailService = emailService;
+        this.employeeDAO = employeeDAO;
+        this.assetDAO=assetDAO;
+        this.assetLinkDAO = assetLinkDAO;
     }
 
     @GetMapping
@@ -57,62 +69,37 @@ public class TicketController {
         return ResponseEntity.ok(ticket);
     }
 
-    /*@PostMapping
-    public ResponseEntity<?> savetickets(@RequestBody TicketRequest request) {
-        ticketDAO.saveTicket(request.title(), request.description(),
-                request.category(), request.priority(), request.reportedBy());
-
-        // ── Get the new ticket id ─────────────────────────
-        List<Ticket> all = ticketDAO.getAllTickets();
-        int newTicketId = all != null && !all.isEmpty()
-                ? all.get(0).id() : 0;
-
-        // ── Notify all admins ─────────────────────────────
-        notificationDAO.notifyAllAdmins(jdbc,
-                "New ticket raised: " + request.title(),
-                "TICKET_CREATED", newTicketId);
-
-        return ResponseEntity.status(201).body("Ticket added");
-    }*/
-
-    /*@PutMapping("/{id}/status")
-    public ResponseEntity<?> updateticketstatus(
-            @PathVariable int id,
-            @RequestParam String status,
-            @RequestParam String resolution) {
-        int rows = ticketDAO.updateTicketStatus(id, status, resolution);
-        if (rows == 0) return ResponseEntity.notFound().build();
-
-        // ── Notify employee who raised it ─────────────────
-        Ticket ticket = ticketDAO.getTicketById(id);
-        if (ticket != null && ticket.reportedBy() > 0) {
-            notificationDAO.notifyEmployee(
-                    ticket.reportedBy(),
-                    "Your ticket '" + ticket.title()
-                            + "' status changed to: " + status,
-                    "STATUS_CHANGED", id);
-        }
-
-        return ResponseEntity.ok("Ticket Status Updated!");
+    @GetMapping("/assignee/{userId}/department/{seldeptId}")
+    public ResponseEntity<?> getticketbyassign(@PathVariable int userId,@PathVariable int seldeptId) {
+        List<Ticket> ticket = ticketDAO.getTicketsByAssigneeByDept(userId,seldeptId);
+        if (ticket == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(ticket);
     }
 
-    @PutMapping("/{id}/assign")
-    public ResponseEntity<?> assignticket(
-            @PathVariable int id,
-            @RequestParam int userId) {
-        int rows = ticketDAO.assignTicket(id, userId);
-        if (rows == 0) return ResponseEntity.notFound().build();
+    @GetMapping("/api/employees/{id}/ticket-defaults")
+    public ResponseEntity<?> getTicketDefaults(@PathVariable int id) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("department", employeeDAO.getDepartmentNameForEmployee(id));
 
-        // ── Notify the assigned engineer/admin ────────────
-        Ticket ticket = ticketDAO.getTicketById(id);
-        if (ticket != null) {
-            notificationDAO.notifyUser(userId,
-                    "Ticket assigned to you: " + ticket.title(),
-                    "TICKET_ASSIGNED", id);
+        List<Asset> assets = assetDAO.getAssetsByEmployee(id);
+        List<Integer> ids = assets.stream().map(Asset::id).toList();
+        List<Map<String, Object>> links = assetLinkDAO.getLinksForAssetIds(ids);
+
+        List<Map<String, Object>> assetList = new ArrayList<>();
+        for (Asset a : assets) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", a.id());
+            m.put("assetTag", a.assetTag());
+            m.put("name", a.name());
+            long accCount = links.stream()
+                    .filter(l -> ((Number) l.get("owner_asset_id")).intValue() == a.id())
+                    .count();
+            m.put("accessoryCount", accCount);
+            assetList.add(m);
         }
-
-        return ResponseEntity.ok("Ticket assigned");
-    }*/
+        result.put("assets", assetList);
+        return ResponseEntity.ok(result);
+    }
 
     @GetMapping("/department/{deptId}")
     public ResponseEntity<?> getByDept(@PathVariable int deptId) {
@@ -125,37 +112,6 @@ public class TicketController {
         return ResponseEntity.ok(ticketDAO.getComments(id));
     }
 
-    /*@PostMapping("/{id}/comments")
-    public ResponseEntity<?> addComment(
-            @PathVariable int id,
-            @RequestBody Map<String, String> body) {
-        String comment = body.get("comment");
-        int addedBy = body.get("addedBy") != null
-                ? Integer.parseInt(body.get("addedBy")) : 0;
-        if (comment == null || comment.trim().isEmpty())
-            return ResponseEntity.badRequest().body("Comment required");
-
-        ticketDAO.saveComment(id, comment, addedBy);
-
-        // ── Notify relevant party ─────────────────────────
-        Ticket ticket = ticketDAO.getTicketById(id);
-        if (ticket != null) {
-            // If commented by employee → notify assigned user
-            if (ticket.assignedTo() > 0) {
-                notificationDAO.notifyUser(ticket.assignedTo(),
-                        "New comment on ticket: " + ticket.title(),
-                        "COMMENT_ADDED", id);
-            }
-            // Also notify employee if comment from admin/engineer
-            if (ticket.reportedBy() > 0 && addedBy != ticket.reportedBy()) {
-                notificationDAO.notifyEmployee(ticket.reportedBy(),
-                        "New comment on your ticket: " + ticket.title(),
-                        "COMMENT_ADDED", id);
-            }
-        }
-
-        return ResponseEntity.status(201).body("Comment added");
-    }*/
     private void logActivity(int userId, String action,
                              String tableName, int recordId,
                              String details) {
@@ -172,10 +128,11 @@ public class TicketController {
     }
     @PostMapping
     public ResponseEntity<?> savetickets(@RequestBody TicketRequest request) {
+        // ── Derive department + systemno server-side ─────────
+        String department = employeeDAO.getDepartmentNameForEmployee(request.reportedBy());
         ticketDAO.saveTicket(request.title(), request.description(),
                 request.category(), request.priority(),
-                request.reportedBy());
-
+                request.reportedBy(), department, request.assetId());
         List<Ticket> all = ticketDAO.getAllTickets();
         int newTicketId = all != null && !all.isEmpty()
                 ? all.get(0).id() : 0;
@@ -184,10 +141,22 @@ public class TicketController {
                 "New ticket raised: " + request.title(),
                 "TICKET_CREATED", newTicketId);
 
-        // ── Log activity ──────────────────────────────────
-        logActivity(request.reportedBy(), "CREATE",
-                "tickets", newTicketId,
-                "Ticket created: " + request.title());
+        String ticketNo = (all != null && !all.isEmpty()) ? all.get(0).ticketNo() : "N/A";
+
+        var employee = employeeDAO
+                .getEmployeeById(request.reportedBy());
+        var user = userDAO
+                .getUserById(request.reportedBy());
+
+        String reporterName = employee != null
+                ? employee.name()
+                : user != null
+                ? user.fullName()
+                : "Unknown";
+        List<String> adminEmails = userDAO.getAdminEmails();
+        for (String email : adminEmails) {
+            emailService.sendTicketCreatedEmail(email, ticketNo, request.title(),request.description(), reporterName);
+        }
 
         return ResponseEntity.status(201).body("Ticket added");
     }
@@ -197,23 +166,186 @@ public class TicketController {
             @PathVariable int id,
             @RequestParam String status,
             @RequestParam String resolution) {
-        int rows = ticketDAO.updateTicketStatus(id, status, resolution);
+
+        Ticket existing = ticketDAO.getTicketById(id);
+        if (existing == null) return ResponseEntity.notFound().build();
+        if (existing.assignedTo() <= 0) {
+            return ResponseEntity.badRequest()
+                    .body("Ticket must be assigned to an engineer before its status can be changed.");
+        }
+
+        int rows = ticketDAO.updateTicketStatus(id, status, resolution, AuthContext.currentSubjectId());
         if (rows == 0) return ResponseEntity.notFound().build();
 
         Ticket ticket = ticketDAO.getTicketById(id);
         if (ticket != null && ticket.reportedBy() > 0) {
-            notificationDAO.notifyEmployee(
-                    ticket.reportedBy(),
-                    "Your ticket '" + ticket.title()
-                            + "' status changed to: " + status,
+            if ("Resolved".equals(status)) {
+                // Notify reporter to approve closure
+                if (ticket.reportedBy() > 0) {
+                    notificationDAO.notifyEmployee(
+                            ticket.reportedBy(),
+                            "Your ticket '" + ticket.title() +
+                                    "' has been resolved. Please approve or deny closure in the Employee Portal.",
+                            "STATUS_CHANGED", id);
+                }
+                // Notify admins
+                notificationDAO.notifyAllAdmins(jdbc,
+                        "Ticket '" + ticket.title() +
+                                "' marked Resolved by engineer.",
+                        "STATUS_CHANGED", id);
+
+            } else if ("In Progress".equals(status)) {
+                // Notify engineer if denied
+                if (ticket.assignedTo() > 0) {
+                    notificationDAO.notifyUser(
+                            ticket.assignedTo(),
+                            "Ticket '" + ticket.title() +
+                                    "' closure was denied. Reason: " +
+                                    resolution,
+                            "STATUS_CHANGED", id);
+                }
+            } else {
+                // Generic status change notification to reporter
+                if (ticket.reportedBy() > 0) {
+                    notificationDAO.notifyEmployee(
+                            ticket.reportedBy(),
+                            "Your ticket '" + ticket.title() +
+                                    "' status changed to: " + status,
+                            "STATUS_CHANGED", id);
+                }
+            }
+
+        }
+
+        Ticket all = ticketDAO.getTicketById(id);
+
+        String ticketNo = all.ticketNo();
+
+        var employee = employeeDAO.getEmployeeById(ticket.reportedBy());
+        var user = userDAO.getUserById(ticket.reportedBy());
+        String assignedTo = userDAO.getUserById(ticket.assignedTo()).fullName();
+
+        String reporterName = employee != null
+                ? employee.name()
+                : user != null
+                ? user.fullName()
+                : "Unknown";
+        List<String> adminEmails = userDAO.getAdminEmails();
+        String engemail = userDAO.getUserById(ticket.assignedTo()).email();
+        if (ticket.status()=="closed")
+        {
+            emailService.sendTicketStatusEmail(engemail, ticketNo, ticket.title(),reporterName,assignedTo,ticket.description(),ticket.status(),ticket.resolution());
+        }
+        String reporteremail=employee.email();
+        emailService.sendTicketStatusEmail(reporteremail, ticketNo, ticket.title(),reporterName,assignedTo,ticket.description(),ticket.status(),ticket.resolution());
+        for (String email : adminEmails) {
+            emailService.sendTicketStatusEmail(email, ticketNo, ticket.title(),reporterName,assignedTo,ticket.description(),ticket.status(),ticket.resolution());
+        }
+
+
+
+        return ResponseEntity.ok("Ticket Status Updated!");
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<?> getHistory(@PathVariable int id) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("timeline", ticketDAO.getStatusHistory(id));
+        result.put("cycles", ticketDAO.getShapedCycles(id));
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<?> exportTickets(@RequestParam String from, @RequestParam String to) {
+        List<Ticket> tickets = ticketDAO.getTicketsForExport(from, to);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Ticket t : tickets) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("ticket", t);
+            row.put("cycles", ticketDAO.getShapedCycles(t.id()));
+            result.add(row);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/{id}/approve-closure")
+    public ResponseEntity<?> approveClosure(@PathVariable int id) {
+        int rows = ticketDAO.approveClosure(id);
+        if (rows == 0) return ResponseEntity.notFound().build();
+
+        // Notify engineer that ticket is closed
+        Ticket ticket = ticketDAO.getTicketById(id);
+        if (ticket != null && ticket.assignedTo() > 0) {
+            notificationDAO.notifyUser(ticket.assignedTo(),
+                    "Ticket '" + ticket.title() + "' has been approved and closed by reporter.",
                     "STATUS_CHANGED", id);
         }
 
-        // ── Log activity ──────────────────────────────────
-        logActivity(0, "UPDATE", "tickets", id,
-                "Status changed to: " + status);
+        Ticket all = ticketDAO.getTicketById(id);
 
-        return ResponseEntity.ok("Ticket Status Updated!");
+        String ticketNo = all.ticketNo();
+
+        var employee = employeeDAO.getEmployeeById(ticket.reportedBy());
+        var user = userDAO.getUserById(ticket.reportedBy());
+        String assignedTo = userDAO.getUserById(ticket.assignedTo()).fullName();
+
+        String reporterName = employee != null
+                ? employee.name()
+                : user != null
+                ? user.fullName()
+                : "Unknown";
+
+        String reporteremail=employee.email();
+        emailService.sendTicketStatusEmail(reporteremail, ticketNo, ticket.title(),reporterName,assignedTo,ticket.description(),ticket.status(),ticket.resolution());
+
+        String engemail = userDAO.getUserById(ticket.assignedTo()).email();
+        emailService.sendTicketStatusEmail(engemail, ticketNo, ticket.title(),reporterName,assignedTo,ticket.description(),ticket.status(),ticket.resolution());
+
+        return ResponseEntity.ok("Ticket closed");
+    }
+
+    @PutMapping("/{id}/deny-closure")
+    public ResponseEntity<?> denyClosure(@PathVariable int id, @RequestBody Map<String, String> body) {
+        String reason = body.getOrDefault("reason", "");
+        if (reason.trim().isEmpty())
+            return ResponseEntity.badRequest().body("Reason is required");
+
+        int rows = ticketDAO.denyClosure(id, reason);
+        if (rows == 0) return ResponseEntity.notFound().build();
+
+        // Notify engineer that closure was denied
+        Ticket ticket = ticketDAO.getTicketById(id);
+        if (ticket != null && ticket.assignedTo() > 0) {
+            notificationDAO.notifyUser(ticket.assignedTo(),
+                    "Closure denied for ticket '" + ticket.title() + "'. Reason: " + reason,
+                    "STATUS_CHANGED", id);
+        }
+
+        Ticket all = ticketDAO.getTicketById(id);
+
+        String ticketNo = all.ticketNo();
+
+        var employee = employeeDAO.getEmployeeById(ticket.reportedBy());
+        var user = userDAO.getUserById(ticket.reportedBy());
+        String assignedTo = userDAO.getUserById(ticket.assignedTo()).fullName();
+
+        String reporterName = employee != null
+                ? employee.name()
+                : user != null
+                ? user.fullName()
+                : "Unknown";
+
+        String engemail = userDAO.getUserById(ticket.assignedTo()).email();
+        emailService.sendTicketStatusEmail(engemail, ticketNo, ticket.title(),reporterName,assignedTo,ticket.description(),ticket.status(),ticket.resolution());
+
+
+        return ResponseEntity.ok("Closure denied");
+    }
+
+    @GetMapping("/pending-closure/reporter/{employeeId}")
+    public ResponseEntity<?> getPendingClosure(@PathVariable int employeeId) {
+        return ResponseEntity.ok(
+                ticketDAO.getTicketsPendingClosure(employeeId));
     }
 
     @PutMapping("/{id}/assign")
@@ -229,10 +361,25 @@ public class TicketController {
                     "Ticket assigned to you: " + ticket.title(),
                     "TICKET_ASSIGNED", id);
         }
+        ticketDAO.updateTicketStatus(id, "In Progress", "",0);
 
-        // ── Log activity ──────────────────────────────────
-        logActivity(userId, "UPDATE", "tickets", id,
-                "Ticket assigned to user #" + userId);
+        Ticket all = ticketDAO.getTicketById(id);
+
+        String ticketNo = all.ticketNo();
+        var employee = employeeDAO.getEmployeeById(ticket.reportedBy());
+        var user = userDAO.getUserById(ticket.reportedBy());
+        String assignedTo = userDAO.getUserById(ticket.assignedTo()).fullName();
+        String engemail = userDAO.getUserById(ticket.assignedTo()).email();
+
+        String reporterName = employee != null
+                ? employee.name()
+                : user != null
+                ? user.fullName()
+                : "Unknown";
+
+        emailService.sendTicketAssignedEmail(engemail, ticketNo, ticket.title(),ticket.description(),reporterName,assignedTo,ticket.status());
+        emailService.sendTicketAssignedEmail(employee.email(), ticketNo, ticket.title(),ticket.description(),reporterName,assignedTo,ticket.status());
+
 
         return ResponseEntity.ok("Ticket assigned");
     }
@@ -271,10 +418,6 @@ public class TicketController {
                         "COMMENT_ADDED", id);
             }
         }
-
-        // ── Log activity ──────────────────────────────────
-        logActivity(addedBy, "CREATE", "ticket_comments", id,
-                "Comment added on ticket #" + id);
 
         return ResponseEntity.status(201).body("Comment added");
     }

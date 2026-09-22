@@ -1,5 +1,6 @@
 package com.vaultdesk.admin;
 
+import javafx.css.PseudoClass;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -122,51 +123,23 @@ public class UIComponents {
 
     // ── Search bar with icon ──────────────────────────────
     public static HBox searchBar(TextField field) {
-        Label icon = new Label("🔍");
-        icon.setStyle(
-                "-fx-text-fill: #484f58;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-padding: 0 4 0 8;");
+        Label icon = new Label("");
+        icon.getStyleClass().add("search-icon");
 
-        field.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #e6edf3;" +
-                        "-fx-prompt-text-fill: #484f58;" +
-                        "-fx-border-width: 0;" +
-                        "-fx-padding: 8 12 8 4;");
+        field.getStyleClass().add("search-field");
 
         HBox box = new HBox(icon, field);
         box.setAlignment(Pos.CENTER_LEFT);
-        box.setStyle(
-                "-fx-background-color: #21262d;" +
-                        "-fx-border-color: #30363d;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-border-radius: 8;" +
-                        "-fx-background-radius: 8;");
+        box.getStyleClass().add("search-box");
         HBox.setHgrow(field, Priority.ALWAYS);
 
-        // Focus glow
-        field.focusedProperty().addListener(
-                (obs, ov, nv) -> {
-                    if (nv) {
-                        box.setStyle(
-                                "-fx-background-color: #21262d;" +
-                                        "-fx-border-color: #58a6ff;" +
-                                        "-fx-border-width: 1;" +
-                                        "-fx-border-radius: 8;" +
-                                        "-fx-background-radius: 8;" +
-                                        "-fx-effect: dropshadow(gaussian," +
-                                        " rgba(88,166,255,0.2)," +
-                                        " 8, 0, 0, 0);");
-                    } else {
-                        box.setStyle(
-                                "-fx-background-color: #21262d;" +
-                                        "-fx-border-color: #30363d;" +
-                                        "-fx-border-width: 1;" +
-                                        "-fx-border-radius: 8;" +
-                                        "-fx-background-radius: 8;");
-                    }
-                });
+        // Create a custom state called "box-focused"
+        PseudoClass focusedClass = PseudoClass.getPseudoClass("box-focused");
+
+        // When the text field is focused, apply the "box-focused" state to the HBox
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            box.pseudoClassStateChanged(focusedClass, newVal);
+        });
 
         return box;
     }

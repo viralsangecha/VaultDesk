@@ -1,6 +1,7 @@
 package com.vaultdesk.admin;
 
 import javafx.beans.property.SimpleStringProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -70,9 +71,7 @@ public class AssetDetailView {
 
     public VBox getView() {
         root = new VBox(0);
-        root.setStyle(
-                "-fx-background-color: #0d1117;");
-
+        root.setStyle("-fx-background-color: transparent;");
         buildContent();
         AnimationUtil.fadeIn(root);
         return root;
@@ -87,17 +86,14 @@ public class AssetDetailView {
                 "-fx-text-fill: #58a6ff;" +
                         "-fx-font-size: 12px;" +
                         "-fx-font-weight: bold;");
+        tagLabel.getStyleClass().add("data-mono");
 
         Label nameLabel = new Label(asset.getName());
-        nameLabel.setStyle(
-                "-fx-text-fill: #e6edf3;" +
-                        "-fx-font-size: 20px;" +
-                        "-fx-font-weight: bold;");
+        nameLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;"); // color now inherits from theme-aware base .label
 
         Label categoryLabel = new Label(asset.getCategory());
-        categoryLabel.setStyle(
-                "-fx-text-fill: #8b949e;" +
-                        "-fx-font-size: 13px;");
+        categoryLabel.getStyleClass().add("text-muted");
+        categoryLabel.setStyle("-fx-font-size: 13px;");
 
         Label statusBadge = new Label(asset.getStatus());
         statusBadge.setPadding(new Insets(4, 12, 4, 12));
@@ -107,15 +103,12 @@ public class AssetDetailView {
         headerTop.setAlignment(Pos.CENTER_LEFT);
 
         Button editBtn = new Button("✏ Edit Asset");
-        editBtn.getStyleClass().setAll("btn-warning");
-        editBtn.setStyle(
-                "-fx-background-color: #b45309;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-background-radius: 6;" +
-                        "-fx-padding: 6 14 6 14;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-cursor: hand;");
+        editBtn.getStyleClass().add("btn-warning");
+        editBtn.setStyle("-fx-padding: 6 14 6 14;");
+        AnimationUtil.addHoverScale(editBtn);
         editBtn.setOnAction(e -> showEditDialog());
+        editBtn.setVisible(PermissionManager.canEditAsset());
+        editBtn.setManaged(PermissionManager.canEditAsset());
 
         Region hSpacer = new Region();
         HBox.setHgrow(hSpacer, Priority.ALWAYS);
@@ -125,10 +118,7 @@ public class AssetDetailView {
                 hSpacer, editBtn);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         titleRow.setPadding(new Insets(20, 20, 16, 20));
-        titleRow.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;" +
-                        "-fx-border-width: 0 0 1 0;");
+        titleRow.getStyleClass().add("top-bar");
 
         // ── Scrollable content ────────────────────────────
         VBox content = new VBox(0);
@@ -137,6 +127,7 @@ public class AssetDetailView {
                 buildInfoSection(),
                 buildSpecsSection(),
                 buildComponentsSection(),
+                buildLinkedAssetsSection(),
                 buildMaintenanceSection(),
                 buildHistorySection(),
                 buildTicketsSection()
@@ -144,9 +135,10 @@ public class AssetDetailView {
 
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("content-scroll");
         scroll.setStyle(
-                "-fx-background-color: #0d1117;" +
-                        "-fx-background: #0d1117;");
+                "-fx-background-color: transparent;" +
+                        "-fx-background: transparent;");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         root.getChildren().addAll(titleRow, scroll);
@@ -155,67 +147,46 @@ public class AssetDetailView {
 
     // ── Basic Info + Assignment + Purchase ────────────────
     private VBox buildInfoSection() {
-        // Load employee name for assigned_to
-        String assignedName = "Unassigned";
-        String deptName     = "-";
-        String vendorName   = "-";
+        String json = fetchAssetJson();
 
-        if (asset.getAssignedTo() > 0) {
-            assignedName = loadEmployeeName(asset.getAssignedTo());
+        String assignedName = "Unassigned";
+        int assignedTo = extractInt(json, "assignedTo");
+        if (assignedTo > 0) {
+            assignedName = loadEmployeeName(assignedTo);
         }
 
         VBox section = new VBox(0);
 
-        // Basic info
         GridPane basicGrid = new GridPane();
         basicGrid.setHgap(16); basicGrid.setVgap(8);
         basicGrid.setPadding(new Insets(16, 20, 8, 20));
-
         addGridRow(basicGrid, 0, "Brand", asset.getBrand());
-        addGridRow(basicGrid, 1, "Model",
-                loadAssetField("model"));
-        addGridRow(basicGrid, 2, "Serial No",
-                asset.getSerialNumber());
-        addGridRow(basicGrid, 3, "Location",
-                asset.getLocation());
+        addGridRow(basicGrid, 1, "Model", extractValue(json, "model"));
+        addGridRow(basicGrid, 2, "Serial No", asset.getSerialNumber());
+        addGridRow(basicGrid, 3, "Location", asset.getLocation());
 
-        // Assignment info
         GridPane assignGrid = new GridPane();
         assignGrid.setHgap(16); assignGrid.setVgap(8);
         assignGrid.setPadding(new Insets(8, 20, 8, 20));
-
         addGridRow(assignGrid, 0, "Assigned To", assignedName);
-        addGridRow(assignGrid, 1, "Assigned Date",
-                loadAssetField("assigned_date"));
-        addGridRow(assignGrid, 2, "Department",
-                loadDeptName());
+        addGridRow(assignGrid, 1, "Assigned Date", DateTimeFormatUtil.toIndianDateOnly(extractValue(json, "assignedDate")));
+        addGridRow(assignGrid, 2, "Department", loadDeptName(json));
 
-        // Purchase info
         GridPane purchaseGrid = new GridPane();
         purchaseGrid.setHgap(16); purchaseGrid.setVgap(8);
         purchaseGrid.setPadding(new Insets(8, 20, 16, 20));
-
-        addGridRow(purchaseGrid, 0, "Vendor",
-                loadVendorName());
-        addGridRow(purchaseGrid, 1, "Purchase Date",
-                loadAssetField("purchase_date"));
+        addGridRow(purchaseGrid, 0, "Vendor", loadVendorName(json));
+        addGridRow(purchaseGrid, 1, "Purchase Date", DateTimeFormatUtil.toIndianDateOnly(extractValue(json, "purchaseDate")));
         addGridRow(purchaseGrid, 2, "Purchase Cost",
-                "₹" + String.format("%.2f",
-                        loadAssetDouble("purchase_cost")));
-        addGridRow(purchaseGrid, 3, "Warranty Expiry",
-                loadAssetField("warranty_expiry"));
-        addGridRow(purchaseGrid, 4, "Notes",
-                asset.getNotes());
+                "₹" + String.format("%.2f", extractDouble(json, "purchaseCost")));
+        addGridRow(purchaseGrid, 3, "Warranty Expiry", DateTimeFormatUtil.toIndianDateOnly(extractValue(json, "warrantyExpiry")));
+        addGridRow(purchaseGrid, 4, "Notes", asset.getNotes());
 
         section.getChildren().addAll(
-                sectionHeader("📋 Basic Information"),
-                basicGrid,
-                sectionHeader("👤 Assignment"),
-                assignGrid,
-                sectionHeader("💰 Purchase Information"),
-                purchaseGrid,
+                sectionHeader("📋 Basic Information"), basicGrid,
+                sectionHeader("👤 Assignment"), assignGrid,
+                sectionHeader("💰 Purchase Information"), purchaseGrid,
                 divider());
-
         return section;
     }
 
@@ -224,13 +195,10 @@ public class AssetDetailView {
         VBox section = new VBox(0);
 
         Button editSpecsBtn = new Button("✏ Edit Specs");
-        editSpecsBtn.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #58a6ff;" +
-                        "-fx-font-size: 11px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-border-width: 0;");
+        editSpecsBtn.getStyleClass().add("btn-link-blue");
         editSpecsBtn.setOnAction(e -> showEditSpecsDialog());
+        editSpecsBtn.setVisible(PermissionManager.canEditAsset());
+        editSpecsBtn.setManaged(PermissionManager.canEditAsset());
 
         HBox header = sectionHeaderWithBtn(
                 "⚙ Specifications", editSpecsBtn);
@@ -240,14 +208,8 @@ public class AssetDetailView {
 
         // Load specs from server
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/assets/" + asset.getId()
-                            + "/specs"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl()
+                    + "/api/assets/" + asset.getId() + "/specs");
             String body = resp.body().trim();
             body = body.substring(1, body.length() - 1);
 
@@ -266,9 +228,8 @@ public class AssetDetailView {
             } else {
                 Label empty = new Label(
                         "No specs recorded. Click Edit Specs.");
-                empty.setStyle(
-                        "-fx-text-fill: #484f58;" +
-                                "-fx-font-size: 12px;");
+                empty.getStyleClass().add("text-muted");
+                empty.setStyle("-fx-font-size: 12px;");
                 specsContent.getChildren().add(empty);
             }
         } catch (Exception ex) {
@@ -286,23 +247,17 @@ public class AssetDetailView {
         VBox section = new VBox(0);
 
         Button addCompBtn = new Button("+ Add Component");
-        addCompBtn.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #3fb950;" +
-                        "-fx-font-size: 11px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-border-width: 0;");
+        addCompBtn.getStyleClass().add("btn-link-green");
 
         HBox header = sectionHeaderWithBtn(
                 "🔧 Components", addCompBtn);
+        addCompBtn.setVisible(PermissionManager.canEditAsset());
+        addCompBtn.setManaged(PermissionManager.canEditAsset());
 
         TableView<String[]> table = new TableView<>();
         table.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(160);
-        table.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;");
 
         TableColumn<String[], String> typeCol =
                 new TableColumn<>("Type");
@@ -334,11 +289,7 @@ public class AssetDetailView {
         actionCol.setCellFactory(col -> new TableCell<>() {
             private final Button delBtn = new Button("✕");
             {
-                delBtn.setStyle(
-                        "-fx-background-color: transparent;" +
-                                "-fx-text-fill: #f85149;" +
-                                "-fx-cursor: hand;" +
-                                "-fx-border-width: 0;");
+                delBtn.getStyleClass().add("btn-link-red");
                 delBtn.setOnAction(e -> {
                     String[] row = getTableView()
                             .getItems().get(getIndex());
@@ -347,10 +298,9 @@ public class AssetDetailView {
                 });
             }
             @Override
-            protected void updateItem(Void item,
-                                      boolean empty) {
+            protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : delBtn);
+                setGraphic(empty || !PermissionManager.canEditAsset() ? null : delBtn);
             }
         });
         actionCol.setMaxWidth(40);
@@ -363,7 +313,9 @@ public class AssetDetailView {
         addCompBtn.setOnAction(e ->
                 showAddComponentDialog(table));
 
-        VBox tableBox = new VBox(table);
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
+        VBox tableBox = new VBox(tableWrapper);
         tableBox.setPadding(new Insets(8, 20, 16, 20));
 
         section.getChildren().addAll(
@@ -371,17 +323,183 @@ public class AssetDetailView {
         return section;
     }
 
+    private VBox buildLinkedAssetsSection() {
+        VBox section = new VBox(0);
+
+        Button linkBtn = new Button("+ Link Asset");
+        linkBtn.getStyleClass().add("btn-link-green");
+
+        HBox header = sectionHeaderWithBtn("🔗 Linked Assets", linkBtn);
+
+
+        TableView<String[]> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setPrefHeight(140);
+
+        TableColumn<String[], String> tagCol = new TableColumn<>("Asset Tag");
+        tagCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()[0]));
+        TableColumn<String[], String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()[1]));
+        TableColumn<String[], String> catCol = new TableColumn<>("Category");
+        catCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()[2]));
+        TableColumn<String[], String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()[3]));
+
+        TableColumn<String[], Void> actionCol = new TableColumn<>("");
+        actionCol.setCellFactory(col -> new TableCell<>() {
+            private final Button unlinkBtn = new Button("Unlink");
+            {
+                unlinkBtn.getStyleClass().add("btn-link-red");
+                unlinkBtn.setOnAction(e -> {
+                    String[] row = getTableView().getItems().get(getIndex());
+                    unlinkAsset(Integer.parseInt(row[4]), table);
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty || !PermissionManager.canEditAsset() ? null : unlinkBtn);
+            }
+        });
+
+        table.getColumns().addAll(tagCol, nameCol, catCol, statusCol, actionCol);
+        loadLinkedAssets(table);
+
+        linkBtn.setOnAction(e -> showLinkAssetDialog(table));
+        linkBtn.setVisible(PermissionManager.canEditAsset());
+        linkBtn.setManaged(PermissionManager.canEditAsset());
+
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
+        VBox tableBox = new VBox(tableWrapper);
+        tableBox.setPadding(new Insets(8, 20, 16, 20));
+        section.getChildren().addAll(header, tableBox, divider());
+        return section;
+    }
+
+    private void loadLinkedAssets(TableView<String[]> table) {
+        table.getItems().clear();
+        LoadingUtil.setLoading(table, "Loading linked assets...");
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> result = new ArrayList<>();
+                HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/links");
+                String body = resp.body().trim();
+                if (body.length() < 2) return result;
+                body = body.substring(1, body.length() - 1).trim();
+                if (body.isEmpty()) return result;
+                for (String obj : body.split("\\},\\{")) {
+                    String cleaned = obj.replace("{", "").replace("}", "");
+                    result.add(new String[]{
+                            extractValue(cleaned, "asset_tag"),
+                            extractValue(cleaned, "name"),
+                            extractValue(cleaned, "category"),
+                            extractValue(cleaned, "status"),
+                            String.valueOf(extractInt(cleaned, "link_id"))
+                    });
+                }
+                return result;
+            }
+        };
+        task.setOnSucceeded(e -> {
+            table.getItems().addAll(task.getValue());
+            if (task.getValue().isEmpty()) {
+                LoadingUtil.setEmpty(table, "🔗", "No linked assets", "Click + Link Asset to associate accessories.");
+            }
+        });
+        task.setOnFailed(e -> LoadingUtil.setEmpty(table, "⚠", "Error loading links", ""));
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showLinkAssetDialog(TableView<String[]> table) {
+        Task<List<PickerOption>> loadTask = new Task<>() {
+            @Override
+            protected List<PickerOption> call() throws Exception {
+                List<PickerOption> result = new ArrayList<>();
+                HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/assets");
+                String body = resp.body().trim();
+                if (body.length() < 2) return result;
+                body = body.substring(1, body.length() - 1).trim();
+                if (body.isEmpty()) return result;
+                for (String obj : body.split("\\},\\{")) {
+                    String cleaned = obj.replace("{", "").replace("}", "");
+                    int id = extractInt(cleaned, "id");
+                    if (id == asset.getId()) continue; // exclude self
+                    result.add(new PickerOption(id, extractValue(cleaned, "assetTag") + " — " + extractValue(cleaned, "name")));
+                }
+                return result;
+            }
+        };
+        loadTask.setOnSucceeded(e -> openLinkAssetDialog(loadTask.getValue(), table));
+        Thread t = new Thread(loadTask);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void openLinkAssetDialog(List<PickerOption> options, TableView<String[]> table) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
+        dialog.setTitle("Link Asset");
+        dialog.setHeaderText("Associate another asset with " + asset.getName());
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        SearchablePickerField assetPicker = new SearchablePickerField(options, "Search asset...");
+        TextField linkTypeField = new TextField();
+        linkTypeField.setPromptText("e.g. Accessory, Peripheral (optional)");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.add(new Label("Asset *:"), 0, 0); grid.add(assetPicker, 1, 0);
+        grid.add(new Label("Link Type:"), 0, 1); grid.add(linkTypeField, 1, 1);
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            int linkedId = assetPicker.getSelectedId();
+            if (linkedId == 0) {
+                showAlert("Error", "Select an asset to link.");
+                return;
+            }
+            try {
+                String body = "{\"linkedAssetId\":" + linkedId + ",\"linkType\":\"" + escape(linkTypeField.getText()) + "\"}";
+                HttpResponse<String> resp = ApiClient.post(
+                        ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/links", body);
+                if (resp.statusCode() == 201) {
+                    loadLinkedAssets(table);
+                } else {
+                    showAlert("Error", resp.body());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private void unlinkAsset(int linkId, TableView<String[]> table) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        ThemeManager.applyToDialog(confirm);
+        confirm.setContentText("Remove this asset link?");
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                try {
+                    ApiClient.delete(ConfigManager.getBaseUrl() + "/api/assets/links/" + linkId);
+                    loadLinkedAssets(table);
+                } catch (Exception ex) {
+                    showAlert("Error", ex.getMessage());
+                }
+            }
+        });
+    }
+
     // ── Maintenance History ───────────────────────────────
     private VBox buildMaintenanceSection() {
         VBox section = new VBox(0);
 
         Button addBtn = new Button("+ Add Maintenance");
-        addBtn.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #3fb950;" +
-                        "-fx-font-size: 11px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-border-width: 0;");
+        addBtn.getStyleClass().add("btn-link-green");
 
         HBox header = sectionHeaderWithBtn(
                 "🔨 Maintenance History", addBtn);
@@ -390,9 +508,6 @@ public class AssetDetailView {
         table.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(160);
-        table.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;");
 
         TableColumn<String[], String> dateCol =
                 new TableColumn<>("Date");
@@ -426,10 +541,13 @@ public class AssetDetailView {
 
         addBtn.setOnAction(e ->
                 showAddMaintenanceDialog(table));
+        addBtn.setVisible(PermissionManager.canAddMaintenance());
+        addBtn.setManaged(PermissionManager.canAddMaintenance());
 
-        VBox tableBox = new VBox(table);
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
+        VBox tableBox = new VBox(tableWrapper);
         tableBox.setPadding(new Insets(8, 20, 16, 20));
-
         section.getChildren().addAll(
                 header, tableBox, divider());
         return section;
@@ -443,9 +561,6 @@ public class AssetDetailView {
         table.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(140);
-        table.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;");
 
         TableColumn<String[], String> dateCol =
                 new TableColumn<>("Date");
@@ -472,7 +587,9 @@ public class AssetDetailView {
 
         loadHistory(table);
 
-        VBox tableBox = new VBox(table);
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
+        VBox tableBox = new VBox(tableWrapper);
         tableBox.setPadding(new Insets(8, 20, 16, 20));
 
         section.getChildren().addAll(
@@ -489,9 +606,6 @@ public class AssetDetailView {
         table.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(140);
-        table.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;");
 
         TableColumn<String[], String> noCol =
                 new TableColumn<>("Ticket No");
@@ -512,10 +626,10 @@ public class AssetDetailView {
 
         loadTickets(table);
 
-        VBox tableBox = new VBox(table);
-        tableBox.setPadding(
-                new Insets(8, 20, 20, 20));
-
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
+        VBox tableBox = new VBox(tableWrapper);
+        tableBox.setPadding(new Insets(8, 20, 16, 20));
         section.getChildren().addAll(
                 sectionHeader("🎫 Linked Tickets"),
                 tableBox);
@@ -524,195 +638,152 @@ public class AssetDetailView {
 
     // ── Edit Asset Dialog ─────────────────────────────────
     private void showEditDialog() {
+        Task<Object[]> loadTask = new Task<>() {
+            @Override
+            protected Object[] call() throws Exception {
+                String json = fetchAssetJson();
+                List<PickerOption> employees = fetchEmployeeOptions();
+                List<PickerOption> departments = fetchDepartmentOptions();
+                List<PickerOption> vendors = fetchVendorOptions();
+                return new Object[]{json, employees, departments, vendors};
+            }
+        };
+
+        loadTask.setOnSucceeded(e -> {
+            Object[] data = loadTask.getValue();
+            @SuppressWarnings("unchecked")
+            List<PickerOption> employees = (List<PickerOption>) data[1];
+            @SuppressWarnings("unchecked")
+            List<PickerOption> departments = (List<PickerOption>) data[2];
+            @SuppressWarnings("unchecked")
+            List<PickerOption> vendors = (List<PickerOption>) data[3];
+            openEditDialog((String) data[0], employees, departments, vendors);
+        });
+
+        loadTask.setOnFailed(e -> showAlert("Error",
+                "Could not load edit form: " + loadTask.getException().getMessage()));
+
+        Thread t = new Thread(loadTask);
+        t.setDaemon(true);
+        t.start();
+    }
+
+
+    private void openEditDialog(String json, List<PickerOption> employees,
+                                List<PickerOption> departments, List<PickerOption> vendors) {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Edit Asset");
         dialog.setHeaderText(asset.getName());
-        dialog.getDialogPane().getButtonTypes()
-                .addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.getDialogPane().setPrefWidth(520);
-
-        // Load full asset details from server
-        Map<String, String> fullAsset = loadFullAsset();
 
         TextField nameField = new TextField(asset.getName());
         ComboBox<String> categoryBox = new ComboBox<>();
-        categoryBox.getItems().addAll(
-                "PC", "Laptop", "Server", "Printer",
-                "Switch", "Router", "UPS", "Mobile",
-                "CCTV", "DVR", "NVR", "Biometric", "Other");
+        categoryBox.getItems().addAll("PC", "Laptop", "Server", "Printer",
+                "Switch", "Router", "UPS", "Mobile", "CCTV", "DVR", "NVR", "Biometric", "Other");
         categoryBox.setValue(asset.getCategory());
 
         TextField brandField = new TextField(asset.getBrand());
-        TextField modelField = new TextField(
-                fullAsset.getOrDefault("model", ""));
-        TextField serialField = new TextField(
-                asset.getSerialNumber());
-        TextField locationField = new TextField(
-                asset.getLocation());
+        TextField modelField = new TextField(extractValue(json, "model"));
+        TextField serialField = new TextField(asset.getSerialNumber());
+        TextField locationField = new TextField(asset.getLocation());
 
         ComboBox<String> statusBox = new ComboBox<>();
-        statusBox.getItems().addAll(
-                "Active", "In Repair", "Retired", "Disposed");
+        statusBox.getItems().addAll("Active", "In Repair", "Retired", "Disposed");
         statusBox.setValue(asset.getStatus());
 
-        // Assigned to — employee picker
-        TextField assignedField = new TextField(
-                fullAsset.getOrDefault("assigned_to", "0"));
-        assignedField.setPromptText("Employee ID");
+        SearchablePickerField employeePicker = new SearchablePickerField(employees, "Search employee...");
+        SearchablePickerField deptPicker = new SearchablePickerField(departments, "Search department...");
+        SearchablePickerField vendorPicker = new SearchablePickerField(vendors, "Search vendor...");
 
-        // Date fields with picker
-        TextField assignedDateField = new TextField(
-                fullAsset.getOrDefault("assigned_date", ""));
-        TextField purchaseDateField = new TextField(
-                fullAsset.getOrDefault("purchase_date", ""));
-        TextField warrantyField = new TextField(
-                fullAsset.getOrDefault("warranty_expiry", ""));
+        int currentAssignedTo = extractInt(json, "assignedTo");
+        int currentDeptId = extractInt(json, "departmentId");
+        int currentVendorId = extractInt(json, "vendorId");
+        if (currentAssignedTo > 0) employeePicker.preselectSilently(currentAssignedTo);
+        if (currentDeptId > 0) deptPicker.preselectSilently(currentDeptId);
+        if (currentVendorId > 0) vendorPicker.preselectSilently(currentVendorId);
+
+        // Auto-fill department from the chosen employee; user can still change it afterward.
+        employeePicker.setOnSelect(opt -> {
+            if (opt.extraId > 0) deptPicker.selectById(opt.extraId);
+        });
+
+        TextField assignedDateField = new TextField(DatePickerUtil.fromIso(extractValue(json, "assignedDate")));
+        TextField purchaseDateField = new TextField(DatePickerUtil.fromIso(extractValue(json, "purchaseDate")));
+        TextField warrantyField = new TextField(DatePickerUtil.fromIso(extractValue(json, "warrantyExpiry")));
 
         NumberField costField = new NumberField(true);
-        costField.setText(
-                fullAsset.getOrDefault("purchase_cost", "0"));
-
-        TextField vendorField = new TextField(
-                fullAsset.getOrDefault("vendor_id", "0"));
-        vendorField.setPromptText("Vendor ID");
-
-        TextField deptField = new TextField(
-                fullAsset.getOrDefault("department_id", "0"));
-        deptField.setPromptText("Department ID");
+        costField.setText(String.valueOf(extractDouble(json, "purchaseCost")));
 
         TextField notesField = new TextField(asset.getNotes());
-
         Label errorLabel = new Label("");
-        errorLabel.setStyle(
-                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(12); grid.setVgap(10);
         grid.setPadding(new Insets(10));
 
         int r = 0;
-        grid.add(new Label("Name *:"),         0, r);
-        grid.add(nameField,                    1, r++);
-        grid.add(new Label("Category:"),       0, r);
-        grid.add(categoryBox,                  1, r++);
-        grid.add(new Label("Brand:"),          0, r);
-        grid.add(brandField,                   1, r++);
-        grid.add(new Label("Model:"),          0, r);
-        grid.add(modelField,                   1, r++);
-        grid.add(new Label("Serial No:"),      0, r);
-        grid.add(serialField,                  1, r++);
-        grid.add(new Label("Location:"),       0, r);
-        grid.add(locationField,                1, r++);
-        grid.add(new Label("Status:"),         0, r);
-        grid.add(statusBox,                    1, r++);
-        grid.add(new Label("Assigned To (ID):"),0, r);
-        grid.add(assignedField,                1, r++);
-        grid.add(new Label("Assigned Date:"),  0, r);
-        grid.add(DatePickerUtil.dateField(
-                assignedDateField),            1, r++);
-        grid.add(new Label("Dept ID:"),        0, r);
-        grid.add(deptField,                    1, r++);
-        grid.add(new Label("Vendor ID:"),      0, r);
-        grid.add(vendorField,                  1, r++);
-        grid.add(new Label("Purchase Date:"),  0, r);
-        grid.add(DatePickerUtil.dateField(
-                purchaseDateField),            1, r++);
-        grid.add(new Label("Warranty Expiry:"),0, r);
-        grid.add(DatePickerUtil.dateField(
-                warrantyField),                1, r++);
-        grid.add(new Label("Cost (₹):"),       0, r);
-        grid.add(costField,                    1, r++);
-        grid.add(new Label("Notes:"),          0, r);
-        grid.add(notesField,                   1, r++);
-        grid.add(errorLabel,                   1, r);
+        grid.add(new Label("Name *:"), 0, r);          grid.add(nameField, 1, r++);
+        grid.add(new Label("Category:"), 0, r);        grid.add(categoryBox, 1, r++);
+        grid.add(new Label("Brand:"), 0, r);           grid.add(brandField, 1, r++);
+        grid.add(new Label("Model:"), 0, r);           grid.add(modelField, 1, r++);
+        grid.add(new Label("Serial No:"), 0, r);       grid.add(serialField, 1, r++);
+        grid.add(new Label("Location:"), 0, r);        grid.add(locationField, 1, r++);
+        grid.add(new Label("Status:"), 0, r);          grid.add(statusBox, 1, r++);
+        grid.add(new Label("Assigned To:"), 0, r);     grid.add(employeePicker, 1, r++);
+        grid.add(new Label("Assigned Date:"), 0, r);   grid.add(DatePickerUtil.dateField(assignedDateField), 1, r++);
+        grid.add(new Label("Department:"), 0, r);      grid.add(deptPicker, 1, r++);
+        grid.add(new Label("Vendor:"), 0, r);          grid.add(vendorPicker, 1, r++);
+        grid.add(new Label("Purchase Date:"), 0, r);   grid.add(DatePickerUtil.dateField(purchaseDateField), 1, r++);
+        grid.add(new Label("Warranty Expiry:"), 0, r); grid.add(DatePickerUtil.dateField(warrantyField), 1, r++);
+        grid.add(new Label("Cost (₹):"), 0, r);        grid.add(costField, 1, r++);
+        grid.add(new Label("Notes:"), 0, r);           grid.add(notesField, 1, r++);
+        grid.add(errorLabel, 1, r);
 
         ScrollPane scroll = new ScrollPane(grid);
         scroll.setFitToWidth(true);
-        scroll.setPrefHeight(420);
+        scroll.setPrefHeight(460);
         dialog.getDialogPane().setContent(scroll);
 
-        Button okBtn = (Button) dialog.getDialogPane()
-                .lookupButton(ButtonType.OK);
+        Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
         okBtn.setDisable(nameField.getText().trim().isEmpty());
-        nameField.textProperty().addListener((o, ov, nv) ->
-                okBtn.setDisable(nv.trim().isEmpty()));
+        nameField.textProperty().addListener((o, ov, nv) -> okBtn.setDisable(nv.trim().isEmpty()));
 
         Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent()
-                && result.get() == ButtonType.OK) {
+        if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                int assignedTo = assignedField.getText()
-                        .trim().isEmpty() ? 0
-                        : Integer.parseInt(
-                        assignedField.getText().trim());
-                int deptId = deptField.getText()
-                        .trim().isEmpty() ? 0
-                        : Integer.parseInt(
-                        deptField.getText().trim());
-                int vendorId = vendorField.getText()
-                        .trim().isEmpty() ? 0
-                        : Integer.parseInt(
-                        vendorField.getText().trim());
-
                 String body = "{" +
                         "\"id\":" + asset.getId() + "," +
-                        "\"assetTag\":\"" + asset.getAssetTag()
-                        + "\"," +
-                        "\"name\":\"" + escape(
-                        nameField.getText()) + "\"," +
-                        "\"category\":\"" +
-                        categoryBox.getValue() + "\"," +
-                        "\"brand\":\"" + escape(
-                        brandField.getText()) + "\"," +
-                        "\"model\":\"" + escape(
-                        modelField.getText()) + "\"," +
-                        "\"serialNumber\":\"" + escape(
-                        serialField.getText()) + "\"," +
-                        "\"departmentId\":" + deptId + "," +
-                        "\"location\":\"" + escape(
-                        locationField.getText()) + "\"," +
-                        "\"status\":\"" +
-                        statusBox.getValue() + "\"," +
-                        "\"assignedTo\":" + assignedTo + "," +
-                        "\"assignedDate\":\"" +
-                        assignedDateField.getText() + "\"," +
-                        "\"purchaseDate\":\"" +
-                        purchaseDateField.getText() + "\"," +
-                        "\"warrantyExpiry\":\"" +
-                        warrantyField.getText() + "\"," +
-                        "\"vendorId\":" + vendorId + "," +
-                        "\"purchaseCost\":" +
-                        costField.getDoubleValue() + "," +
-                        "\"notes\":\"" + escape(
-                        notesField.getText()) + "\"" +
+                        "\"assetTag\":\"" + asset.getAssetTag() + "\"," +
+                        "\"name\":\"" + escape(nameField.getText()) + "\"," +
+                        "\"category\":\"" + categoryBox.getValue() + "\"," +
+                        "\"brand\":\"" + escape(brandField.getText()) + "\"," +
+                        "\"model\":\"" + escape(modelField.getText()) + "\"," +
+                        "\"serialNumber\":\"" + escape(serialField.getText()) + "\"," +
+                        "\"departmentId\":" + deptPicker.getSelectedId() + "," +
+                        "\"location\":\"" + escape(locationField.getText()) + "\"," +
+                        "\"status\":\"" + statusBox.getValue() + "\"," +
+                        "\"assignedTo\":" + employeePicker.getSelectedId() + "," +
+                        "\"assignedDate\":\"" + DatePickerUtil.toIso(assignedDateField.getText()) + "\"," +
+                        "\"purchaseDate\":\"" + DatePickerUtil.toIso(purchaseDateField.getText()) + "\"," +
+                        "\"warrantyExpiry\":\"" + DatePickerUtil.toIso(warrantyField.getText()) + "\"," +
+                        "\"vendorId\":" + vendorPicker.getSelectedId() + "," +
+                        "\"purchaseCost\":" + costField.getDoubleValue() + "," +
+                        "\"notes\":\"" + escape(notesField.getText()) + "\"" +
                         "}";
 
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(
-                                ConfigManager.getBaseUrl()
-                                        + "/api/assets/"
-                                        + asset.getId()))
-                        .header("Content-Type",
-                                "application/json")
-                        .PUT(HttpRequest.BodyPublishers
-                                .ofString(body))
-                        .build();
-                HttpResponse<String> resp = client.send(
-                        req,
-                        HttpResponse.BodyHandlers
-                                .ofString());
+                HttpResponse<String> resp = ApiClient.put(
+                        ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId(), body);
                 if (resp.statusCode() == 200) {
-                    showAlert("Success",
-                            "Asset updated successfully.");
+                    ToastUtil.success("Asset updated successfully.");
                     if (onUpdate != null) onUpdate.run();
                 } else {
-                    showAlert("Error", "Server returned: "
-                            + resp.statusCode());
+                    showAlert("Error", "Server returned: " + resp.statusCode());
                 }
             } catch (Exception ex) {
-                showAlert("Error",
-                        "Cannot connect: " + ex.getMessage());
+                showAlert("Error", "Cannot connect: " + ex.getMessage());
             }
         }
     }
@@ -720,6 +791,7 @@ public class AssetDetailView {
     // ── Edit Specs Dialog ─────────────────────────────────
     private void showEditSpecsDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Edit Specifications");
         dialog.setHeaderText(asset.getName()
                 + " — " + asset.getCategory());
@@ -736,8 +808,14 @@ public class AssetDetailView {
         Map<String, String> existing = loadSpecs();
 
         GridPane grid = new GridPane();
-        grid.setHgap(12); grid.setVgap(10);
+        grid.setHgap(12);
+        grid.setVgap(10);
         grid.setPadding(new Insets(10));
+        ColumnConstraints labelCol = new ColumnConstraints();
+        labelCol.setMinWidth(150);
+        ColumnConstraints valueCol = new ColumnConstraints();
+        valueCol.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labelCol, valueCol);
 
         Map<String, TextField> fields = new LinkedHashMap<>();
         int row = 0;
@@ -751,16 +829,30 @@ public class AssetDetailView {
             fields.put(key, field);
         }
 
-        // Allow custom specs
+// Dedicated Notes field — always saved as-is, never routed through the key=value parser
+        Label notesLabel = new Label("Notes:");
+        TextArea notesArea = new TextArea(existing.getOrDefault("notes", ""));
+        notesArea.setPrefRowCount(2);
+        notesArea.setPromptText("Any additional notes about the specs...");
+        grid.add(notesLabel, 0, row);
+        grid.add(notesArea, 1, row++);
+
         Label customLabel = new Label(
                 "Additional specs (key=value, one per line):");
-        customLabel.setStyle(
-                "-fx-text-fill: #8b949e;" +
-                        "-fx-font-size: 11px;");
+        customLabel.getStyleClass().add("text-muted");
+        customLabel.setStyle("-fx-font-size: 11px;");
         TextArea customArea = new TextArea();
         customArea.setPrefRowCount(3);
         customArea.setPromptText(
                 "e.g. gpu=GTX 1650\nmonitor=24 inch");
+
+        StringBuilder leftover = new StringBuilder();
+        for (Map.Entry<String, String> e : existing.entrySet()) {
+            if (!specKeys.contains(e.getKey()) && !"notes".equals(e.getKey())) {
+                leftover.append(e.getKey()).append("=").append(e.getValue()).append("\n");
+            }
+        }
+        customArea.setText(leftover.toString().trim());
 
         grid.add(customLabel, 0, row, 2, 1);
         row++;
@@ -779,6 +871,9 @@ public class AssetDetailView {
                     specs.put(entry.getKey(),
                             entry.getValue().getText().trim());
                 }
+            }
+            if (!notesArea.getText().trim().isEmpty()) {
+                specs.put("notes", notesArea.getText().trim());
             }
             // Parse custom specs
             for (String line :
@@ -805,6 +900,7 @@ public class AssetDetailView {
     private void showAddComponentDialog(
             TableView<String[]> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Add Component");
         dialog.setHeaderText("Add component to "
                 + asset.getName());
@@ -880,22 +976,8 @@ public class AssetDetailView {
                         "\"notes\":\"" +
                         notesField.getText() + "\"" +
                         "}";
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(
-                                ConfigManager.getBaseUrl()
-                                        + "/api/assets/"
-                                        + asset.getId()
-                                        + "/components"))
-                        .header("Content-Type",
-                                "application/json")
-                        .POST(HttpRequest.BodyPublishers
-                                .ofString(body))
-                        .build();
-                HttpResponse<String> resp = client.send(
-                        req,
-                        HttpResponse.BodyHandlers
-                                .ofString());
+                HttpResponse<String> resp = ApiClient.post(
+                        ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/components", body);
                 if (resp.statusCode() == 201) {
                     loadComponents(table);
                 } else {
@@ -912,6 +994,7 @@ public class AssetDetailView {
     private void showAddMaintenanceDialog(
             TableView<String[]> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Add Maintenance Log");
         dialog.setHeaderText(asset.getName());
         dialog.getDialogPane().getButtonTypes()
@@ -1000,20 +1083,8 @@ public class AssetDetailView {
                         "\"loggedBy\":" +
                         SessionManager.get().getUserId() +
                         "}";
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(
-                                ConfigManager.getBaseUrl()
-                                        + "/api/maintenance"))
-                        .header("Content-Type",
-                                "application/json")
-                        .POST(HttpRequest.BodyPublishers
-                                .ofString(body))
-                        .build();
-                HttpResponse<String> resp = client.send(
-                        req,
-                        HttpResponse.BodyHandlers
-                                .ofString());
+                HttpResponse<String> resp = ApiClient.post(
+                        ConfigManager.getBaseUrl() + "/api/maintenance", body);
                 if (resp.statusCode() == 201) {
                     loadMaintenance(table);
                 } else {
@@ -1028,171 +1099,267 @@ public class AssetDetailView {
 
     // ── Load Methods ──────────────────────────────────────
     private void loadComponents(TableView<String[]> table) {
+        // 1. Pre-Task UI Setup
         table.getItems().clear();
         LoadingUtil.setLoading(table, "Loading components...");
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/assets/" + asset.getId()
-                            + "/components"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-            body = body.substring(1, body.length() - 1);
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "")
-                            .replace("}", "");
-                    table.getItems().add(new String[]{
-                            extractValue(obj, "component_type"),
-                            extractValue(obj, "brand"),
-                            extractValue(obj, "model"),
-                            extractValue(obj, "serial_number"),
-                            extractValue(obj, "status"),
-                            String.valueOf(
-                                    extractInt(obj, "id"))
-                    });
+
+        // 2. Background Task
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> result = new ArrayList<>();
+
+                String url = ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/components";
+                HttpResponse<String> resp = ApiClient.get(url);
+                String body = resp.body().trim();
+
+                // Handle empty arrays securely
+                if (body.equals("[]") || body.isEmpty()) {
+                    return result;
                 }
-                if (table.getItems().isEmpty())
-                    LoadingUtil.setEmpty(table, "🔧",
-                            "No components recorded",
-                            "Click + Add Component to add parts.");
-            } else {
-                LoadingUtil.setEmpty(table, "🔧",
-                        "No components recorded",
-                        "Click + Add Component to add parts.");
+
+                // Strip leading '[' and trailing ']'
+                if (body.startsWith("[")) body = body.substring(1);
+                if (body.endsWith("]")) body = body.substring(0, body.length() - 1);
+                body = body.trim();
+
+                if (!body.isEmpty()) {
+                    // Split JSON objects correctly and safely
+                    String[] jsonObjects = body.split("\\},\\s*\\{");
+                    for (String obj : jsonObjects) {
+                        // Clean curly braces safely
+                        String cleanedObj = obj.replace("{", "").replace("}", "");
+
+                        String[] row = new String[]{
+                                extractValue(cleanedObj, "component_type"),
+                                extractValue(cleanedObj, "brand"),
+                                extractValue(cleanedObj, "model"),
+                                extractValue(cleanedObj, "serial_number"),
+                                extractValue(cleanedObj, "status"),
+                                String.valueOf(extractInt(cleanedObj, "id"))
+                        };
+
+                        result.add(row);
+                    }
+                }
+                return result;
             }
-        } catch (Exception ex) {
-            LoadingUtil.setEmpty(table, "⚠",
-                    "Error loading components", "");
-        }
+        };
+
+        // 3. Success Callback (Runs on JavaFX Application Thread)
+        task.setOnSucceeded(e -> {
+            List<String[]> components = task.getValue();
+
+            // Update UI collections
+            table.getItems().addAll(components);
+
+            // Handle empty state
+            if (components.isEmpty()) {
+                LoadingUtil.setEmpty(table, "🔧", "No components recorded", "Click + Add Component to add parts.");
+            }
+        });
+
+        // 4. Failure Callback (Runs on JavaFX Application Thread)
+        task.setOnFailed(e -> {
+            LoadingUtil.setEmpty(table, "⚠", "Error loading components", "");
+            task.getException().printStackTrace(); // Helps with debugging
+        });
+
+        // 5. Daemon Thread Execution
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     private void loadMaintenance(TableView<String[]> table) {
+        // 1. Pre-Task UI Setup
         table.getItems().clear();
-        LoadingUtil.setLoading(table, "Loading...");
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/maintenance/asset/"
-                            + asset.getId()))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-            body = body.substring(1, body.length() - 1);
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "")
-                            .replace("}", "");
-                    table.getItems().add(new String[]{
-                            extractValue(obj,
-                                    "maintenanceDate"),
-                            extractValue(obj,
-                                    "maintenanceType"),
-                            extractValue(obj, "description"),
-                            "₹" + extractValue(obj, "cost"),
-                            extractValue(obj, "status")
-                    });
+        LoadingUtil.setLoading(table, "Loading maintenance records...");
+
+        // 2. Background Task
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> result = new ArrayList<>();
+
+                String url = ConfigManager.getBaseUrl() + "/api/maintenance/asset/" + asset.getId();
+                HttpResponse<String> resp = ApiClient.get(url);
+                String body = resp.body().trim();
+
+                // Handle empty arrays securely
+                if (body.equals("[]") || body.isEmpty()) return result;
+
+                if (body.startsWith("[")) body = body.substring(1);
+                if (body.endsWith("]")) body = body.substring(0, body.length() - 1);
+                body = body.trim();
+
+                if (!body.isEmpty()) {
+                    String[] jsonObjects = body.split("\\},\\s*\\{");
+                    for (String obj : jsonObjects) {
+                        String cleanedObj = obj.replace("{", "").replace("}", "");
+
+                        String[] row = new String[]{
+                                DateTimeFormatUtil.toIndianDateOnly(extractValue(cleanedObj, "maintenanceDate")),
+                                extractValue(cleanedObj, "maintenanceType"),
+                                extractValue(cleanedObj, "description"),
+                                "₹" + extractValue(cleanedObj, "cost"),
+                                extractValue(cleanedObj, "status")
+                        };
+                        result.add(row);
+                    }
                 }
-                if (table.getItems().isEmpty())
-                    LoadingUtil.setEmpty(table, "🔨",
-                            "No maintenance records", "");
-            } else {
-                LoadingUtil.setEmpty(table, "🔨",
-                        "No maintenance records", "");
+                return result;
             }
-        } catch (Exception ex) {
-            LoadingUtil.setEmpty(table, "⚠",
-                    "Error loading maintenance", "");
-        }
+        };
+
+        // 3. Success Callback
+        task.setOnSucceeded(e -> {
+            List<String[]> records = task.getValue();
+            table.getItems().addAll(records);
+
+            if (records.isEmpty()) {
+                LoadingUtil.setEmpty(table, "🔨", "No maintenance records", "");
+            }
+        });
+
+        // 4. Failure Callback
+        task.setOnFailed(e -> {
+            LoadingUtil.setEmpty(table, "⚠", "Error loading maintenance", "");
+            task.getException().printStackTrace();
+        });
+
+        // 5. Execute Thread
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     private void loadHistory(TableView<String[]> table) {
+        // 1. Pre-Task UI Setup
         table.getItems().clear();
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/assets/" + asset.getId()
-                            + "/history"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-            body = body.substring(1, body.length() - 1);
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "")
-                            .replace("}", "");
-                    String date = extractValue(
-                            obj, "action_date");
-                    table.getItems().add(new String[]{
-                            date.length() >= 10
-                                    ? date.substring(0, 10)
-                                    : date,
-                            extractValue(obj, "action"),
-                            extractValue(obj,
-                                    "from_employee_name"),
-                            extractValue(obj,
-                                    "to_employee_name")
-                    });
+        LoadingUtil.setLoading(table, "Loading history..."); // Added for UI consistency
+
+        // 2. Background Task
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> result = new ArrayList<>();
+
+                String url = ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/history";
+                HttpResponse<String> resp = ApiClient.get(url);
+                String body = resp.body().trim();
+
+                if (body.equals("[]") || body.isEmpty()) return result;
+
+                if (body.startsWith("[")) body = body.substring(1);
+                if (body.endsWith("]")) body = body.substring(0, body.length() - 1);
+                body = body.trim();
+
+                if (!body.isEmpty()) {
+                    String[] jsonObjects = body.split("\\},\\s*\\{");
+                    for (String obj : jsonObjects) {
+                        String cleanedObj = obj.replace("{", "").replace("}", "");
+                        String date = extractValue(cleanedObj, "action_date");
+
+                        String[] row = new String[]{
+                                DateTimeFormatUtil.toIndianDateOnly(extractValue(cleanedObj, "action_date")),
+                                extractValue(cleanedObj, "action"),
+                                extractValue(cleanedObj, "from_employee_name"),
+                                extractValue(cleanedObj, "to_employee_name")
+                        };
+                        result.add(row);
+                    }
                 }
-                if (table.getItems().isEmpty())
-                    LoadingUtil.setEmpty(table, "📜",
-                            "No movement history", "");
-            } else {
-                LoadingUtil.setEmpty(table, "📜",
-                        "No movement history", "");
+                return result;
             }
-        } catch (Exception ex) {
-            LoadingUtil.setEmpty(table, "⚠",
-                    "Error loading history", "");
-        }
+        };
+
+        // 3. Success Callback
+        task.setOnSucceeded(e -> {
+            List<String[]> history = task.getValue();
+            table.getItems().addAll(history);
+
+            if (history.isEmpty()) {
+                LoadingUtil.setEmpty(table, "📜", "No movement history", "");
+            }
+        });
+
+        // 4. Failure Callback
+        task.setOnFailed(e -> {
+            LoadingUtil.setEmpty(table, "⚠", "Error loading history", "");
+            task.getException().printStackTrace();
+        });
+
+        // 5. Execute Thread
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     private void loadTickets(TableView<String[]> table) {
+        // 1. Pre-Task UI Setup
         table.getItems().clear();
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/tickets/asset/"
-                            + asset.getId()))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-            body = body.substring(1, body.length() - 1);
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "")
-                            .replace("}", "");
-                    table.getItems().add(new String[]{
-                            extractValue(obj, "ticketNo"),
-                            extractValue(obj, "title"),
-                            extractValue(obj, "status")
-                    });
+        LoadingUtil.setLoading(table, "Loading tickets..."); // Added for UI consistency
+
+        // 2. Background Task
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> result = new ArrayList<>();
+
+                String url = ConfigManager.getBaseUrl() + "/api/tickets/asset/" + asset.getId();
+                HttpResponse<String> resp = ApiClient.get(url);
+                String body = resp.body().trim();
+
+                if (body.equals("[]") || body.isEmpty()) return result;
+
+                if (body.startsWith("[")) body = body.substring(1);
+                if (body.endsWith("]")) body = body.substring(0, body.length() - 1);
+                body = body.trim();
+
+                if (!body.isEmpty()) {
+                    String[] jsonObjects = body.split("\\},\\s*\\{");
+                    for (String obj : jsonObjects) {
+                        String cleanedObj = obj.replace("{", "").replace("}", "");
+
+                        String[] row = new String[]{
+                                extractValue(cleanedObj, "ticketNo"),
+                                extractValue(cleanedObj, "title"),
+                                extractValue(cleanedObj, "status")
+                        };
+                        result.add(row);
+                    }
                 }
-                if (table.getItems().isEmpty())
-                    LoadingUtil.setEmpty(table, "🎫",
-                            "No linked tickets", "");
-            } else {
-                LoadingUtil.setEmpty(table, "🎫",
-                        "No linked tickets", "");
+                return result;
             }
-        } catch (Exception ex) {
-            LoadingUtil.setEmpty(table, "⚠",
-                    "Error loading tickets", "");
-        }
+        };
+
+        // 3. Success Callback
+        task.setOnSucceeded(e -> {
+            List<String[]> tickets = task.getValue();
+            table.getItems().addAll(tickets);
+
+            if (tickets.isEmpty()) {
+                LoadingUtil.setEmpty(table, "🎫", "No linked tickets", "");
+            }
+        });
+
+        // 4. Failure Callback
+        task.setOnFailed(e -> {
+            LoadingUtil.setEmpty(table, "⚠", "Error loading tickets", "");
+            task.getException().printStackTrace();
+        });
+
+        // 5. Execute Thread
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     private void deleteComponent(int componentId,
                                  TableView<String[]> table) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        ThemeManager.applyToDialog(confirm);
         confirm.setTitle("Delete Component");
         confirm.setHeaderText(null);
         confirm.setContentText(
@@ -1200,18 +1367,7 @@ public class AssetDetailView {
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.OK) {
                 try {
-                    HttpClient client =
-                            HttpClient.newHttpClient();
-                    HttpRequest req =
-                            HttpRequest.newBuilder()
-                                    .uri(URI.create(
-                                            ConfigManager.getBaseUrl()
-                                                    + "/api/assets/components/"
-                                                    + componentId))
-                                    .DELETE().build();
-                    client.send(req,
-                            HttpResponse.BodyHandlers
-                                    .ofString());
+                    ApiClient.delete(ConfigManager.getBaseUrl() + "/api/assets/components/" + componentId);
                     loadComponents(table);
                 } catch (Exception ex) {
                     showAlert("Error", ex.getMessage());
@@ -1234,19 +1390,10 @@ public class AssetDetailView {
             }
             json.append("}");
 
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/assets/" + asset.getId()
-                            + "/specs"))
-                    .header("Content-Type", "application/json")
-                    .PUT(HttpRequest.BodyPublishers
-                            .ofString(json.toString()))
-                    .build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.put(
+                    ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/specs", json.toString());
             if (resp.statusCode() == 200) {
-                showAlert("Success", "Specs saved.");
+                ToastUtil.success("Specs saved.");
             }
         } catch (Exception ex) {
             showAlert("Error", ex.getMessage());
@@ -1254,43 +1401,20 @@ public class AssetDetailView {
     }
 
     // ── Helper loaders ────────────────────────────────────
-    private Map<String, String> loadFullAsset() {
-        Map<String, String> result = new HashMap<>();
+    private String fetchAssetJson() {
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/assets/" + asset.getId()))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().replace("{", "")
-                    .replace("}", "");
-            for (String field : body.split(",")) {
-                if (field.contains(":")) {
-                    String[] parts = field.split(":", 2);
-                    String key = parts[0].trim()
-                            .replace("\"", "");
-                    String val = parts[1].trim()
-                            .replace("\"", "");
-                    result.put(key, val);
-                }
-            }
-        } catch (Exception ignored) {}
-        return result;
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId());
+            return resp.body();
+        } catch (Exception ex) {
+            return "{}";
+        }
     }
 
     private Map<String, String> loadSpecs() {
         Map<String, String> result = new LinkedHashMap<>();
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/assets/" + asset.getId()
-                            + "/specs"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(
+                    ConfigManager.getBaseUrl() + "/api/assets/" + asset.getId() + "/specs");
             String body = resp.body().trim();
             body = body.substring(1, body.length() - 1);
             if (!body.isEmpty()) {
@@ -1308,87 +1432,54 @@ public class AssetDetailView {
 
     private String loadEmployeeName(int empId) {
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/employees/" + empId))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(
+                    ConfigManager.getBaseUrl() + "/api/employees/" + empId);
             return extractValue(resp.body(), "name");
         } catch (Exception e) {
             return "Employee #" + empId;
         }
     }
 
-    private String loadDeptName() {
-        Map<String, String> full = loadFullAsset();
-        String deptId = full.getOrDefault(
-                "departmentId", "0");
-        if ("0".equals(deptId) || deptId.isEmpty())
-            return "-";
+    private String loadDeptName(String json) {
+        int deptId = extractInt(json, "departmentId");
+        if (deptId == 0) return "-";
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/departments/" + deptId))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(
+                    ConfigManager.getBaseUrl() + "/api/departments/" + deptId);
             return extractValue(resp.body(), "name");
         } catch (Exception e) {
             return "Dept #" + deptId;
         }
     }
 
-    private String loadVendorName() {
-        Map<String, String> full = loadFullAsset();
-        String vendorId = full.getOrDefault("vendorId", "0");
-        if ("0".equals(vendorId) || vendorId.isEmpty())
-            return "-";
+    private String loadVendorName(String json) {
+        int vendorId = extractInt(json, "vendorId");
+        if (vendorId == 0) return "-";
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/vendors/" + vendorId))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(
+                    ConfigManager.getBaseUrl() + "/api/vendors/" + vendorId);
             return extractValue(resp.body(), "name");
         } catch (Exception e) {
             return "Vendor #" + vendorId;
         }
     }
 
-    private String loadAssetField(String field) {
-        return loadFullAsset().getOrDefault(field, "-");
-    }
 
-    private double loadAssetDouble(String field) {
-        try {
-            return Double.parseDouble(
-                    loadFullAsset().getOrDefault(field, "0"));
-        } catch (Exception e) { return 0.0; }
-    }
 
     // ── UI Helpers ────────────────────────────────────────
     private Label sectionHeader(String text) {
         Label label = new Label(text);
         label.setStyle(
-                "-fx-text-fill: #e6edf3;" +
-                        "-fx-font-size: 13px;" +
+                "-fx-font-size: 13px;" +
                         "-fx-font-weight: bold;" +
                         "-fx-padding: 12 20 4 20;");
-        return label;
+        return label; // text color now comes from the theme-aware base .label rule
     }
 
     private HBox sectionHeaderWithBtn(String text,
                                       Button btn) {
         Label label = new Label(text);
-        label.setStyle(
-                "-fx-text-fill: #e6edf3;" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-font-weight: bold;");
+        label.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox box = new HBox(label, spacer, btn);
@@ -1398,26 +1489,19 @@ public class AssetDetailView {
     }
 
     private Separator divider() {
-        Separator sep = new Separator();
-        sep.setStyle(
-                "-fx-background-color: #21262d;");
-        return sep;
+        return new Separator();
     }
 
     private void addGridRow(GridPane grid, int row,
                             String label, String value) {
         Label k = new Label(label + ":");
-        k.setStyle(
-                "-fx-text-fill: #8b949e;" +
-                        "-fx-font-size: 12px;" +
-                        "-fx-min-width: 120;");
+        k.getStyleClass().add("text-muted");
+        k.setStyle("-fx-font-size: 12px; -fx-min-width: 120;");
         Label v = new Label(
                 value != null && !value.isEmpty()
                         && !value.equals("0")
                         ? value : "-");
-        v.setStyle(
-                "-fx-text-fill: #e6edf3;" +
-                        "-fx-font-size: 13px;");
+        v.setStyle("-fx-font-size: 13px;"); // color inherits from theme-aware base .label
         v.setWrapText(true);
         grid.add(k, 0, row);
         grid.add(v, 1, row);
@@ -1425,31 +1509,40 @@ public class AssetDetailView {
 
     private HBox specRow(String key, String value) {
         Label k = new Label(key + ":");
-        k.setStyle(
-                "-fx-text-fill: #8b949e;" +
-                        "-fx-font-size: 11px;" +
-                        "-fx-min-width: 140;");
+        k.getStyleClass().add("text-muted");
+        k.setStyle("-fx-font-size: 11px; -fx-min-width: 140;");
         Label v = new Label(
                 value != null && !value.isEmpty()
                         ? value : "-");
-        v.setStyle(
-                "-fx-text-fill: #58a6ff;" +
-                        "-fx-font-size: 12px;" +
-                        "-fx-font-weight: bold;");
+        v.getStyleClass().add("breadcrumb-current"); // reuses the existing theme-aware accent-blue label style
+        v.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
         HBox row = new HBox(8, k, v);
         row.setAlignment(Pos.CENTER_LEFT);
         return row;
     }
 
     private String statusStyle(String status) {
-        String bg = switch (status) {
+        boolean light = ThemeManager.getCurrent() == ThemeManager.Theme.LIGHT;
+        String bg = light ? switch (status) {
+            case "Active"    -> "#eafaf1";
+            case "In Repair" -> "#fdf2e3";
+            case "Retired"   -> "#eceff1";
+            case "Disposed"  -> "#fdecea";
+            default          -> "#eceff1";
+        } : switch (status) {
             case "Active"    -> "#1b2d1f";
             case "In Repair" -> "#2d2008";
             case "Retired"   -> "#21262d";
             case "Disposed"  -> "#3d1f1e";
             default          -> "#21262d";
         };
-        String fg = switch (status) {
+        String fg = light ? switch (status) {
+            case "Active"    -> "#27ae60";
+            case "In Repair" -> "#b3650f";
+            case "Retired"   -> "#5B6B7D";
+            case "Disposed"  -> "#c0392b";
+            default          -> "#5B6B7D";
+        } : switch (status) {
             case "Active"    -> "#3fb950";
             case "In Repair" -> "#d29922";
             case "Retired"   -> "#8b949e";
@@ -1468,6 +1561,7 @@ public class AssetDetailView {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        ThemeManager.applyToDialog(alert);
         alert.showAndWait();
     }
 
@@ -1479,6 +1573,33 @@ public class AssetDetailView {
                 .replace("\r", "");
     }
 
+    private List<PickerOption> fetchEmployeeOptions() throws Exception {
+        return fetchOptions("/api/employees", true);
+    }
+    private List<PickerOption> fetchDepartmentOptions() throws Exception {
+        return fetchOptions("/api/departments", false);
+    }
+    private List<PickerOption> fetchVendorOptions() throws Exception {
+        return fetchOptions("/api/vendors", false);
+    }
+
+    private List<PickerOption> fetchOptions(String path, boolean withDept) throws Exception {
+        List<PickerOption> result = new ArrayList<>();
+        HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + path);
+        String body = resp.body().trim();
+        if (body.length() < 2) return result;
+        body = body.substring(1, body.length() - 1).trim();
+        if (body.isEmpty()) return result;
+        for (String obj : body.split("\\},\\s*\\{")) {
+            String cleaned = obj.replace("{", "").replace("}", "");
+            int id = extractInt(cleaned, "id");
+            String name = extractValue(cleaned, "name");
+            int extra = withDept ? extractInt(cleaned, "departmentId") : 0;
+            result.add(new PickerOption(id, name, extra));
+        }
+        return result;
+    }
+
     private String extractValue(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
@@ -1487,6 +1608,22 @@ public class AssetDetailView {
         int end = json.indexOf("\"", start);
         if (end == -1) return "";
         return json.substring(start, end);
+    }
+
+    private double extractDouble(String json, String key) {
+        String search = "\"" + key + "\":";
+        int start = json.indexOf(search);
+        if (start == -1) return 0.0;
+        start += search.length();
+        int endComma = json.indexOf(",", start);
+        int endBrace = json.indexOf("}", start);
+        int end = (endComma == -1) ? endBrace : (endBrace == -1 ? endComma : Math.min(endComma, endBrace));
+        if (end == -1) end = json.length();
+        try {
+            return Double.parseDouble(json.substring(start, end).trim());
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 
     private int extractInt(String json, String key) {

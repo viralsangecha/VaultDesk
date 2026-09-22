@@ -3,6 +3,7 @@ package com.vaultdesk.server.controller;
 import com.vaultdesk.server.dao.UserDAO;
 import com.vaultdesk.server.dao.UserPermissionDAO;
 import com.vaultdesk.server.model.User;
+import com.vaultdesk.server.security.TokenStore;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -18,13 +19,16 @@ public class LoginController {
     private final UserDAO userDAO;
     private final UserPermissionDAO permissionDAO;
     private final JdbcTemplate jdbc;
+    private final TokenStore tokenStore;
+
 
     public LoginController(UserDAO userDAO,
                            UserPermissionDAO permissionDAO,
-                           JdbcTemplate jdbc) {
+                           JdbcTemplate jdbc, TokenStore tokenStore) {
         this.userDAO       = userDAO;
         this.permissionDAO = permissionDAO;
         this.jdbc          = jdbc;
+        this.tokenStore = tokenStore;
     }
 
     private static String sha256(String input) {
@@ -62,6 +66,7 @@ public class LoginController {
                     "User logged in: " + user.username());
             List<String> permissions =
                     permissionDAO.getPermissions(user.id());
+            String token = tokenStore.issue(user.id(), "ADMIN", user.role());
             return ResponseEntity.ok(Map.of(
                     "success",     true,
                     "message",     "Login successful",
@@ -69,7 +74,8 @@ public class LoginController {
                     "fullName",    user.fullName(),
                     "userId",      user.id(),
                     "deptId",      user.deptId(),
-                    "permissions", permissions
+                    "permissions", permissions,
+                    "token",       token
             ));
         }
         return ResponseEntity.status(401).body(Map.of(
@@ -92,14 +98,16 @@ public class LoginController {
             userDAO.updateLastLogin(user.id());
             List<String> permissions =
                     permissionDAO.getPermissions(user.id());
+            String token = tokenStore.issue(user.id(), "ADMIN", user.role());
             return ResponseEntity.ok(Map.of(
                     "success",     true,
-                    "message",     "Session valid",
+                    "message",     "Login successful",
                     "role",        user.role(),
                     "fullName",    user.fullName(),
                     "userId",      user.id(),
                     "deptId",      user.deptId(),
-                    "permissions", permissions
+                    "permissions", permissions,
+                    "token",       token
             ));
         }
         return ResponseEntity.status(401).build();

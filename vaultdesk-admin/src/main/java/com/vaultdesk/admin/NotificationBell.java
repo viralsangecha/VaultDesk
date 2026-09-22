@@ -2,6 +2,7 @@ package com.vaultdesk.admin;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -64,43 +65,54 @@ public class NotificationBell {
     }
 
     private void fetchUnreadCount() {
-        try {
-            int userId = SessionManager.get().getUserId();
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/notifications/user/"
-                            + userId + "/unread"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body();
-            int count = extractInt(body, "count");
+        // 1. Background Task
+        Task<Integer> task = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                int userId = SessionManager.get().getUserId();
 
-            javafx.application.Platform.runLater(() -> {
-                unreadCount = count;
-                if (count > 0) {
-                    badgeLabel.setText(
-                            count > 99 ? "99+" : String.valueOf(count));
-                    badgeLabel.setVisible(true);
-                    AnimationUtil.pulse(badgeLabel);
-                    AnimationUtil.popIn(badgeLabel);
-                    bellLabel.setStyle(
-                            "-fx-font-size: 18px; -fx-cursor: hand;" +
-                                    "-fx-effect: dropshadow(gaussian," +
-                                    " #f85149, 8, 0, 0, 0);");
-                    // ── Show popup toast for new notifications ──
-                    if (count > 0) showToast(count);
-                } else {
-                    badgeLabel.setVisible(false);
-                    bellLabel.setStyle(
-                            "-fx-font-size: 18px; -fx-cursor: hand;");
-                }
-            });
-        } catch (Exception ex) {
-            System.out.println("Notification poll error: "
-                    + ex.getMessage());
-        }
+                String url = ConfigManager.getBaseUrl() + "/api/notifications/user/" + userId + "/unread";
+                HttpResponse<String> resp = ApiClient.get(url);
+                String body = resp.body();
+
+                return extractInt(body, "count");
+            }
+        };
+
+        // 2. Success Callback (Runs on JavaFX Application Thread)
+        task.setOnSucceeded(e -> {
+            int count = task.getValue();
+            unreadCount = count; // Assuming this is a class-level variable
+
+            if (count > 0) {
+                badgeLabel.setText(count > 99 ? "99+" : String.valueOf(count));
+                badgeLabel.setVisible(true);
+
+                // Fire animations
+                AnimationUtil.pulse(badgeLabel);
+                AnimationUtil.popIn(badgeLabel);
+
+                // Highlight the bell icon
+                bellLabel.setStyle("-fx-font-size: 18px; -fx-cursor: hand;" +
+                        "-fx-effect: dropshadow(gaussian, #f85149, 8, 0, 0, 0);");
+
+                // ── Show popup toast for new notifications ──
+                showToast(count);
+            } else {
+                badgeLabel.setVisible(false);
+                bellLabel.setStyle("-fx-font-size: 18px; -fx-cursor: hand;");
+            }
+        });
+
+        // 3. Failure Callback (Runs on JavaFX Application Thread)
+        task.setOnFailed(e -> {
+            System.out.println("Notification poll error: " + task.getException().getMessage());
+        });
+
+        // 4. Daemon Thread Execution
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     // ── Toast popup ───────────────────────────────────────
@@ -120,18 +132,11 @@ public class NotificationBell {
                     "🔔  You have " + count
                             + " unread notification"
                             + (count > 1 ? "s" : ""));
-            msg.setStyle(
-                    "-fx-text-fill: #e6edf3; -fx-font-size: 13px;" +
-                            "-fx-font-weight: bold;");
+            msg.getStyleClass().add("toast-msg");
 
             Button viewBtn = new Button("View");
-            viewBtn.setStyle(
-                    "-fx-background-color: #1f6feb;" +
-                            "-fx-text-fill: white;" +
-                            "-fx-background-radius: 6;" +
-                            "-fx-padding: 4 12 4 12;" +
-                            "-fx-font-size: 11px;" +
-                            "-fx-cursor: hand;");
+            viewBtn.getStyleClass().add("toast-view-btn");
+            viewBtn.setStyle("-fx-background-radius: 6; -fx-padding: 4 12 4 12;");
             viewBtn.setOnAction(e -> {
                 toast.close();
                 toastShowing = false;
@@ -139,12 +144,7 @@ public class NotificationBell {
             });
 
             Button closeBtn = new Button("✕");
-            closeBtn.setStyle(
-                    "-fx-background-color: transparent;" +
-                            "-fx-text-fill: #8b949e;" +
-                            "-fx-font-size: 12px;" +
-                            "-fx-cursor: hand;" +
-                            "-fx-border-width: 0;");
+            closeBtn.getStyleClass().add("toast-close-btn");
             closeBtn.setOnAction(e -> {
                 toast.close();
                 toastShowing = false;
@@ -153,12 +153,7 @@ public class NotificationBell {
             HBox content = new HBox(12, msg, viewBtn, closeBtn);
             content.setAlignment(Pos.CENTER_LEFT);
             content.setPadding(new Insets(12, 16, 12, 16));
-            content.setStyle(
-                    "-fx-background-color: #21262d;" +
-                            "-fx-border-color: #58a6ff;" +
-                            "-fx-border-width: 0 0 0 3;" +
-                            "-fx-effect: dropshadow(gaussian," +
-                            " rgba(0,0,0,0.5), 12, 0, 0, 4);");
+            content.getStyleClass().add("toast-panel");
 
             Scene scene = new Scene(content);
             ThemeManager.apply(scene);
@@ -188,25 +183,13 @@ public class NotificationBell {
         dropdown.setResizable(false);
 
         Label title = new Label("Notifications");
-        title.setStyle(
-                "-fx-text-fill: #e6edf3; -fx-font-size: 14px;" +
-                        "-fx-font-weight: bold;");
+        title.getStyleClass().add("notif-title");
 
         Button markAllBtn = new Button("Mark all read");
-        markAllBtn.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #58a6ff;" +
-                        "-fx-font-size: 11px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-border-width: 0;");
+        markAllBtn.getStyleClass().add("notif-link-btn");
 
         Button closeBtn = new Button("✕");
-        closeBtn.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #8b949e;" +
-                        "-fx-font-size: 13px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-border-width: 0;");
+        closeBtn.getStyleClass().add("notif-close-btn");
         closeBtn.setOnAction(e -> dropdown.close());
 
         Region spacer = new Region();
@@ -214,9 +197,7 @@ public class NotificationBell {
         HBox header = new HBox(8, title, spacer, markAllBtn, closeBtn);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(12, 12, 8, 16));
-        header.setStyle(
-                "-fx-border-color: #30363d;" +
-                        "-fx-border-width: 0 0 1 0;");
+        header.getStyleClass().add("notif-header");
 
         VBox feed = new VBox(0);
         ScrollPane scroll = new ScrollPane(feed);
@@ -235,12 +216,7 @@ public class NotificationBell {
 
         VBox root = new VBox(header, scroll);
         root.setPrefWidth(360);
-        root.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian," +
-                        " rgba(0,0,0,0.5), 16, 0, 0, 4);");
+        root.getStyleClass().add("notif-panel");
 
         Scene scene = new Scene(root);
         ThemeManager.apply(scene);
@@ -266,22 +242,14 @@ public class NotificationBell {
         feed.getChildren().clear();
         try {
             int userId = SessionManager.get().getUserId();
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/notifications/user/" + userId))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(
+                    ConfigManager.getBaseUrl() + "/api/notifications/user/" + userId);
             String body = resp.body().trim();
             body = body.substring(1, body.length() - 1);
 
             if (body.isEmpty()) {
                 Label empty = new Label("No notifications yet.");
-                empty.setStyle(
-                        "-fx-text-fill: #484f58;" +
-                                "-fx-font-size: 12px;" +
-                                "-fx-padding: 20;");
+                empty.getStyleClass().add("notif-empty");
                 feed.getChildren().add(empty);
                 return;
             }
@@ -301,8 +269,7 @@ public class NotificationBell {
             }
         } catch (Exception ex) {
             Label err = new Label("Error loading notifications.");
-            err.setStyle(
-                    "-fx-text-fill: #f85149; -fx-font-size: 11px;");
+            err.getStyleClass().add("notif-error");
             feed.getChildren().add(err);
         }
     }
@@ -312,18 +279,12 @@ public class NotificationBell {
                                  Stage dropdown) {
         String dot = isRead == 0 ? "🔵 " : "⚪ ";
         Label msgLabel = new Label(dot + message);
-        msgLabel.setStyle(
-                "-fx-text-fill: " + (isRead == 0
-                        ? "#e6edf3" : "#8b949e") + ";" +
-                        "-fx-font-size: 12px;");
+        msgLabel.getStyleClass().add(isRead == 0 ? "notif-msg-unread" : "notif-msg-read");
         msgLabel.setWrapText(true);
         msgLabel.setMaxWidth(320);
 
-        Label timeLabel = new Label(
-                time != null && time.length() >= 16
-                        ? time.substring(0, 16) : time);
-        timeLabel.setStyle(
-                "-fx-text-fill: #484f58; -fx-font-size: 10px;");
+        Label timeLabel = new Label(DateTimeFormatUtil.toIndianDateTime(time));
+        timeLabel.getStyleClass().add("notif-time");
 
         String iconStr = switch (type) {
             case "TICKET_CREATED"  -> "🎫";
@@ -339,26 +300,16 @@ public class NotificationBell {
         HBox row = new HBox(10, typeIcon, textBox);
         row.setAlignment(Pos.TOP_LEFT);
         row.setPadding(new Insets(10, 16, 10, 16));
-        row.setStyle(
-                "-fx-border-color: #21262d;" +
-                        "-fx-border-width: 0 0 1 0;" +
-                        "-fx-background-color: " + (isRead == 0
-                        ? "#161b22" : "#0d1117") + ";" +
-                        "-fx-cursor: hand;");
+        row.getStyleClass().add(isRead == 0 ? "notif-row-unread" : "notif-row-read");
 
-        row.setOnMouseEntered(e ->
-                row.setStyle(
-                        "-fx-border-color: #21262d;" +
-                                "-fx-border-width: 0 0 1 0;" +
-                                "-fx-background-color: #21262d;" +
-                                "-fx-cursor: hand;"));
-        row.setOnMouseExited(e ->
-                row.setStyle(
-                        "-fx-border-color: #21262d;" +
-                                "-fx-border-width: 0 0 1 0;" +
-                                "-fx-background-color: " + (isRead == 0
-                                ? "#161b22" : "#0d1117") + ";" +
-                                "-fx-cursor: hand;"));
+        row.setOnMouseEntered(e -> {
+            row.getStyleClass().removeAll("notif-row-unread", "notif-row-read");
+            row.getStyleClass().add("notif-row-hover");
+        });
+        row.setOnMouseExited(e -> {
+            row.getStyleClass().remove("notif-row-hover");
+            row.getStyleClass().add(isRead == 0 ? "notif-row-unread" : "notif-row-read");
+        });
 
         VBox wrapper = new VBox(row);
         row.setOnMouseClicked(e -> {
@@ -371,12 +322,7 @@ public class NotificationBell {
 
     private void markRead(int id) {
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/notifications/" + id + "/read"))
-                    .PUT(HttpRequest.BodyPublishers.noBody()).build();
-            client.send(req, HttpResponse.BodyHandlers.ofString());
+            ApiClient.putNoBody(ConfigManager.getBaseUrl() + "/api/notifications/" + id + "/read");
             fetchUnreadCount();
         } catch (Exception ex) {
             System.out.println("Mark read error: " + ex.getMessage());
@@ -386,13 +332,7 @@ public class NotificationBell {
     private void markAllRead() {
         try {
             int userId = SessionManager.get().getUserId();
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/notifications/user/"
-                            + userId + "/readall"))
-                    .PUT(HttpRequest.BodyPublishers.noBody()).build();
-            client.send(req, HttpResponse.BodyHandlers.ofString());
+            ApiClient.putNoBody(ConfigManager.getBaseUrl() + "/api/notifications/user/" + userId + "/readall");
             fetchUnreadCount();
         } catch (Exception ex) {
             System.out.println("Mark all read error: " + ex.getMessage());

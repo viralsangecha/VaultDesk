@@ -22,25 +22,20 @@ public class UpdateDialog {
         dialog.setResizable(false);
 
         Label titleLabel = new Label("🔄  Update Available");
-        titleLabel.setStyle(
-                "-fx-text-fill: #58a6ff; -fx-font-size: 18px;" +
-                        "-fx-font-weight: bold;");
+        titleLabel.setStyle("-fx-text-fill: #58a6ff; -fx-font-size: 18px; -fx-font-weight: bold;"); // accent blue is intentional, fine in both themes
 
         Label versionLabel = new Label(
                 "Version " + info.version + " is available.\n" +
                         "You are running v"
                         + VersionChecker.getCurrentVersion() + ".");
-        versionLabel.setStyle(
-                "-fx-text-fill: #c9d1d9; -fx-font-size: 13px;");
+        versionLabel.setStyle("-fx-font-size: 13px;"); // color now inherits from theme-aware base .label
 
         Label changelogTitle = new Label("What's new:");
-        changelogTitle.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 11px;" +
-                        "-fx-font-weight: bold;");
+        changelogTitle.getStyleClass().add("text-muted");
+        changelogTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
 
         Label changelogLabel = new Label(info.changelog);
-        changelogLabel.setStyle(
-                "-fx-text-fill: #c9d1d9; -fx-font-size: 12px;");
+        changelogLabel.setStyle("-fx-font-size: 12px;");
         changelogLabel.setWrapText(true);
         changelogLabel.setMaxWidth(380);
 
@@ -49,21 +44,18 @@ public class UpdateDialog {
         progressBar.setVisible(false);
 
         Label statusLabel = new Label("");
-        statusLabel.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        statusLabel.getStyleClass().add("text-muted");
+        statusLabel.setStyle("-fx-font-size: 11px;");
 
         Button updateBtn = new Button("⬇  Download & Install Update");
-        updateBtn.getStyleClass().setAll("btn-primary");
-        updateBtn.setStyle(
-                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 10 20 10 20;" +
-                        "-fx-font-size: 13px; -fx-font-weight: bold;" +
-                        "-fx-pref-width: 380px; -fx-cursor: hand;");
+        updateBtn.getStyleClass().add("btn-primary");
+        updateBtn.setStyle("-fx-pref-width: 380px;");
+        AnimationUtil.addHoverScale(updateBtn);
 
         Button skipBtn = new Button("Skip This Update");
+        skipBtn.getStyleClass().add("text-muted");
         skipBtn.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #8b949e; -fx-font-size: 12px;" +
+                "-fx-background-color: transparent; -fx-font-size: 12px;" +
                         "-fx-cursor: hand; -fx-border-width: 0;");
 
         updateBtn.setOnAction(e -> {
@@ -93,8 +85,8 @@ public class UpdateDialog {
                     javafx.application.Platform.runLater(() -> {
                         statusLabel.setText(
                                 "Update failed: " + ex.getMessage());
-                        statusLabel.setStyle(
-                                "-fx-text-fill: #f85149; -fx-font-size: 11px;");
+                        statusLabel.getStyleClass().remove("text-muted");
+                        statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 11px;");
                         updateBtn.setDisable(false);
                         skipBtn.setDisable(false);
                         progressBar.setVisible(false);
@@ -119,14 +111,20 @@ public class UpdateDialog {
                 updateBtn, skipBtn);
         content.setAlignment(Pos.CENTER_LEFT);
         content.setPadding(new Insets(32));
-        content.setStyle(
-                "-fx-background-color: #161b22;" +
-                        "-fx-border-color: #30363d;" +
-                        "-fx-border-width: 1;");
+        content.getStyleClass().add("activity-panel");
+        content.setStyle("-fx-border-width: 1;");
 
-        Scene scene = new Scene(content, 440, 380);
+        ScrollPane scrollWrapper = new ScrollPane(content);
+        scrollWrapper.setFitToWidth(true);
+        scrollWrapper.getStyleClass().add("content-scroll");
+        scrollWrapper.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        scrollWrapper.setMaxHeight(560); // safety cap — if changelog is ever unusually long, it scrolls instead of overflowing
+
+        Scene scene = new Scene(scrollWrapper, 440, 380);
         ThemeManager.apply(scene);
         dialog.setScene(scene);
+        dialog.setResizable(false);
+        dialog.sizeToScene(); // let the window grow to fit the actual content instead of clipping it
         dialog.show();
     }
 }

@@ -1,15 +1,18 @@
 package com.vaultdesk.server.controller;
 
-import com.vaultdesk.server.dao.AssetDAO;
-import com.vaultdesk.server.dao.EmployeeDAO;
-import com.vaultdesk.server.dao.NotificationDAO;
-import com.vaultdesk.server.dao.TicketDAO;
+import com.vaultdesk.server.dao.*;
+import com.vaultdesk.server.model.Asset;
+import com.vaultdesk.server.model.Ticket;
 import com.vaultdesk.server.model.TicketRequest;
+import com.vaultdesk.server.service.EmailService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,17 +24,23 @@ public class EmployeePortalController {
     private final EmployeeDAO employeeDAO;
     private final NotificationDAO notificationDAO;
     private final JdbcTemplate jdbc;
+    private final UserDAO userDAO;
+    private final EmailService emailService;
+    private final AssetLinkDAO assetLinkDAO;
 
     public EmployeePortalController(TicketDAO ticketDAO,
                                     AssetDAO assetDAO,
                                     EmployeeDAO employeeDAO,
                                     NotificationDAO notificationDAO,
-                                    JdbcTemplate jdbc) {
+                                    JdbcTemplate jdbc, UserDAO userDAO, EmailService emailService, AssetLinkDAO assetLinkDAO) {
         this.ticketDAO        = ticketDAO;
         this.assetDAO         = assetDAO;
         this.employeeDAO      = employeeDAO;
         this.notificationDAO  = notificationDAO;
         this.jdbc             = jdbc;
+        this.userDAO=userDAO;
+        this.emailService = emailService;
+        this.assetLinkDAO = assetLinkDAO;
     }
 
     // ── My Tickets ────────────────────────────────────────
@@ -45,15 +54,39 @@ public class EmployeePortalController {
     // ── Raise Ticket ──────────────────────────────────────
     @PostMapping("/tickets")
     public ResponseEntity<?> raiseTicket(@RequestBody TicketRequest request) {
+        // ── Derive department + systemno server-side ─────────
+        String department = employeeDAO.getDepartmentNameForEmployee(request.reportedBy());
+        int assetId = request.assetId();
+
         ticketDAO.saveTicket(
                 request.title(), request.description(),
                 request.category(), request.priority(),
-                request.reportedBy());
+                request.reportedBy(), department, assetId);
+        List<Ticket> all = ticketDAO.getAllTickets();
+        int newTicketId = all != null && !all.isEmpty()
+                ? all.get(0).id() : 0;
 
         // ── Notify all admins ─────────────────────────────
         notificationDAO.notifyAllAdmins(jdbc,
                 "New ticket from employee: " + request.title(),
                 "TICKET_CREATED", 0);
+
+        String ticketNo = (all != null && !all.isEmpty()) ? all.get(0).ticketNo() : "N/A";
+
+        var employee = employeeDAO
+                .getEmployeeById(request.reportedBy());
+        var user = userDAO
+                .getUserById(request.reportedBy());
+
+        String reporterName = employee != null
+                ? employee.name()
+                : user != null
+                ? user.fullName()
+                : "Unknown";
+        List<String> adminEmails = userDAO.getAdminEmails();
+        for (String email : adminEmails) {
+            emailService.sendTicketCreatedEmail(email, ticketNo, request.title(),request.description(), reporterName);
+        }
 
         return ResponseEntity.status(201).body("Ticket raised");
     }
@@ -107,7 +140,7 @@ public class EmployeePortalController {
     }
 
     // ── Employee app version ──────────────────────────────
-    private static final String EMPLOYEE_LATEST_VERSION = "1.0.0";
+    private static final String EMPLOYEE_LATEST_VERSION = "1.1.1";
     private static final String EMPLOYEE_CHANGELOG =
             "Initial release of VaultDesk Employee";
 
@@ -118,6 +151,29 @@ public class EmployeePortalController {
                 "downloadUrl", "/api/employee/version/download",
                 "changelog",   EMPLOYEE_CHANGELOG
         ));
+    }
+
+    @GetMapping("/assets-full/{employeeId}")
+    public ResponseEntity<?> getMyAssetsFull(@PathVariable int employeeId) {
+        List<Asset> assets = assetDAO.getAssetsByEmployee(employeeId);
+        List<Integer> ids = assets.stream().map(Asset::id).toList();
+        List<Map<String, Object>> links = assetLinkDAO.getLinksForAssetIds(ids);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Asset a : assets) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", a.id());
+            row.put("assetTag", a.assetTag());
+            row.put("name", a.name());
+            row.put("category", a.category());
+            row.put("status", a.status());
+            List<Map<String, Object>> accessories = links.stream()
+                    .filter(l -> ((Number) l.get("owner_asset_id")).intValue() == a.id())
+                    .toList();
+            row.put("linkedAssets", accessories);
+            result.add(row);
+        }
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/version/download")

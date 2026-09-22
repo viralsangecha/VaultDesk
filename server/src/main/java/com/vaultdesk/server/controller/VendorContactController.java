@@ -29,6 +29,25 @@ public class VendorContactController
         return ResponseEntity.ok(v);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllVendorsAdmin() {
+        return ResponseEntity.ok(vendorContactDAO.getAllVendorsAdmin());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deactivate(@PathVariable int id) {
+        int rows = vendorContactDAO.deactivateVendor(id);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("Vendor deactivated");
+    }
+
+    @PutMapping("/{id}/reactivate")
+    public ResponseEntity<?> reactivate(@PathVariable int id) {
+        int rows = vendorContactDAO.reactivateVendor(id);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("Vendor reactivated");
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateVendor(
             @PathVariable int id,

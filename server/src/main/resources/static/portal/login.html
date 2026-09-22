@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VaultDesk Employee — Login</title>
+    <style>
+        /* --- Base & Reset --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            /* Slightly darker, calm steel-blue gradient */
+            background: linear-gradient(135deg, #b8c6db, #a2b4cd);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- Reactive Background Layer --- */
+        #interactive-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            transition: transform 0.1s ease-out;
+        }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            animation: float 10s infinite alternate ease-in-out;
+        }
+        .shape-1 {
+            width: 450px;
+            height: 450px;
+            /* Slightly darker teal */
+            background: rgba(85, 213, 189, 0.5);
+            top: -100px;
+            left: -50px;
+            animation-delay: 0s;
+        }
+        .shape-2 {
+            width: 550px;
+            height: 550px;
+            /* Slightly darker blue/purple */
+            background: rgba(134, 150, 208, 0.5);
+            bottom: -150px;
+            right: -100px;
+            animation-delay: -2s;
+        }
+        .shape-3 {
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.3);
+            top: 40%;
+            left: 40%;
+            animation-duration: 15s;
+        }
+
+        /* CSS Animation for floating */
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, 50px) scale(1.1); }
+            100% { transform: translate(-40px, 20px) scale(0.9); }
+        }
+
+        /* --- Cursor Glow Effect --- */
+        #cursor-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 60%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* --- Layout Container --- */
+        .wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            z-index: 10;
+            padding: 20px;
+            max-width: 900px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        /* --- Glassmorphism Base --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            padding: 40px;
+        }
+
+        /* --- Info Card (Flip Effect) --- */
+        .flip-card-container {
+            width: 350px;
+            height: 450px;
+            background-color: transparent;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flip-card-container:hover .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .flip-card-front {
+            background: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.1));
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        .flip-card-back {
+            background: rgba(255, 255, 255, 0.45);
+            transform: rotateY(180deg);
+        }
+
+	p{
+		background-image: linear-gradient(90deg, red,blue);
+  		background-clip: text;
+ 		-webkit-background-clip: text;
+  		color: transparent;
+  		display: inline-block;
+
+	}
+        .logo-placeholder { font-size: 48px; margin-bottom: 10px; }
+        .tagline { font-size: 1.2rem; color: #1e2b38; font-weight: 600; margin-bottom: 15px; }
+        .sub-tagline { font-size: 0.9rem; color: #3b4a59; padding: 0 20px; line-height: 1.5; }
+
+        /* --- Login Card --- */
+        .login-card {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .login-title { font-size: 1.8rem; font-weight: bold; color: #1e2b38; margin-bottom: 5px; }
+        .login-subtitle { font-size: 0.9rem; color: #3b4a59; margin-bottom: 30px; }
+
+        label { font-size: 0.85rem; color: #1e2b38; margin-bottom: 5px; font-weight: 600; }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.4);
+            color: #1e2b38;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: #55d5bd;
+            box-shadow: 0 0 8px rgba(85, 213, 189, 0.4);
+        }
+
+        a { color: #2980b9; text-decoration: none; transition: color 0.3s; }
+        a:hover { color: #1e2b38; text-decoration: underline; }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(41, 128, 185, 0.4);
+        }
+
+        .error-text { color: #e74c3c; font-size: 0.85rem; margin-top: 10px; text-align: center; }
+
+        @media (max-width: 768px) {
+            .wrapper { flex-direction: column; }
+            .flip-card-container, .login-card { width: 100%; max-width: 350px; }
+            #cursor-glow { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Container that will shift based on mouse movement -->
+<div id="interactive-bg">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+</div>
+
+<!-- Soft glow that follows the cursor -->
+<div id="cursor-glow"></div>
+
+<div class="wrapper">
+    <!-- Left Side: Interactive Flip Card -->
+    <div class="flip-card-container">
+        <div class="flip-card-inner">
+            <div class="flip-card-front glass-panel">
+                <div class="logo-placeholder"><p>Saurashtra Cement Ltd <p></div>
+                <div class="tagline">Welcome to VaultDesk</div>
+                <div class="sub-tagline">Choice of every generation for its strength and durability</div>
+            </div>
+            <div class="flip-card-back glass-panel">
+                <div class="logo-placeholder"><img src="img/logo.png"></div>
+                <div class="tagline">Empowering Teams</div>
+                <div class="sub-tagline">Access your paystubs, manage time-off, and connect with your colleagues securely from anywhere.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side: Login Form -->
+    <div class="login-card glass-panel">
+        <div class="login-title">VaultDesk Employee</div>
+        <div class="login-subtitle">Employee Self-Service Portal</div>
+
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Enter your username" required>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" required>
+
+        <div style="text-align:right; margin-top:-5px; margin-bottom: 10px;">
+            <a href="#" id="forgotLink" style="font-size:12px;">Forgot password?</a>
+        </div>
+
+        <div class="error-text" id="statusMsg"></div>
+
+        <input type="button" value="Sign in" class="btn-primary" id="loginBtn">
+    </div>
+</div>
+
+<!-- Reactivity Script -->
+<script>
+    document.addEventListener('mousemove', function(e) {
+        const glow = document.getElementById('cursor-glow');
+        const bg = document.getElementById('interactive-bg');
+
+        glow.style.opacity = 1;
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
+
+        const x = (e.clientX / window.innerWidth - 0.5) * 60;
+        const y = (e.clientY / window.innerHeight - 0.5) * 60;
+
+        bg.style.transform = `translate(${-x}px, ${-y}px)`;
+    });
+
+    document.addEventListener('mouseleave', function() {
+        document.getElementById('cursor-glow').style.opacity = 0;
+    });
+</script>
+
+<!-- Your external scripts -->
+<script src="js/api.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

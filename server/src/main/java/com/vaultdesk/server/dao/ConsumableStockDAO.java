@@ -60,10 +60,42 @@ public class ConsumableStockDAO {
         );
     }
 
-    public int updateQuantity(int id, int quantity) {
+    public int updateConsumable(ConsumableStock c) {
         return jdbc.update(
-                "UPDATE consumable_stock SET quantity_in_stock = ?, last_updated = datetime('now') WHERE id = ?",
-                quantity, id);
+                "UPDATE consumable_stock SET name=?, category=?, compatible_models=?, " +
+                        "reorder_level=?, unit=?, vendor_id=?, unit_cost=?, storage_location=?, notes=? " +
+                        "WHERE id = ?",
+                c.name(), c.category(), c.compatibleModels(),
+                c.reorderLevel(), c.unit(), c.vendorId(),
+                c.unitCost(), c.storageLocation(), c.notes(), c.id());
+    }
+
+    public int updateQuantity(int id, int newQuantity, String changeType, String notes, int changedBy) {
+        ConsumableStock existing = getConsumableById(id);
+        if (existing == null) return 0;
+        int oldQuantity = existing.quantityInStock();
+
+        int rows = jdbc.update(
+                "UPDATE consumable_stock SET quantity_in_stock = ?, last_updated = datetime('now','+5 hours','+30 minutes') WHERE id = ?",
+                newQuantity, id);
+
+        if (rows > 0) {
+            jdbc.update(
+                    "INSERT INTO consumable_stock_history " +
+                            "(consumable_id, old_quantity, new_quantity, change_amount, change_type, changed_by, notes) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    id, oldQuantity, newQuantity, newQuantity - oldQuantity, changeType, changedBy, notes);
+        }
+        return rows;
+    }
+
+    public List<Map<String, Object>> getStockHistory(int consumableId) {
+        return jdbc.queryForList(
+                "SELECT h.*, u.full_name as changed_by_name " +
+                        "FROM consumable_stock_history h " +
+                        "LEFT JOIN users u ON h.changed_by = u.id " +
+                        "WHERE h.consumable_id = ? ORDER BY h.id DESC",
+                consumableId);
     }
 
     private ConsumableStock mapRow(Map<String,Object> row) {

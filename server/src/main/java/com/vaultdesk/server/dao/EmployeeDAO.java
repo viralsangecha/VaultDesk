@@ -5,6 +5,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,7 @@ public class EmployeeDAO {
     {
         try {
             List<Map<String,Object>> rows = jdbc.queryForList(
-                    "SELECT * FROM employees");
+                    "SELECT * FROM employees WHERE active=1");
 
             List<Employee> employees = new ArrayList<>();
 
@@ -75,6 +76,17 @@ public class EmployeeDAO {
         }
     }
 
+    public String getDepartmentNameForEmployee(int employeeId) {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT d.name FROM employees e " +
+                            "JOIN departments d ON e.department_id = d.id " +
+                            "WHERE e.id = ?", String.class, employeeId);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
     public Employee getEmployeeById(int id)
     {
         try {
@@ -104,11 +116,26 @@ public class EmployeeDAO {
     {
         jdbc.update(
                 "INSERT INTO employees (name, emp_code, department_id, designation, " +
-                        "email, phone, join_date, active, notes) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)",
+                        "email, phone, join_date, active, notes,username,password_hash) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?,?,?)",
                 emp.name(), emp.empCode(), emp.departmentId(), emp.designation(),
-                emp.email(), emp.phone(), emp.joinDate(), emp.notes()
+                emp.email(), emp.phone(), emp.joinDate(), emp.notes(),emp.email(),sha256("Welcome@123")
         );
+    }
+
+    public void forceUpdatePassword(int employeeId, String newHash) {
+        jdbc.update("UPDATE employees SET password_hash = ? WHERE id = ?", newHash, employeeId);
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(input.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash)
+                sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) { return ""; }
     }
 
     public int deactivateEmployee(int id)

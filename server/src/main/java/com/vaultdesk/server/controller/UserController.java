@@ -23,6 +23,10 @@ public class UserController {
         return ResponseEntity.ok(userDAO.getAllUsers());
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllUsersAdmin() {
+        return ResponseEntity.ok(userDAO.getAllUsersAdmin());
+    }
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody Map<String, String> body) {
         String username  = body.get("username");
@@ -31,23 +35,31 @@ public class UserController {
         String role      = body.get("role");
         int deptId       = body.get("deptId") != null
                 ? Integer.parseInt(body.get("deptId")) : 0;
+        String email     = body.get("email");
 
         if (username == null || password == null
                 || fullName == null || role == null)
             return ResponseEntity.badRequest().body("Missing fields");
 
         String hash = sha256(password);
-        userDAO.saveUser(username, hash, fullName, role, deptId);
+        userDAO.saveUser(username, hash, fullName, role, deptId,email);
         return ResponseEntity.status(201).body("User created");
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable int id,
-                                        @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateUser(@PathVariable int id, @RequestBody Map<String, String> body) {
         String fullName = body.get("fullName");
+        String username =body.get("username");
+        String email    = body.get("email");
         String role     = body.get("role");
-        int rows = userDAO.updateUser(id, fullName, role);
-        if (rows == 0) return ResponseEntity.notFound().build();
+        int deptId      = Integer.parseInt(body.get("deptId"));
+
+        int rows = userDAO.updateUser(id, fullName,username, email, role, deptId);
+
+        if (rows == 0) {
+            return ResponseEntity.notFound().build();
+        }
+
         return ResponseEntity.ok("User updated");
     }
 
@@ -75,6 +87,13 @@ public class UserController {
         int rows = userDAO.deactivateUser(id);
         if (rows == 0) return ResponseEntity.notFound().build();
         return ResponseEntity.ok("User deactivated");
+    }
+
+    @PutMapping("/{id}/reactivate")
+    public ResponseEntity<?> reactivate(@PathVariable int id) {
+        int rows = userDAO.reactivateUser(id);
+        if (rows == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok("User reactivated");
     }
 
     private String sha256(String input) {

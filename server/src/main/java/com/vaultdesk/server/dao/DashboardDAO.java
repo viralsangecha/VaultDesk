@@ -80,17 +80,29 @@ public class DashboardDAO {
                 (String) row.get("status"),
                 row.get("reported_by") != null ?
                         ((Number) row.get("reported_by")).intValue() : 0,
-                row.get("asset_id") != null ?
-                        ((Number) row.get("asset_id")).intValue() : 0,
+                safeAssetId(row.get("asset_id")),
                 row.get("assigned_to") != null ?
                         ((Number) row.get("assigned_to")).intValue() : 0,
                 (String) row.get("created_at"),
                 (String) row.get("updated_at"),
                 (String) row.get("resolved_at"),
-                (String) row.get("resolution")
+                (String) row.get("resolution"),
+                (String) row.get("department"),
+                (String) row.get("reason"),
+                (String) row.get("requestedAt")
+
         );
     }
 
+    private int safeAssetId(Object raw) {
+        if (raw == null) return 0;
+        if (raw instanceof Number) return ((Number) raw).intValue();
+        try {
+            return Integer.parseInt(raw.toString().trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
     public DashboardStats getDeptStats(int deptId) {
         int totalAssets = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM assets WHERE department_id = ?",

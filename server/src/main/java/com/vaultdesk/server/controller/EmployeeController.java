@@ -33,9 +33,6 @@ public class EmployeeController {
     @PostMapping
     public ResponseEntity<?> saveemp(@RequestBody Employee emp) {
         employeeDAO.saveEmployee(emp);
-        logActivity(0, "CREATE", "employees", 0,
-                "Employee added: " + emp.name()
-                        + " [" + emp.empCode() + "]");
         return ResponseEntity.status(201).body("Employee added");
     }
 

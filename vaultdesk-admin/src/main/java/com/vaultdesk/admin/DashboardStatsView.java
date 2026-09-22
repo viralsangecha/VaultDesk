@@ -1,6 +1,7 @@
 package com.vaultdesk.admin;
 
 import javafx.beans.property.SimpleStringProperty;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -8,6 +9,8 @@ import javafx.scene.layout.*;
 
 import java.net.URI;
 import java.net.http.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class DashboardStatsView {
@@ -32,14 +35,17 @@ public class DashboardStatsView {
         pageSub.getStyleClass().add("page-subtitle");
 
         // ── Stat cards ────────────────────────────────────
-        VBox cardAssets = UIComponents.infoCard(
-                "⊞", "TOTAL ASSETS", "0", "#58a6ff");
-        VBox cardTickets = UIComponents.infoCard(
-                "✉", "OPEN TICKETS", "0", "#f85149");
-        VBox cardLicenses = UIComponents.infoCard(
-                "🔑", "EXPIRING LICENSES", "0", "#d29922");
-        VBox cardEmployees = UIComponents.infoCard(
-                "👤", "ACTIVE EMPLOYEES", "0", "#3fb950");
+        VBox cardAssets = statCard("⊞", "0", "TOTAL ASSETS", "Loading...",
+                "REAL-TIME", "stat-badge-blue", "stat-card-blue", "stat-icon-box-blue", "#58a6ff");
+
+        VBox cardTickets = statCard("✉", "0", "OPEN TICKETS", "Loading...",
+                "REAL-TIME", "stat-badge-red", "stat-card-red", "stat-icon-box-red", "#f85149");
+
+        VBox cardLicenses = statCard("🔑", "0", "EXPIRING LICENSES", "Loading...",
+                "REAL-TIME", "stat-badge-orange", "stat-card-orange", "stat-icon-box-orange", "#d29922");
+
+        VBox cardEmployees = statCard("👤", "0", "ACTIVE EMPLOYEES", "Loading...",
+                "REAL-TIME", "stat-badge-green", "stat-card-green", "stat-icon-box-green", "#3fb950");
 
         // After statsRow is built:
         AnimationUtil.staggerFadeIn(
@@ -52,10 +58,22 @@ public class DashboardStatsView {
         AnimationUtil.addHoverScale(cardLicenses);
         AnimationUtil.addHoverScale(cardEmployees);
         // ── Card click navigation ─────────────────────────
-        cardAssets.setOnMouseClicked(e -> navigateTo("assets"));
-        cardTickets.setOnMouseClicked(e -> navigateTo("tickets"));
-        cardLicenses.setOnMouseClicked(e -> navigateTo("licenses"));
-        cardEmployees.setOnMouseClicked(e -> navigateTo("employees"));
+        if (PermissionManager.canViewAllAssets())
+        {
+            cardAssets.setOnMouseClicked(e -> navigateTo("assets"));
+        }
+        if (PermissionManager.canViewAllTickets() || PermissionManager.canViewAssignedTickets())
+        {
+            cardTickets.setOnMouseClicked(e -> navigateTo("tickets"));
+        }
+        if (PermissionManager.canViewLicenses())
+        {
+            cardLicenses.setOnMouseClicked(e -> navigateTo("licenses"));
+        }
+        if (PermissionManager.canViewEmployees())
+        {
+            cardEmployees.setOnMouseClicked(e -> navigateTo("employees"));
+        }
 
         // ── Cursor hand on hover ──────────────────────────
         cardAssets.setStyle(cardAssets.getStyle() + "-fx-cursor: hand;");
@@ -66,6 +84,8 @@ public class DashboardStatsView {
         HBox statsRow = new HBox(16,
                 cardAssets, cardTickets, cardLicenses, cardEmployees);
         statsRow.setPadding(new Insets(8, 0, 8, 0));
+        HBox statusPillRow = new HBox(8);
+        statusPillRow.setPadding(new Insets(0, 0, 4, 0));
 
         // ── Tickets at a Glance ───────────────────────────
         Label recentLabel = new Label("Tickets at a Glance");
@@ -79,16 +99,6 @@ public class DashboardStatsView {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(380);
 
-        // ── Double click row → navigate to tickets ────────
-        table.setRowFactory(tv -> {
-            TableRow<Ticket> row = new TableRow<>();
-            row.setOnMouseClicked(e -> {
-                if (e.getClickCount() == 2 && !row.isEmpty()) {
-                    navigateTo("tickets");
-                }
-            });
-            return row;
-        });
 
         TableColumn<Ticket, String> ticketNoCol = new TableColumn<>("TICKET ID");
         ticketNoCol.setCellValueFactory(d ->
@@ -157,111 +167,171 @@ public class DashboardStatsView {
 
         table.getColumns().addAll(
                 ticketNoCol, titleCol, categoryCol, priorityCol, statusCol);
+        table.setPlaceholder(UIComponents.skeleton(6));
 
         // ── Recent Activity panel ─────────────────────────
         Label activityTitle = new Label("Recent Activity");
         activityTitle.getStyleClass().add("activity-panel-title");
+        javafx.scene.shape.Circle pulseDot = AnimationUtil.livePulseDot("#3fb950");
         Label realtimeLabel = new Label("REAL-TIME");
-        realtimeLabel.setStyle(
-                "-fx-text-fill: #484f58; -fx-font-size: 10px; -fx-font-weight: bold;");
+        realtimeLabel.getStyleClass().add("activity-realtime-label");
+        HBox realtimeGroup = new HBox(5, pulseDot, realtimeLabel);
+        realtimeGroup.setAlignment(Pos.CENTER_LEFT);
         Region actSpacer = new Region();
         HBox.setHgrow(actSpacer, Priority.ALWAYS);
-        HBox activityHeader = new HBox(activityTitle, actSpacer, realtimeLabel);
+        HBox activityHeader = new HBox(activityTitle, actSpacer, realtimeGroup);
         activityHeader.setAlignment(Pos.CENTER_LEFT);
 
         VBox activityFeed = new VBox(0);
+        activityFeed.getChildren().add(UIComponents.skeleton(5));
         VBox activityPanel = new VBox(10,
                 activityHeader, new Separator(), activityFeed);
         activityPanel.getStyleClass().add("activity-panel");
 
         // ── Main content row ──────────────────────────────
-        VBox tableBox = new VBox(8, recentLabel, recentSub, table);
+        VBox tableBox = new VBox(10, recentLabel, recentSub, statusPillRow, table);
+        tableBox.setPadding(new Insets(16));
+        tableBox.getStyleClass().add("activity-panel"); // reuse the same panel-card look as Recent Activity, for visual symmetry
         HBox.setHgrow(tableBox, Priority.ALWAYS);
         HBox mainRow = new HBox(16, tableBox, activityPanel);
 
         // ── Load stats ────────────────────────────────────
-        try {
-            String statsUrl = SessionManager.get().isDeptHod()
-                    ? ConfigManager.getBaseUrl() + "/api/dashboard/stats/department/"
-                    + SessionManager.get().getDeptId()
-                    : ConfigManager.getBaseUrl() + "/api/dashboard/stats";
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(statsUrl))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-
-            int totalAssets    = extractInt(body, "totalAssets");
-            int openTickets    = extractInt(body, "openTickets");
-            int generalTickets = extractInt(body, "generalTickets");
-            int sapTickets     = extractInt(body, "sapTickets");
-            int expiringLic    = extractInt(body, "expiringLicenses");
-            int totalEmp       = extractInt(body, "totalEmployees");
-            int totalDepts     = extractInt(body, "totalDepartments");
-
-            setStatNumber(cardAssets,    totalAssets);
-            setStatNumber(cardTickets,   openTickets);
-            setStatNumber(cardLicenses,  expiringLic);
-            setStatNumber(cardEmployees, totalEmp);
-
-            setStatSublabel(cardAssets,
-                    generalTickets + " General / " + sapTickets + " SAP tickets");
-            setStatSublabel(cardTickets,
-                    openTickets > 0 ? "Needs attention" : "All clear");
-            setStatSublabel(cardLicenses,
-                    expiringLic > 0 ? "Action required" : "All valid");
-            setStatSublabel(cardEmployees,
-                    totalDepts + " department(s)");
-
-        } catch (Exception ex) {
-            System.out.println("Error loading stats: " + ex.getMessage());
+        // A small class to hold the stats temporarily while passing them to the UI thread
+        class DashboardStats {
+            int totalAssets, openTickets, generalTickets, sapTickets, expiringLic, totalEmp, totalDepts;
         }
 
-        // ── Load recent tickets ───────────────────────────
-        try {
-            String activityUrl = SessionManager.get().isDeptHod()
-                    ? ConfigManager.getBaseUrl() + "/api/tickets/department/"
-                    + SessionManager.get().getDeptId()
-                    : ConfigManager.getBaseUrl() + "/api/dashboard/recent-activity";
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(activityUrl))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
-            String body = resp.body().trim();
-            body = body.substring(1, body.length() - 1);
+        Task<DashboardStats> statsTask = new Task<>() {
+            @Override
+            protected DashboardStats call() throws Exception {
+                String statsUrl = SessionManager.get().isDeptHod()
+                        ? ConfigManager.getBaseUrl() + "/api/dashboard/stats/department/"
+                        + SessionManager.get().getDeptId()
+                        : ConfigManager.getBaseUrl() + "/api/dashboard/stats";
 
-            if (!body.isEmpty()) {
-                for (String obj : body.split("\\},\\{")) {
-                    obj = obj.replace("{", "").replace("}", "");
-                    String priority = extractValue(obj, "priority");
-                    String title    = extractValue(obj, "title");
-                    String status   = extractValue(obj, "status");
-                    String time     = extractValue(obj, "createdAt");
+                HttpResponse<String> resp = ApiClient.get(statsUrl);
+                String body = resp.body().trim();
 
-                    table.getItems().add(new Ticket(
-                            extractInt(obj, "id"),
-                            extractValue(obj, "ticketNo"),
-                            title,
-                            extractValue(obj, "category"),
-                            priority,
-                            status,
-                            extractInt(obj, "assignedTo"),
-                            extractInt(obj, "reportedBy"),
-                            time,
-                            ""
-                    ));
+                DashboardStats stats = new DashboardStats();
+                stats.totalAssets    = extractInt(body, "totalAssets");
+                stats.openTickets    = extractInt(body, "openTickets");
+                stats.generalTickets = extractInt(body, "generalTickets");
+                stats.sapTickets     = extractInt(body, "sapTickets");
+                stats.expiringLic    = extractInt(body, "expiringLicenses");
+                stats.totalEmp       = extractInt(body, "totalEmployees");
+                stats.totalDepts     = extractInt(body, "totalDepartments");
 
-                    activityFeed.getChildren().add(
-                            activityEntry(dotClass(priority), title, status, time));
-                }
+                return stats;
             }
-        } catch (Exception ex) {
-            System.out.println("Error loading tickets: " + ex.getMessage());
-        }
+        };
+
+        statsTask.setOnSucceeded(e -> {
+            DashboardStats stats = statsTask.getValue();
+
+            setStatNumber(cardAssets,    stats.totalAssets);
+            setStatNumber(cardTickets,   stats.openTickets);
+            setStatNumber(cardLicenses,  stats.expiringLic);
+            setStatNumber(cardEmployees, stats.totalEmp);
+
+            setStatSublabel(cardTickets,    stats.generalTickets + " General / " + stats.sapTickets + " SAP tickets");
+            setStatSublabel(cardAssets,   "Assets");
+            setStatSublabel(cardLicenses,  stats.expiringLic > 0 ? "Action required" : "All valid");
+            setStatSublabel(cardEmployees, stats.totalDepts + " department(s)");
+        });
+
+        statsTask.setOnFailed(e -> {
+            System.out.println("Error loading stats: " + statsTask.getException().getMessage());
+        });
+
+        Thread statsThread = new Thread(statsTask);
+        statsThread.setDaemon(true);
+        statsThread.start();
+
+
+// ── Load recent tickets ───────────────────────────
+        Task<List<Ticket>> activityTask = new Task<>() {
+            @Override
+            protected List<Ticket> call() throws Exception {
+                List<Ticket> result = new ArrayList<>();
+
+                String activityUrl = SessionManager.get().isDeptHod()
+                        ? ConfigManager.getBaseUrl() + "/api/tickets/department/"
+                        + SessionManager.get().getDeptId()
+                        : ConfigManager.getBaseUrl() + "/api/dashboard/recent-activity";
+
+                HttpResponse<String> resp = ApiClient.get(activityUrl);
+                String body = resp.body().trim();
+
+                // Safe array extraction
+                if (body.equals("[]") || body.isEmpty()) return result;
+                if (body.startsWith("[")) body = body.substring(1);
+                if (body.endsWith("]")) body = body.substring(0, body.length() - 1);
+                body = body.trim();
+
+                if (!body.isEmpty()) {
+                    String[] jsonObjects = body.split("\\},\\s*\\{");
+                    for (String obj : jsonObjects) {
+                        String cleanedObj = obj.replace("{", "").replace("}", "");
+                        String priority = extractValue(cleanedObj, "priority");
+                        String title    = extractValue(cleanedObj, "title");
+                        String status   = extractValue(cleanedObj, "status");
+                        String time     = extractValue(cleanedObj, "createdAt");
+
+                        Ticket t = new Ticket(
+                                extractInt(cleanedObj, "id"),
+                                extractValue(cleanedObj, "ticketNo"),
+                                title,
+                                extractValue(cleanedObj,"description"),
+                                extractValue(cleanedObj, "category"),
+                                priority,
+                                status,
+                                extractInt(cleanedObj, "assignedTo"),
+                                extractInt(cleanedObj, "reportedBy"),
+                                extractInt(cleanedObj, "assetId"),
+                                time,
+                                "",
+                                extractValue(cleanedObj,"department"),
+                                extractValue(cleanedObj,"reason"),
+                                extractValue(cleanedObj,"requestedAt")
+                        );
+                        result.add(t);
+                    }
+                }
+                return result;
+            }
+        };
+
+        activityTask.setOnSucceeded(e -> {
+            List<Ticket> tickets = activityTask.getValue();
+
+            activityFeed.getChildren().clear(); // remove the skeleton now that real data is here
+
+            long openCount = tickets.stream().filter(t -> "Open".equals(t.getStatus())).count();
+            long progressCount = tickets.stream().filter(t -> "In Progress".equals(t.getStatus())).count();
+            long resolvedCount = tickets.stream().filter(t -> "Resolved".equals(t.getStatus()) || "Closed".equals(t.getStatus())).count();
+            Label openPill = new Label(openCount + " Open");
+            openPill.getStyleClass().add("stat-badge-red");
+            Label progressPill = new Label(progressCount + " In Progress");
+            progressPill.getStyleClass().add("stat-badge-blue");
+            Label resolvedPill = new Label(resolvedCount + " Resolved");
+            resolvedPill.getStyleClass().add("stat-badge-green");
+            statusPillRow.getChildren().setAll(openPill, progressPill, resolvedPill);
+
+            for (Ticket t : tickets) {
+                table.getItems().add(t);
+                activityFeed.getChildren().add(
+                        activityEntry(dotClass(t.getPriority()), t.getTitle(), t.getStatus(), t.getCreatedAt())
+                );
+            }
+        });
+
+        activityTask.setOnFailed(e -> {
+            System.out.println("Error loading tickets: " + activityTask.getException().getMessage());
+        });
+
+        Thread activityThread = new Thread(activityTask);
+        activityThread.setDaemon(true);
+        activityThread.start();
 
         VBox root = new VBox(16,
                 pageTitle, pageSub, statsRow, mainRow);
@@ -284,9 +354,13 @@ public class DashboardStatsView {
         Label badgeLabel = new Label(badge);
         badgeLabel.getStyleClass().add(badgeClass);
 
+        javafx.scene.shape.Circle pulseDot = AnimationUtil.livePulseDot(iconColor);
+        HBox badgeGroup = new HBox(5, pulseDot, badgeLabel);
+        badgeGroup.setAlignment(Pos.CENTER_LEFT);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox topRow = new HBox(iconBox, spacer, badgeLabel);
+        HBox topRow = new HBox(iconBox, spacer, badgeGroup);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label numLabel = new Label(number);
@@ -308,12 +382,9 @@ public class DashboardStatsView {
 
     private void setStatNumber(VBox card, int value) {
         card.getChildren().stream()
-                .filter(n -> n instanceof Label
-                        && ((Label) n).getStyle()
-                        .contains("font-size: 18px"))
+                .filter(n -> n != null && "stat-num".equals(n.getId()))
                 .findFirst()
-                .ifPresent(n -> AnimationUtil.countUp(
-                        (Label) n, 0, value));
+                .ifPresent(n -> AnimationUtil.countUp((Label) n, 0, value));
     }
 
     private void setStatSublabel(VBox card, String text) {
@@ -336,21 +407,19 @@ public class DashboardStatsView {
         titleLabel.setWrapText(true);
 
         Label statusLabel = new Label(status);
-        statusLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        statusLabel.getStyleClass().add("activity-status-label");
 
         VBox textBox = new VBox(2, titleLabel, statusLabel);
         HBox row = new HBox(10, dot, textBox);
         row.setAlignment(Pos.TOP_LEFT);
 
-        Label timeLabel = new Label(
-                time != null && time.length() >= 10
-                        ? time.substring(0, 10) : time);
+        Label timeLabel = new Label(DateTimeFormatUtil.toIndianDateTime(time));
         timeLabel.getStyleClass().add("activity-time");
 
         VBox entry = new VBox(4, row, timeLabel);
-        entry.setStyle(
-                "-fx-border-color: #21262d; -fx-border-width: 0 0 1 0;" +
-                        "-fx-padding: 8 0 8 0;");
+        entry.getStyleClass().add("activity-entry-card");
+        VBox.setMargin(entry, new Insets(0, 0, 6, 0));
+        AnimationUtil.addHoverScale(entry);
         return entry;
     }
 

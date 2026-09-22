@@ -54,6 +54,13 @@ public class LicenseDAO {
                 license.vendor(),license.purchaseDate(),license.expiryDate(),license.cost(),license.notes());
     }
 
+    public void syncSeatsUsed(int licenseId) {
+        jdbc.update(
+                "UPDATE licenses SET seats_used = " +
+                        "(SELECT COUNT(*) FROM license_assignments WHERE license_id = ?) WHERE id = ?",
+                licenseId, licenseId);
+    }
+
     public int updateSeatsUsed(int id, int seatsUsed)
     {
         return jdbc.update("UPDATE licenses SET seats_used = ?\n" +

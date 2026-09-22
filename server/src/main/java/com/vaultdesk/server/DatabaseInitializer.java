@@ -19,6 +19,17 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
+        jdbc.execute("DROP TABLE IF EXISTS system_status");
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS system_status (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                scheduled_at TEXT,
+                maintenance_message TEXT DEFAULT 'VaultDesk will be briefly unavailable for scheduled maintenance.'
+            )
+        """);
+        jdbc.execute("INSERT OR IGNORE INTO system_status (id) VALUES (1)");
+        System.out.println("✔ system_status table ready.");
+
         // ─────────────────────────────────────────────
         // 1. USERS
         // ─────────────────────────────────────────────
@@ -30,22 +41,11 @@ public class DatabaseInitializer implements CommandLineRunner {
                 full_name     TEXT,
                 role          TEXT DEFAULT 'ENGINEER',
                 active        INTEGER DEFAULT 1,
-                created_at    TEXT
+                created_at    TEXT,
+                dept_id       INTEGER,
+                email         TEXT
             )
         """);
-        // Add last_login column if it doesn't exist (safe migration)
-        try {
-            jdbc.execute("ALTER TABLE users ADD COLUMN last_login TEXT");
-            System.out.println("✔ last_login column added.");
-        } catch (Exception e) {
-            // Column already exists, ignore
-        }
-        try {
-            jdbc.execute("ALTER TABLE users ADD COLUMN dept_id INTEGER DEFAULT 0");
-            System.out.println("✔ dept_id column added to users.");
-        } catch (Exception e) {
-            // Column already exists, ignore
-        }
         System.out.println("✔ users table ready.");
 
         // ─────────────────────────────────────────────
@@ -113,6 +113,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 notes          TEXT
             )
         """);
+        addColumnIfMissing("vendor_contacts", "active", "INTEGER DEFAULT 1");
         System.out.println("✔ vendor_contacts table ready.");
 
         // ─────────────────────────────────────────────
@@ -222,6 +223,23 @@ public class DatabaseInitializer implements CommandLineRunner {
         System.out.println("✔ components table ready.");
 
         // ─────────────────────────────────────────────
+        // 7b. ASSET LINKS  (associate whole assets to each other,
+        //     e.g. a PC linked to its printer, webcam, headset)
+        // ─────────────────────────────────────────────
+                jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS asset_links (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                asset_id         INTEGER NOT NULL,
+                linked_asset_id  INTEGER NOT NULL,
+                link_type        TEXT,
+                created_at       TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+                FOREIGN KEY (asset_id)        REFERENCES assets(id),
+                FOREIGN KEY (linked_asset_id) REFERENCES assets(id)
+            )
+        """);
+        System.out.println("✔ asset_links table ready.");
+
+        // ─────────────────────────────────────────────
         // 8. ASSET HISTORY  (movement + assignment log)
         // ─────────────────────────────────────────────
         jdbc.execute("""
@@ -282,8 +300,8 @@ public class DatabaseInitializer implements CommandLineRunner {
             CREATE TABLE IF NOT EXISTS consumable_usage_log (
                 id             INTEGER PRIMARY KEY AUTOINCREMENT,
                 consumable_id  INTEGER NOT NULL,
-                asset_id       INTEGER,
-                employee_id    INTEGER,
+                asset_id       TEXT,
+                employee_id    TEXT,
                 quantity_used  INTEGER DEFAULT 1,
                 used_by        INTEGER,
                 usage_date     TEXT DEFAULT (datetime('now')),
@@ -295,6 +313,23 @@ public class DatabaseInitializer implements CommandLineRunner {
             )
         """);
         System.out.println("✔ consumable_usage_log table ready.");
+
+
+                jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS consumable_stock_history (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                consumable_id  INTEGER NOT NULL,
+                old_quantity   INTEGER NOT NULL,
+                new_quantity   INTEGER NOT NULL,
+                change_amount  INTEGER NOT NULL,
+                change_type    TEXT NOT NULL,
+                changed_by     INTEGER,
+                changed_at     TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+                notes          TEXT,
+                FOREIGN KEY (consumable_id) REFERENCES consumable_stock(id)
+            )
+        """);
+                System.out.println("✔ consumable_stock_history table ready.");
 
         // ─────────────────────────────────────────────
         // 11. MAINTENANCE LOG
@@ -343,12 +378,32 @@ public class DatabaseInitializer implements CommandLineRunner {
                 updated_at    TEXT,
                 resolved_at   TEXT,
                 resolution    TEXT,
+                department    TEXT,
                 FOREIGN KEY (reported_by) REFERENCES employees(id),
                 FOREIGN KEY (asset_id)    REFERENCES assets(id),
                 FOREIGN KEY (assigned_to) REFERENCES users(id)
             )
         """);
-        System.out.println("✔ tickets table ready.");
+        addColumnIfMissing("tickets","closure_denial_reason","TEXT");
+        addColumnIfMissing("tickets","closure_requested_at","TEXT");
+                System.out.println("✔ tickets table ready.");
+
+        // ─────────────────────────────────────────────
+        // 12b. TICKET STATUS HISTORY (full resolve/deny/reopen cycle tracking)
+        // ─────────────────────────────────────────────
+                jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS ticket_status_history (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id   INTEGER NOT NULL,
+                from_status TEXT,
+                to_status   TEXT NOT NULL,
+                changed_by  INTEGER,
+                changed_at  TEXT,
+                reason      TEXT,
+                FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+            )
+        """);
+        System.out.println("✔ ticket_status_history table ready.");
 
         // ─────────────────────────────────────────────
         // 13. TICKET COMMENTS
@@ -386,6 +441,19 @@ public class DatabaseInitializer implements CommandLineRunner {
         """);
         System.out.println("✔ licenses table ready.");
 
+            jdbc.execute("""
+        CREATE TABLE IF NOT EXISTS license_assignments (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            license_id    INTEGER NOT NULL,
+            employee_id   INTEGER NOT NULL,
+            assigned_date TEXT DEFAULT (datetime('now','+5 hours','+30 minutes')),
+            notes         TEXT,
+            FOREIGN KEY (license_id) REFERENCES licenses(id),
+            FOREIGN KEY (employee_id) REFERENCES employees(id)
+        )
+    """);
+            System.out.println("✔ license_assignments table ready.");
+
         // ─────────────────────────────────────────────
         // 15. ACTIVITY LOG  (audit trail)
         // ─────────────────────────────────────────────
@@ -403,6 +471,43 @@ public class DatabaseInitializer implements CommandLineRunner {
         """);
         System.out.println("✔ activity_log table ready.");
 
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS email_settings (
+                    id          INTEGER PRIMARY KEY,
+                    smtp_host   TEXT,
+                    smtp_port   INTEGER DEFAULT 587,
+                    username    TEXT,
+                    password    TEXT,
+                    from_name   TEXT DEFAULT 'VaultDesk',
+                    enabled     INTEGER DEFAULT 0
+                );
+                """);
+        addColumnIfMissing("email_settings", "public_url", "TEXT");
+
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS email_recipients (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email       TEXT NOT NULL,
+                    name        TEXT,
+                    type        TEXT DEFAULT 'ADMIN',
+                    active      INTEGER DEFAULT 1
+                );
+                """);
+        addColumnIfMissing("email_recipients", "subscribed_events", "TEXT DEFAULT ''");
+
+                jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject_type  TEXT NOT NULL,
+                subject_id    INTEGER NOT NULL,
+                token         TEXT NOT NULL UNIQUE,
+                expires_at    TEXT NOT NULL,
+                used          INTEGER DEFAULT 0,
+                created_at    TEXT DEFAULT (datetime('now','+5 hours','+30 minutes'))
+            )
+        """);
+        System.out.println("✔ password_reset_tokens table ready.");
+
         // ── NOTIFICATIONS ─────────────────────────────────────
         jdbc.execute("""
     CREATE TABLE IF NOT EXISTS notifications (
@@ -418,6 +523,34 @@ public class DatabaseInitializer implements CommandLineRunner {
 """);
         System.out.println("✔ notifications table ready.");
 
+
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS notification_rules (
+                event_key       TEXT PRIMARY KEY,
+                enabled         INTEGER DEFAULT 1,
+                notify_reporter INTEGER DEFAULT 1,
+                notify_types    TEXT DEFAULT ''
+            )
+        """);
+        jdbc.execute("""
+            INSERT OR IGNORE INTO notification_rules (event_key, enabled, notify_reporter, notify_types) VALUES
+              ('TICKET_CREATED', 1, 1, 'ADMIN'),
+              ('TICKET_ASSIGNED', 1, 1, ''),
+              ('TICKET_STATUS_CHANGED', 1, 1, ''),
+              ('TICKET_AUTO_CLOSED', 1, 1, 'TICKET'),
+              ('PASSWORD_RESET_REQUESTED', 1, 0, 'ADMIN'),
+              ('PASSWORD_RESET_COMPLETED', 1, 1, 'ADMIN')
+        """);
+                System.out.println("✔ notification_rules table ready.");
+
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS notification_groups (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL
+            )
+        """);
+        jdbc.execute("INSERT OR IGNORE INTO notification_groups (name) SELECT DISTINCT type FROM email_recipients WHERE type IS NOT NULL AND type != ''");
+        System.out.println("✔ notification_groups table ready.");
         // ── USER PERMISSIONS ──────────────────────────────────
         jdbc.execute("""
     CREATE TABLE IF NOT EXISTS user_permissions (
@@ -467,16 +600,18 @@ public class DatabaseInitializer implements CommandLineRunner {
         // username: admin  |  password: admin123
         // SHA-256: 240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9
         // ─────────────────────────────────────────────
-        jdbc.execute("""
+                jdbc.execute("""
             INSERT OR IGNORE INTO users
-            (username, password_hash, full_name, role, active, created_at)
+            (id, username, password_hash, full_name, role, active, created_at, email)
             VALUES (
+                1, -- Force the ID to be 1
                 'admin',
                 '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
                 'System Admin',
                 'ADMIN',
                 1,
-                datetime('now')
+                datetime('now'),
+                ''
             )
         """);
         System.out.println("✔ Default admin user ready.");
@@ -497,13 +632,13 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "ADD_LICENSE", "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
                     "VIEW_MAINTENANCE", "ADD_MAINTENANCE",
                     "VIEW_VENDORS", "ADD_VENDOR",
-                    "MANAGE_USERS", "MANAGE_SETTINGS"
+                    "MANAGE_USERS", "MANAGE_SETTINGS","VIEW_ASSET_DETAILS","VIEW_TICKET_DETAILS"
             ));
             case "ENGINEER" -> perms.addAll(java.util.List.of(
                     "VIEW_ASSIGNED_TICKETS", "UPDATE_TICKET_STATUS",
                     "VIEW_ALL_ASSETS", "VIEW_LICENSES",
                     "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
-                    "VIEW_VENDORS"
+                    "VIEW_VENDORS","VIEW_TICKET_DETAILS"
             ));
             case "DEPT_HOD" -> perms.addAll(java.util.List.of(
                     "VIEW_ALL_TICKETS", "UPDATE_TICKET_STATUS",
@@ -512,13 +647,21 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "ADD_EMPLOYEE", "EDIT_EMPLOYEE", "SET_LOGIN",
                     "VIEW_REPORTS", "VIEW_LICENSES",
                     "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
-                    "VIEW_VENDORS"
+                    "VIEW_VENDORS","VIEW_ASSET_DETAILS"
             ));
             default -> perms.addAll(java.util.List.of(
-                    "VIEW_ASSIGNED_TICKETS", "UPDATE_TICKET_STATUS",
-                    "VIEW_ALL_ASSETS"
+
             ));
         }
         return perms;
+    }
+    private void addColumnIfMissing(String table, String column, String type) {
+        List<Map<String, Object>> cols = jdbc.queryForList("PRAGMA table_info(" + table + ")");
+        boolean exists = cols.stream()
+                .anyMatch(c -> column.equalsIgnoreCase((String) c.get("name")));
+        if (!exists) {
+            jdbc.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+            System.out.println("✔ Added missing column '" + column + "' to " + table);
+        }
     }
 }

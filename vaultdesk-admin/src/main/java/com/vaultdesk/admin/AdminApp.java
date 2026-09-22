@@ -15,6 +15,7 @@ public class AdminApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
+        loadFonts();
         Application.setUserAgentStylesheet(
                 new PrimerDark().getUserAgentStylesheet());
 
@@ -82,19 +83,19 @@ public class AdminApp extends Application {
 
             if (resp.statusCode() == 200) {
                 // Also restore deptId from session file
-                String rb        = resp.body();
+                String rb  = resp.body();
                 int deptId = Integer.parseInt(session.getProperty("deptId", "0"));
-                SessionManager.get().login(userId, fullName, role);
-                SessionManager.get().setDeptId(deptId);
                 List<String> permissions = extractList(rb, "permissions");
+                String token = extractValue(rb, "token");
 
-                SessionManager.get().login(userId, fullName,
-                        role, permissions);
+                SessionManager.get().login(userId, fullName, role, permissions);
                 SessionManager.get().setDeptId(deptId);
+                SessionManager.get().setToken(token);
+
                 Scene dash = new DashboardView(fullName, role).getScene(stage);
                 ThemeManager.apply(dash);
                 return dash;
-            }else {
+            } else {
                 SessionStore.clear();
             }
         } catch (Exception ex) {
@@ -104,6 +105,24 @@ public class AdminApp extends Application {
         Scene loginScene = new LoginView().getScene(stage);
         ThemeManager.apply(loginScene);
         return loginScene;
+    }
+    private void loadFonts() {
+        javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/Oswald-SemiBold.ttf"), 12);
+        javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/Oswald-Medium.ttf"), 12);
+        javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/Inter_18pt-Regular.ttf"), 12);
+        javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/Inter_18pt-Medium.ttf"), 12);
+        javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/JetBrainsMonoNL-Regular.ttf"), 12);
+        javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/JetBrainsMono-Medium.ttf"), 12);
+    }
+
+    private String extractValue(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return "";
+        start += search.length();
+        int end = json.indexOf("\"", start);
+        if (end == -1) return "";
+        return json.substring(start, end);
     }
     private List<String> extractList(String json, String key) {
         List<String> result = new java.util.ArrayList<>();

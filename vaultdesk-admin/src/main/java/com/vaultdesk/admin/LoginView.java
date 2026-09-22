@@ -11,6 +11,7 @@ import javafx.stage.Stage;
 import java.net.URI;
 import java.net.http.*;
 import java.util.List;
+import java.util.Optional;
 
 public class LoginView {
 
@@ -36,24 +37,22 @@ public class LoginView {
         passwordField.getStyleClass().add("login-field");
 
         // ── Forgot password ───────────────────────────────
-        Label forgotLabel = new Label("Forgot password? Contact system administrator.");
+        Label forgotLabel = new Label("Forgot password?");
         forgotLabel.setStyle("-fx-text-fill: #58a6ff; -fx-font-size: 11px;" +
-                "-fx-cursor: hand;");
+                "-fx-cursor: hand; -fx-underline: true;");
+        forgotLabel.setOnMouseClicked(e -> showForgotPasswordDialog());
 
         // ── Sign in button ────────────────────────────────
         Button loginButton = new Button("Sign In to Dashboard →");
-        loginButton.getStyleClass().setAll("login-btn");
-        loginButton.setStyle(
-                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                        "-fx-font-size: 14px; -fx-font-weight: bold;" +
-                        "-fx-pref-width: 340px; -fx-pref-height: 42px;" +
-                        "-fx-background-radius: 6; -fx-cursor: hand;");
+        loginButton.getStyleClass().add("login-btn");
+        loginButton.setStyle("-fx-pref-width: 340px; -fx-pref-height: 42px;");
 
         // ── Theme toggle ──────────────────────────────────
         Button themeBtn = new Button("☀ Light Mode");
+        themeBtn.getStyleClass().add("text-muted");
         themeBtn.setStyle(
                 "-fx-background-color: transparent;" +
-                        "-fx-text-fill: #8b949e; -fx-font-size: 11px;" +
+                        "-fx-font-size: 11px;" +
                         "-fx-cursor: hand; -fx-border-width: 0;");
 
         // ── Status ────────────────────────────────────────
@@ -78,11 +77,30 @@ public class LoginView {
                 themeBtn
         );
 
-        AnimationUtil.popIn(card);
+
         StackPane root = new StackPane(card);
         StackPane.setAlignment(card, Pos.CENTER);
         root.getStyleClass().add("login-bg");
         root.setPadding(new Insets(40));
+        AnimationUtil.popIn(card);
+
+        javafx.scene.shape.Rectangle sweep = new javafx.scene.shape.Rectangle(0, 5);
+        sweep.setFill(javafx.scene.paint.Color.web("#3E7BFA"));
+        sweep.widthProperty().bind(card.widthProperty());
+        sweep.setOpacity(0);
+        StackPane.setAlignment(sweep, Pos.TOP_CENTER);
+        root.getChildren().add(sweep); // root is the existing StackPane(card) — sweep sits beside card, not inside it
+
+        javafx.animation.PauseTransition sweepDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(500));
+        sweepDelay.setOnFinished(e -> {
+            sweep.setOpacity(0.9);
+            javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.millis(5000), sweep);
+            fade.setFromValue(0.9);
+            fade.setToValue(0);
+            fade.setOnFinished(ev -> root.getChildren().remove(sweep));
+            fade.play();
+        });
+        sweepDelay.play();
 
         Scene scene = new Scene(root, 1200, 800);
         ThemeManager.apply(scene);
@@ -113,6 +131,7 @@ public class LoginView {
                     String role     = extractValue(rb, "role");
                     int userId      = extractInt(rb, "userId");
                     int deptId      = extractInt(rb, "deptId");
+                    String token    = extractValue(rb, "token");
 
                     // ── Parse permissions array ───────────────────────
                     List<String> permissions = extractList(rb, "permissions");
@@ -120,19 +139,13 @@ public class LoginView {
                     SessionManager.get().login(userId, fullName,
                             role, permissions);
                     SessionManager.get().setDeptId(deptId);
+                    SessionManager.get().setToken(token);
 
                     SessionStore.save(userId, fullName, role,
                             username, sha256(password), deptId);
 
                     System.out.println("Login OK — user: " + fullName
                             + " role: " + role + " id: " + userId);
-
-                    SessionManager.get().login(userId, fullName, role);
-                    SessionManager.get().setDeptId(deptId);
-
-                    // ── Persist session to disk ────────────────────
-                    SessionStore.save(userId, fullName, role,
-                            username, sha256(password), deptId);
 
 
                     try {
@@ -215,6 +228,50 @@ public class LoginView {
         }
         return result;
     }
+    private void showForgotPasswordDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
+        dialog.setTitle("Forgot Password");
+        dialog.setHeaderText("Enter your username to receive a reset link by email.");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
+        VBox content = new VBox(10, new Label("Username:"), usernameField);
+        content.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(content);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            String username = usernameField.getText().trim();
+            if (username.isEmpty()) return;
+            try {
+                String body = "{\"username\":\"" + username + "\",\"userType\":\"ADMIN\"}";
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/forgot-password"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+                boolean success = resp.body().contains("\"success\":true");
+                String message = extractValue(resp.body(), "message");
+
+                Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR);
+                ThemeManager.applyToDialog(alert);
+                alert.setTitle(success ? "Check Your Email" : "Not Found");
+                alert.setHeaderText(null);
+                alert.setContentText(!message.isEmpty() ? message : "Something went wrong.");
+                alert.showAndWait();
+            } catch (Exception ex) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                ThemeManager.applyToDialog(alert);
+                alert.setContentText("Cannot connect to server.");
+                alert.showAndWait();
+            }
+        }
+    }
+
     private String sha256(String input) {
         try {
             java.security.MessageDigest md =

@@ -2,6 +2,7 @@ package com.vaultdesk.server.controller;
 
 import com.vaultdesk.server.dao.EmployeeDAO;
 import com.vaultdesk.server.model.Employee;
+import com.vaultdesk.server.security.TokenStore;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,9 +14,11 @@ import java.util.Map;
 public class EmployeeAuthController {
 
     private final EmployeeDAO employeeDAO;
+    private final TokenStore tokenStore;
 
-    public EmployeeAuthController(EmployeeDAO employeeDAO) {
+    public EmployeeAuthController(EmployeeDAO employeeDAO, TokenStore tokenStore) {
         this.employeeDAO = employeeDAO;
+        this.tokenStore = tokenStore;
     }
 
     @PostMapping("/login")
@@ -30,6 +33,7 @@ public class EmployeeAuthController {
 
         if (employeeDAO.validateEmployeeLogin(username, hash)) {
             Employee emp = employeeDAO.getEmployeeByUsername(username);
+            String token = tokenStore.issue(emp.id(), "EMPLOYEE", "EMPLOYEE");
             return ResponseEntity.ok(Map.of(
                     "success",      true,
                     "message",      "Login successful",
@@ -38,7 +42,8 @@ public class EmployeeAuthController {
                     "empCode",      emp.empCode() != null ? emp.empCode() : "",
                     "designation",  emp.designation() != null ? emp.designation() : "",
                     "departmentId", emp.departmentId(),
-                    "email",        emp.email() != null ? emp.email() : ""
+                    "email",        emp.email() != null ? emp.email() : "",
+                    "token",        token
             ));
         }
         return ResponseEntity.status(401).body(Map.of(
@@ -57,14 +62,17 @@ public class EmployeeAuthController {
 
         if (employeeDAO.validateEmployeeLogin(username, passwordHash)) {
             Employee emp = employeeDAO.getEmployeeByUsername(username);
+            String token = tokenStore.issue(emp.id(), "EMPLOYEE", "EMPLOYEE");
             return ResponseEntity.ok(Map.of(
                     "success",      true,
+                    "message",      "Login successful",
                     "employeeId",   emp.id(),
                     "name",         emp.name(),
                     "empCode",      emp.empCode() != null ? emp.empCode() : "",
                     "designation",  emp.designation() != null ? emp.designation() : "",
                     "departmentId", emp.departmentId(),
-                    "email",        emp.email() != null ? emp.email() : ""
+                    "email",        emp.email() != null ? emp.email() : "",
+                    "token",        token
             ));
         }
         return ResponseEntity.status(401).build();

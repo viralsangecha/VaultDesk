@@ -5,51 +5,138 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
-import java.net.URI;
 import java.net.http.*;
+import java.util.*;
 import java.util.prefs.Preferences;
 
 public class SettingsView {
 
-    // ── Java Preferences — persists across sessions ───────
     private static final Preferences prefs =
             Preferences.userNodeForPackage(SettingsView.class);
 
     public VBox getView() {
+
+        Label bcRoot = new Label("SYSTEM");
+        bcRoot.getStyleClass().add("breadcrumb-root");
+        Label bcSep = new Label("  /  ");
+        bcSep.getStyleClass().add("breadcrumb-sep");
+        Label bcCurrent = new Label("SETTINGS");
+        bcCurrent.getStyleClass().add("breadcrumb-current");
+        HBox breadcrumb = new HBox(bcRoot, bcSep, bcCurrent);
 
         Label pageTitle = new Label("Settings");
         pageTitle.getStyleClass().add("page-title");
         Label pageSub = new Label("Configure application preferences.");
         pageSub.getStyleClass().add("page-subtitle");
 
-        VBox root = new VBox(20, pageTitle, pageSub);
-        root.setPadding(new Insets(0));
+        // ── Left nav ──────────────────────────────────────
+        VBox nav = new VBox(2);
+        nav.getStyleClass().add("table-wrapper");
+        nav.setPadding(new Insets(8));
+        nav.setPrefWidth(200);
+        nav.setMinWidth(200);
 
-        // ── Section: Server ───────────────────────────────
-        root.getChildren().add(sectionCard("🖥  Server Configuration",
-                buildServerSection()));
+        // ── Right content, swapped on nav click ────────────
+        VBox contentHolder = new VBox(20);
+        ScrollPane contentScroll = new ScrollPane(contentHolder);
+        contentScroll.setFitToWidth(true);
+        contentScroll.getStyleClass().add("content-scroll");
+        contentScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        HBox.setHgrow(contentScroll, Priority.ALWAYS);
 
-        // ── Section: Appearance ───────────────────────────
-        root.getChildren().add(sectionCard("🎨  Appearance",
-                buildAppearanceSection()));
+        Map<String, java.util.function.Supplier<javafx.scene.Node>> categories = new LinkedHashMap<>();
+        categories.put("🎨  General", this::buildGeneralPanel);
+        categories.put("🖥  Server", this::buildServerPanel);
+        categories.put("📧  Email & Notifications", this::buildEmailPanel);
+        categories.put("🔒  Security", this::buildSecurityPanel);
+        categories.put("💾  Data & Backup", this::buildDataBackupPanel);
+        categories.put("ℹ  About", this::buildAboutPanel);
 
-        // ── Section: Account ──────────────────────────────
-        root.getChildren().add(sectionCard("🔒  Change Password",
-                buildPasswordSection()));
+        List<Button> navButtons = new ArrayList<>();
+        for (Map.Entry<String, java.util.function.Supplier<javafx.scene.Node>> entry : categories.entrySet()) {
+            Button navBtn = new Button(entry.getKey());
+            navBtn.getStyleClass().add("sidebar-btn");
+            navBtn.setMaxWidth(Double.MAX_VALUE);
+            navBtn.setAlignment(Pos.CENTER_LEFT);
+            navBtn.setOnAction(e -> {
+                contentHolder.getChildren().setAll(entry.getValue().get()); // rebuilt fresh from the server every click
+                navButtons.forEach(b -> b.getStyleClass().remove("sidebar-btn-active"));
+                navBtn.getStyleClass().add("sidebar-btn-active");
+            });
+            navButtons.add(navBtn);
+            nav.getChildren().add(navBtn);
+        }
 
-        // ── Section: Backup ──────────────────────────────
-        root.getChildren().add(sectionCard(
-                "💾  Database Backup", buildBackupSection()));
+        if (!navButtons.isEmpty()) {
+            navButtons.get(0).getStyleClass().add("sidebar-btn-active");
+            contentHolder.getChildren().setAll(categories.values().iterator().next().get());
+        }
 
-        // ── Section: Data ─────────────────────────────────
-        root.getChildren().add(sectionCard("📁  Data & Import",
-                buildDataSection()));
+        HBox body = new HBox(20, nav, contentScroll);
+        VBox.setVgrow(body, Priority.ALWAYS);
 
-        // ── Section: About ────────────────────────────────
-        root.getChildren().add(sectionCard("ℹ  About VaultDesk",
-                buildAboutSection()));
-
+        VBox root = new VBox(16, breadcrumb, pageTitle, pageSub, body);
+        VBox.setVgrow(root, Priority.ALWAYS);
         return root;
+    }
+
+// ── Category panels — group existing sections, unchanged internally ──
+
+    private VBox buildGeneralPanel() {
+        return new VBox(16, panelHeader("Appearance"), buildAppearanceSection());
+    }
+
+    private VBox buildServerPanel() {
+        return new VBox(24,
+                panelHeader("Server Configuration"), buildServerSection(),
+                new Separator(),
+                panelHeader("Maintenance Mode"), buildMaintenanceSection());
+    }
+
+    private VBox buildEmailPanel() {
+        return new VBox(24,
+                panelHeader("Email Server (SMTP)"), buildEmailSection(),
+                new Separator(),
+                panelHeader("Notification Rules"),
+                subLabel("Configure exactly who gets notified for each event below."),
+                buildNotificationRulesSection());
+    }
+
+    private VBox buildSecurityPanel() {
+        return new VBox(16, panelHeader("Change Password"), buildPasswordSection());
+    }
+
+    private VBox buildDataBackupPanel() {
+        return new VBox(24,
+                panelHeader("Database Backup"), buildBackupSection(),
+                new Separator(),
+                panelHeader("Data & Import"), buildDataSection());
+    }
+
+    private VBox buildAboutPanel() {
+        return new VBox(16, panelHeader("About VaultDesk"), buildAboutSection());
+    }
+
+    private Label panelHeader(String text) {
+        Label l = new Label(text);
+        l.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        return l;
+    }
+
+    private Label subLabel(String text) {
+        Label l = new Label(text);
+        l.getStyleClass().add("text-muted");
+        l.setStyle("-fx-font-size: 12px;");
+        l.setWrapText(true);
+        return l;
+    }
+
+    private ColumnConstraints[] labelValueCols(double minWidth) {
+        ColumnConstraints labelCol = new ColumnConstraints();
+        labelCol.setMinWidth(minWidth);
+        ColumnConstraints valueCol = new ColumnConstraints();
+        valueCol.setHgrow(Priority.ALWAYS);
+        return new ColumnConstraints[]{labelCol, valueCol};
     }
 
     // ── Server section ────────────────────────────────────
@@ -74,22 +161,14 @@ public class SettingsView {
         statusLabel.setStyle("-fx-font-size: 12px;");
 
         Button testBtn = new Button("Test Connection");
-        testBtn.getStyleClass().setAll("btn-primary");
-        testBtn.setStyle(
-                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        testBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(testBtn);
         testBtn.setOnAction(e -> {
             String url = "http://" + hostField.getText().trim()
                     + ":" + portField.getText().trim()
-                    + "/api/dashboard/stats";
+                    + "/api/health";
             try {
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(url))
-                        .GET().build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = ApiClient.get(url);
                 if (resp.statusCode() == 200) {
                     statusLabel.setText("✔ Connected successfully.");
                     statusLabel.setStyle(
@@ -108,11 +187,8 @@ public class SettingsView {
         });
 
         Button saveBtn = new Button("Save");
-        saveBtn.getStyleClass().setAll("btn-primary");
-        saveBtn.setStyle(
-                "-fx-background-color: #238636; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        saveBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(saveBtn);
         saveBtn.setOnAction(e -> {
             ConfigManager.setHost(hostField.getText().trim());
             ConfigManager.setPort(portField.getText().trim());
@@ -123,10 +199,12 @@ public class SettingsView {
 
         Label note = new Label(
                 "Changes take effect after restarting the application.");
-        note.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        note.getStyleClass().add("text-muted");
+        note.setStyle("-fx-font-size: 11px;");
 
         GridPane grid = new GridPane();
         grid.setHgap(12); grid.setVgap(10);
+        grid.getColumnConstraints().addAll(labelValueCols(120));
         grid.add(hostLabel,  0, 0); grid.add(hostField, 1, 0);
         grid.add(portLabel,  0, 1); grid.add(portField, 1, 1);
         grid.add(note,       1, 2);
@@ -134,6 +212,446 @@ public class SettingsView {
 
         HBox btnRow = new HBox(10, testBtn, saveBtn);
         return new VBox(12, grid, btnRow);
+    }
+
+    private VBox buildEmailSection() {
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-size: 12px;");
+
+        TextField hostField = new TextField();
+        hostField.setPromptText("e.g. smtp.zoho.in");
+        hostField.setPrefWidth(280);
+
+        NumberField portField = new NumberField();
+        portField.setText("587");
+        portField.setPrefWidth(100);
+
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("SMTP login email");
+        usernameField.setPrefWidth(280);
+
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("SMTP password / app password");
+        passwordField.setPrefWidth(280);
+
+        TextField fromNameField = new TextField("VaultDesk");
+        fromNameField.setPrefWidth(280);
+
+        TextField publicUrlField = new TextField();
+        publicUrlField.setPromptText("e.g. http://192.168.1.50:2008");
+        publicUrlField.setPrefWidth(280);
+
+        CheckBox enabledBox = new CheckBox("Enable email sending");
+
+        Button suggestBtn = new Button("Suggest this machine's LAN address");
+        suggestBtn.getStyleClass().add("btn-link-blue");
+        suggestBtn.setOnAction(e -> {
+            try {
+                String ip = java.net.InetAddress.getLocalHost().getHostAddress();
+                publicUrlField.setText("http://" + ip + ":2008");
+            } catch (Exception ex) {
+                statusLabel.setText("Could not detect local IP.");
+                statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+            }
+        });
+
+        try {
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/email-settings");
+            String body = resp.body();
+            if (extractValue(body, "configured").equals("true") || body.contains("\"configured\":true")) {
+                hostField.setText(extractValue(body, "smtpHost"));
+                String port = extractValue(body, "smtpPort");
+                if (!port.isEmpty()) portField.setText(port);
+                usernameField.setText(extractValue(body, "username"));
+                String fromName = extractValue(body, "fromName");
+                if (!fromName.isEmpty()) fromNameField.setText(fromName);
+                publicUrlField.setText(extractValue(body, "publicUrl"));
+                enabledBox.setSelected(body.contains("\"enabled\":true"));
+            }
+        } catch (Exception ex) {
+            statusLabel.setText("Could not load current email settings.");
+            statusLabel.setStyle("-fx-text-fill: #d29922; -fx-font-size: 12px;");
+        }
+
+        Button saveBtn = new Button("Save Email Settings");
+        saveBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(saveBtn);
+        saveBtn.setOnAction(e -> {
+            try {
+                String body = "{" +
+                        "\"smtpHost\":\"" + escapeJson(hostField.getText().trim()) + "\"," +
+                        "\"smtpPort\":" + portField.getIntValue() + "," +
+                        "\"username\":\"" + escapeJson(usernameField.getText().trim()) + "\"," +
+                        "\"password\":\"" + jsonEscape(passwordField.getText()) + "\"," +
+                        "\"fromName\":\"" + escapeJson(fromNameField.getText().trim()) + "\"," +
+                        "\"enabled\":" + enabledBox.isSelected() + "," +
+                        "\"publicUrl\":\"" + escapeJson(publicUrlField.getText().trim()) + "\"" +
+                        "}";
+                HttpResponse<String> resp = ApiClient.put(ConfigManager.getBaseUrl() + "/api/email-settings", body);
+                if (resp.statusCode() == 200) {
+                    statusLabel.setText("✔ Email settings saved.");
+                    statusLabel.setStyle("-fx-text-fill: #3fb950; -fx-font-size: 12px;");
+                    passwordField.clear();
+                } else {
+                    statusLabel.setText("Error: " + resp.statusCode());
+                    statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+                }
+            } catch (Exception ex) {
+                statusLabel.setText("Cannot connect: " + ex.getMessage());
+                statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+            }
+        });
+
+        Label note = new Label(
+                "Public URL is where reset-password links point — since this app runs on your " +
+                        "company's private network only, use this machine's LAN address (e.g. http://192.168.x.x:2008), not localhost.");
+        note.getStyleClass().add("text-muted");
+        note.setStyle("-fx-font-size: 11px;");
+        note.setWrapText(true);
+        note.setMaxWidth(400);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        grid.getColumnConstraints().addAll(labelValueCols(120));
+        grid.add(new Label("SMTP Host:"), 0, 0);     grid.add(hostField, 1, 0);
+        grid.add(new Label("SMTP Port:"), 0, 1);     grid.add(portField, 1, 1);
+        grid.add(new Label("Username:"), 0, 2);      grid.add(usernameField, 1, 2);
+        grid.add(new Label("Password:"), 0, 3);      grid.add(passwordField, 1, 3);
+        grid.add(new Label("From Name:"), 0, 4);     grid.add(fromNameField, 1, 4);
+        grid.add(new Label("Public URL:"), 0, 5);    grid.add(publicUrlField, 1, 5);
+        grid.add(suggestBtn, 1, 6);
+        grid.add(note, 1, 7);
+        grid.add(enabledBox, 1, 8);
+        grid.add(statusLabel, 1, 9);
+
+        VBox recipientsBox = buildRecipientsSubsection();
+
+        return new VBox(14, grid, saveBtn, new Separator(), recipientsBox);
+    }
+
+    private VBox buildRecipientsSubsection() {
+        Label heading = new Label("People Who Get Notified");
+        heading.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        Label sub = new Label("Add anyone who should receive certain alerts, then click Edit next to their name to choose which events they hear about.");
+        sub.getStyleClass().add("text-muted");
+        sub.setStyle("-fx-font-size: 11px;");
+        sub.setWrapText(true);
+
+        VBox peopleList = new VBox(6);
+        Label loading = new Label("Loading...");
+        loading.getStyleClass().add("text-muted");
+        peopleList.getChildren().add(loading);
+
+        Map<String, String> eventLabels = ticketEventLabels(); // shared helper, see below
+
+        TextField emailField = new TextField();
+        emailField.setPromptText("email@company.com");
+        emailField.setPrefWidth(200);
+        TextField nameField = new TextField();
+        nameField.setPromptText("Display name (optional)");
+        nameField.setPrefWidth(160);
+        Label addError = new Label("");
+        addError.setStyle("-fx-text-fill: #f85149; -fx-font-size: 11px;");
+        Button addBtn = new Button("+ Add Person");
+        addBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(addBtn);
+
+        Runnable[] reload = new Runnable[1];
+        reload[0] = () -> {
+            peopleList.getChildren().clear();
+            try {
+                HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/email-settings/recipients");
+                String body = resp.body().trim();
+                if (body.length() < 2 || body.equals("[]")) {
+                    Label none = new Label("No one added yet.");
+                    none.getStyleClass().add("text-muted");
+                    peopleList.getChildren().add(none);
+                    return;
+                }
+                body = body.substring(1, body.length() - 1).trim();
+                for (String obj : body.split("\\},\\{")) {
+                    String cleaned = obj.replace("{", "").replace("}", "");
+                    int id = extractIntVal(cleaned, "id");
+                    String email = extractValue(cleaned, "email");
+                    String name = extractValue(cleaned, "name");
+                    String subsRaw = extractValue(cleaned, "subscribed_events");
+                    List<String> subs = subsRaw.isEmpty() ? List.of() : Arrays.asList(subsRaw.split(","));
+
+                    Label personLabel = new Label(name.isEmpty() ? email : name + " — " + email);
+                    personLabel.setStyle("-fx-font-size: 12px;");
+                    Label countLabel = new Label(subs.size() + " event" + (subs.size() == 1 ? "" : "s"));
+                    countLabel.getStyleClass().add("text-muted");
+                    countLabel.setStyle("-fx-font-size: 11px;");
+
+                    Button editBtn = new Button("Edit");
+                    editBtn.getStyleClass().add("btn-link-blue");
+                    editBtn.setOnAction(e -> showEditSubscriptionsDialog(id, email, subs, eventLabels, reload[0]));
+
+                    Button removeBtn = new Button("✕");
+                    removeBtn.getStyleClass().add("btn-link-red");
+                    removeBtn.setOnAction(e -> {
+                        try {
+                            ApiClient.delete(ConfigManager.getBaseUrl() + "/api/email-settings/recipients/" + id);
+                            reload[0].run();
+                        } catch (Exception ignored) {}
+                    });
+
+                    HBox row = new HBox(12, personLabel, countLabel, editBtn, removeBtn);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    row.getStyleClass().add("surface-card");
+                    row.setStyle("-fx-padding: 8 12; -fx-background-radius: 6;");
+                    peopleList.getChildren().add(row);
+                }
+            } catch (Exception ex) {
+                peopleList.getChildren().add(new Label("Could not load people."));
+            }
+        };
+        reload[0].run();
+
+        addBtn.setOnAction(e -> {
+            String email = emailField.getText().trim();
+            if (!ValidationUtil.isValidEmail(email)) {
+                addError.setText("Enter a valid email address.");
+                return;
+            }
+            addError.setText("");
+            try {
+                String body = "{\"email\":\"" + escapeJson(email) + "\",\"name\":\"" + escapeJson(nameField.getText().trim()) + "\"}";
+                ApiClient.post(ConfigManager.getBaseUrl() + "/api/email-settings/recipients", body);
+                emailField.clear();
+                nameField.clear();
+                reload[0].run();
+            } catch (Exception ignored) {}
+        });
+
+        HBox addRow = new HBox(8, emailField, nameField, addBtn);
+        return new VBox(8, heading, sub, peopleList, addRow, addError);
+    }
+
+    private Map<String, String> ticketEventLabels() {
+        Map<String, String> labels = new LinkedHashMap<>();
+        labels.put("TICKET_CREATED", "Ticket Created");
+        labels.put("TICKET_ASSIGNED", "Ticket Assigned to Engineer");
+        labels.put("TICKET_STATUS_CHANGED", "Ticket Status Changed");
+        labels.put("TICKET_AUTO_CLOSED", "Ticket Auto-Closed (3-Day)");
+        labels.put("PASSWORD_RESET_REQUESTED", "Password Reset Requested");
+        labels.put("PASSWORD_RESET_COMPLETED", "Password Reset Completed");
+        return labels;
+    }
+
+    private void showEditSubscriptionsDialog(int recipientId, String email, List<String> currentSubs,
+                                             Map<String, String> eventLabels, Runnable reload) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
+        dialog.setTitle("Subscriptions — " + email);
+        dialog.setHeaderText("Which events should this person hear about?");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        VBox checks = new VBox(8);
+        Map<String, CheckBox> boxes = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : eventLabels.entrySet()) {
+            CheckBox cb = new CheckBox(entry.getValue());
+            cb.setSelected(currentSubs.contains(entry.getKey()));
+            boxes.put(entry.getKey(), cb);
+            checks.getChildren().add(cb);
+        }
+        checks.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(checks);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            List<String> selected = new ArrayList<>();
+            for (Map.Entry<String, CheckBox> b : boxes.entrySet()) {
+                if (b.getValue().isSelected()) selected.add(b.getKey());
+            }
+            StringBuilder json = new StringBuilder("{\"eventKeys\":[");
+            for (int i = 0; i < selected.size(); i++) {
+                json.append("\"").append(selected.get(i)).append("\"");
+                if (i < selected.size() - 1) json.append(",");
+            }
+            json.append("]}");
+            try {
+                HttpResponse<String> resp = ApiClient.put(
+                        ConfigManager.getBaseUrl() + "/api/email-settings/recipients/" + recipientId + "/subscriptions",
+                        json.toString());
+                if (resp.statusCode() == 200) {
+                    ToastUtil.success("Subscriptions updated for " + email);
+                    reload.run();
+                } else {
+                    showAlert("Error", "Server returned " + resp.statusCode() + ":\n" + resp.body());
+                }
+            } catch (Exception ex) {
+                showAlert("Error", "Cannot connect: " + ex.getMessage());
+            }
+        }
+    }
+
+    private int extractIntVal(String json, String key) {
+        String search = "\"" + key + "\":";
+        int start = json.indexOf(search);
+        if (start == -1) return 0;
+        start += search.length();
+        int end = json.indexOf(",", start);
+        if (end == -1) end = json.length();
+        try { return Integer.parseInt(json.substring(start, end).trim().replace("}", "")); }
+        catch (Exception e) { return 0; }
+    }
+
+    private VBox buildNotificationRulesSection() {
+        VBox container = new VBox(10);
+        Label loading = new Label("Loading...");
+        loading.getStyleClass().add("text-muted");
+        container.getChildren().add(loading);
+
+        Map<String, String> eventLabels = new LinkedHashMap<>();
+        eventLabels.put("TICKET_CREATED", "Ticket Created");
+        eventLabels.put("TICKET_ASSIGNED", "Ticket Assigned to Engineer");
+        eventLabels.put("TICKET_STATUS_CHANGED", "Ticket Status Changed");
+        eventLabels.put("TICKET_AUTO_CLOSED", "Ticket Auto-Closed (3-Day)");
+        eventLabels.put("PASSWORD_RESET_REQUESTED", "Password Reset Requested");
+        eventLabels.put("PASSWORD_RESET_COMPLETED", "Password Reset Completed");
+
+        try {
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/notification-rules");
+            String body = resp.body().trim();
+            Map<String, boolean[]> rules = new HashMap<>(); // eventKey -> [enabled, notifyReporter]
+            if (body.length() > 2) {
+                body = body.substring(1, body.length() - 1).trim();
+                for (String obj : body.split("\\},\\{")) {
+                    String cleaned = obj.replace("{", "").replace("}", "");
+                    String key = extractValue(cleaned, "eventKey");
+                    rules.put(key, new boolean[]{cleaned.contains("\"enabled\":true"), cleaned.contains("\"notifyReporter\":true")});
+                }
+            }
+
+            container.getChildren().clear();
+            for (Map.Entry<String, String> entry : eventLabels.entrySet()) {
+                boolean[] state = rules.getOrDefault(entry.getKey(), new boolean[]{true, true});
+                container.getChildren().add(buildRuleRow(entry.getKey(), entry.getValue(), state[0], state[1]));
+            }
+        } catch (Exception ex) {
+            container.getChildren().setAll(new Label("Could not load notification rules: " + ex.getMessage()));
+        }
+
+        return container;
+    }
+
+    private HBox buildRuleRow(String eventKey, String label, boolean enabled, boolean notifyReporter) {
+        Label title = new Label(label);
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+        title.setPrefWidth(220);
+
+        CheckBox enabledBox = new CheckBox("Send this email");
+        enabledBox.setSelected(enabled);
+        CheckBox reporterBox = new CheckBox("Notify the person it's about");
+        reporterBox.setSelected(notifyReporter);
+
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-size: 11px;");
+
+        Button saveBtn = new Button("Save");
+        saveBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(saveBtn);
+        saveBtn.setOnAction(e -> {
+            String json = "{\"enabled\":" + enabledBox.isSelected() + ",\"notifyReporter\":" + reporterBox.isSelected() + "}";
+            try {
+                HttpResponse<String> resp = ApiClient.put(ConfigManager.getBaseUrl() + "/api/notification-rules/" + eventKey, json);
+                statusLabel.setText(resp.statusCode() == 200 ? "✔ Saved" : "Error: " + resp.statusCode());
+                statusLabel.setStyle("-fx-text-fill: " + (resp.statusCode() == 200 ? "#3fb950" : "#f85149") + ";");
+            } catch (Exception ex) {
+                statusLabel.setText("Cannot connect.");
+                statusLabel.setStyle("-fx-text-fill: #f85149;");
+            }
+        });
+
+        HBox row = new HBox(16, title, enabledBox, reporterBox, saveBtn, statusLabel);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("surface-card");
+        row.setStyle("-fx-padding: 10 14; -fx-background-radius: 8;");
+        return row;
+    }
+
+    private VBox buildRuleRow(String eventKey, String label, boolean enabled, boolean notifyReporter,
+                              Set<String> selectedTypes, Set<String> knownTypes) {
+        Label title = new Label(label);
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        CheckBox enabledBox = new CheckBox("Send this notification");
+        enabledBox.setSelected(enabled);
+        CheckBox reporterBox = new CheckBox("Notify the person this event is about (ticket reporter, or the user resetting their password)");
+        reporterBox.setWrapText(true);
+        reporterBox.setSelected(notifyReporter);
+
+        HBox typeRow = new HBox(14);
+        Map<String, CheckBox> typeBoxes = new LinkedHashMap<>();
+        for (String type : knownTypes) {
+            CheckBox tb = new CheckBox(type);
+            tb.setSelected(selectedTypes.contains(type));
+            typeBoxes.put(type, tb);
+            typeRow.getChildren().add(tb);
+        }
+
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-size: 11px;");
+
+        Button saveBtn = new Button("Save");
+        saveBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(saveBtn);
+        saveBtn.setOnAction(e -> {
+            List<String> types = new ArrayList<>();
+            for (Map.Entry<String, CheckBox> tb : typeBoxes.entrySet()) {
+                if (tb.getValue().isSelected()) types.add(tb.getKey());
+            }
+            StringBuilder json = new StringBuilder("{\"enabled\":" + enabledBox.isSelected()
+                    + ",\"notifyReporter\":" + reporterBox.isSelected() + ",\"notifyTypes\":[");
+            for (int i = 0; i < types.size(); i++) {
+                json.append("\"").append(types.get(i)).append("\"");
+                if (i < types.size() - 1) json.append(",");
+            }
+            json.append("]}");
+            try {
+                HttpResponse<String> resp = ApiClient.put(
+                        ConfigManager.getBaseUrl() + "/api/notification-rules/" + eventKey, json.toString());
+                statusLabel.setText(resp.statusCode() == 200 ? "✔ Saved" : "Error: " + resp.statusCode());
+                statusLabel.setStyle("-fx-text-fill: " + (resp.statusCode() == 200 ? "#3fb950" : "#f85149") + "; -fx-font-size: 11px;");
+            } catch (Exception ex) {
+                statusLabel.setText("Cannot connect: " + ex.getMessage());
+                statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 11px;");
+            }
+        });
+
+        HBox actionRow = new HBox(12, saveBtn, statusLabel);
+        actionRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label alsoNotifyLabel = new Label("Also copy these groups:");
+        alsoNotifyLabel.getStyleClass().add("text-muted");
+        alsoNotifyLabel.setStyle("-fx-font-size: 11px;");
+        VBox row = new VBox(6, title, enabledBox, reporterBox, alsoNotifyLabel, typeRow, actionRow);
+        row.getStyleClass().add("surface-card");
+        row.setStyle("-fx-padding: 12; -fx-background-radius: 6;");
+        return row;
+    }
+
+    private String extractInt(String json, String key) {
+        String search = "\"" + key + "\":";
+        int start = json.indexOf(search);
+        if (start == -1) return "0";
+        start += search.length();
+        int end = json.indexOf(",", start);
+        if (end == -1) end = json.indexOf("}", start);
+        if (end == -1) end = json.length();
+        return json.substring(start, end).trim();
+    }
+
+    private String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "'");
+    }
+
+    /** Real JSON-string escaping — preserves the exact characters (used for passwords, where substituting quotes would silently change the actual value being sent). */
+    private String jsonEscape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     // ── Appearance section ────────────────────────────────
@@ -147,9 +665,6 @@ public class SettingsView {
         RadioButton lightBtn = new RadioButton("Light Mode");
         darkBtn.setToggleGroup(themeGroup);
         lightBtn.setToggleGroup(themeGroup);
-
-        darkBtn.setStyle("-fx-text-fill: #c9d1d9;");
-        lightBtn.setStyle("-fx-text-fill: #c9d1d9;");
 
         if (ThemeManager.getCurrent() == ThemeManager.Theme.DARK)
             darkBtn.setSelected(true);
@@ -188,6 +703,8 @@ public class SettingsView {
         fontBox.setPrefWidth(200);
 
         Button saveFontBtn = new Button("Apply Font Size");
+        saveFontBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(saveFontBtn);
         saveFontBtn.setOnAction(e -> {
             prefs.put("font.size", fontBox.getValue());
             String size = fontBox.getValue().contains("12") ? "12px"
@@ -199,7 +716,6 @@ public class SettingsView {
                             .filter(w -> w instanceof javafx.stage.Stage)
                             .findFirst().orElse(null);
             if (stage != null && stage.getScene() != null) {
-                // Apply font size to root
                 stage.getScene().getRoot().setStyle(
                         "-fx-font-size: " + size + ";");
             }
@@ -213,6 +729,7 @@ public class SettingsView {
 
         GridPane grid = new GridPane();
         grid.setHgap(12); grid.setVgap(10);
+        grid.getColumnConstraints().addAll(labelValueCols(100));
         grid.add(themeLabel, 0, 0); grid.add(themeRow,   1, 0);
         grid.add(fontLabel,  0, 1); grid.add(fontBox,    1, 1);
         grid.add(themeStatus,1, 2);
@@ -245,11 +762,8 @@ public class SettingsView {
         statusLabel.setStyle("-fx-font-size: 12px;");
 
         Button changeBtn = new Button("Change Password");
-        changeBtn.getStyleClass().setAll("btn-warning");
-        changeBtn.setStyle(
-                "-fx-background-color: #b45309; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        changeBtn.getStyleClass().add("btn-warning");
+        AnimationUtil.addHoverScale(changeBtn);
         changeBtn.setOnAction(e -> {
             String current = currentField.getText();
             String newPwd  = newField.getText();
@@ -274,21 +788,14 @@ public class SettingsView {
                 return;
             }
 
-            // Call password change endpoint
             try {
                 int userId = SessionManager.get().getUserId();
                 String body = "{" +
-                        "\"currentPassword\":\"" + current + "\"," +
-                        "\"newPassword\":\"" + newPwd + "\"" +
+                        "\"currentPassword\":\"" + jsonEscape(current) + "\"," +
+                        "\"newPassword\":\"" + jsonEscape(newPwd) + "\"" +
                         "}";
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users/"
-                                + userId + "/password"))
-                        .header("Content-Type", "application/json")
-                        .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = ApiClient.put(
+                        ConfigManager.getBaseUrl() + "/api/users/" + userId + "/password", body);
                 if (resp.statusCode() == 200) {
                     statusLabel.setText("✔ Password changed successfully.");
                     statusLabel.setStyle(
@@ -314,6 +821,7 @@ public class SettingsView {
 
         GridPane grid = new GridPane();
         grid.setHgap(12); grid.setVgap(10);
+        grid.getColumnConstraints().addAll(labelValueCols(160));
         grid.add(currentLabel, 0, 0); grid.add(currentField, 1, 0);
         grid.add(newLabel,     0, 1); grid.add(newField,     1, 1);
         grid.add(confirmLabel, 0, 2); grid.add(confirmField, 1, 2);
@@ -326,38 +834,20 @@ public class SettingsView {
     private VBox buildDataSection() {
 
         Label infoLabel = new Label(
-                "Use the Import CSV buttons in Assets, Employees, and " +
-                        "Departments views to bulk import data.\n" +
-                        "Use the Export buttons in Reports to download Excel files.");
-        infoLabel.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+                "Use the Import CSV buttons in Employees and Departments views to bulk import data.\n" +
+                        "Use the Export buttons in each screen to download Excel files.\n" +
+                        "(Assets import/export is on hold pending final field list.)");
+        infoLabel.getStyleClass().add("text-muted");
+        infoLabel.setStyle("-fx-font-size: 12px;");
         infoLabel.setWrapText(true);
 
         Label formatTitle = new Label("CSV Format Reference");
-        formatTitle.setStyle(
-                "-fx-text-fill: #e6edf3; -fx-font-weight: bold;" +
-                        "-fx-font-size: 13px;");
+        formatTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         TextArea formatArea = new TextArea(
-                "ASSETS (11 columns):\n" +
-                        "assetTag, name, category, brand, model, serialNumber,\n" +
-                        "departmentId, location, status, purchaseCost, notes\n\n" +
-                        "EMPLOYEES (8 columns):\n" +
+                "EMPLOYEES (8 columns):\n" +
                         "name, empCode, departmentId, designation,\n" +
-                        "email, phone, joinDate (YYYY-MM-DD), notes\n\n" +
-                        "DEPARTMENTS (2 columns):\n" +
-                        "name, location\n\n" +
-                        "Note: First row is treated as header and skipped.\n" +
-                        "Wrap values with commas in double quotes."
-        );
-        formatArea.setText(
-                "ASSETS (11 columns):\n" +
-                        "assetTag, name, category, brand, model,\n" +
-                        "serialNumber, departmentId, location,\n" +
-                        "status, purchaseCost, notes\n\n" +
-                        "EMPLOYEES (8 columns):\n" +
-                        "name, empCode, departmentId, designation,\n" +
-                        "email, phone, joinDate (YYYY-MM-DD), notes\n\n" +
+                        "email, phone, joinDate (dd-MM-yyyy), notes\n\n" +
                         "DEPARTMENTS (2 columns):\n" +
                         "name, location\n\n" +
                         "VENDORS (7 columns):\n" +
@@ -365,8 +855,8 @@ public class SettingsView {
                         "category, address, notes\n\n" +
                         "LICENSES (9 columns):\n" +
                         "softwareName, licenseType, licenseKey,\n" +
-                        "seatsTotal, vendor, purchaseDate (YYYY-MM-DD),\n" +
-                        "expiryDate (YYYY-MM-DD), cost, notes\n\n" +
+                        "seatsTotal, vendor, purchaseDate (dd-MM-yyyy),\n" +
+                        "expiryDate (dd-MM-yyyy), cost, notes\n\n" +
                         "CONSUMABLES (8 columns):\n" +
                         "name, category, compatibleModels,\n" +
                         "quantityInStock, reorderLevel, unit,\n" +
@@ -374,14 +864,17 @@ public class SettingsView {
                         "NOTES:\n" +
                         "- First row is header (skipped)\n" +
                         "- Wrap values containing commas in double quotes\n" +
-                        "- Dates must be YYYY-MM-DD format\n" +
-                        "- IDs must match existing records in database"
+                        "- Dates must be dd-MM-yyyy format (e.g. 18-07-2026)\n" +
+                        "- IDs must match existing records in the database\n\n" +
+                        "ASSETS: format not finalized yet — Assets import/export is currently on hold."
         );
         formatArea.setEditable(false);
-        formatArea.setPrefRowCount(12);
+        formatArea.setWrapText(false);
+        formatArea.setPrefRowCount(16);
+        formatArea.setPrefHeight(340);
+        formatArea.setMinHeight(340);
         formatArea.setStyle(
                 "-fx-font-family: monospace; -fx-font-size: 12px;");
-        formatArea.setPrefRowCount(16);
 
         return new VBox(12, infoLabel, formatTitle, formatArea);
     }
@@ -390,35 +883,32 @@ public class SettingsView {
     private VBox buildAboutSection() {
 
         Label appName = new Label("VaultDesk Admin");
-        appName.setStyle(
-                "-fx-text-fill: #e6edf3; -fx-font-size: 18px;" +
-                        "-fx-font-weight: bold;");
+        appName.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
         Label version = new Label("Version 1.0.0  —  Phase 10e");
-        version.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        version.getStyleClass().add("text-muted");
+        version.setStyle("-fx-font-size: 12px;");
 
         Label desc = new Label(
                 "IT Helpdesk & Asset Management Platform\n" +
                         "Built for Saurashtra Cement Ltd IT Department\n" +
                         "Developed by Viral Sangecha");
-        desc.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 13px;");
+        desc.setStyle("-fx-font-size: 13px;");
         desc.setWrapText(true);
 
         Separator sep = new Separator();
 
         Label techTitle = new Label("Technology Stack");
-        techTitle.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 11px;" +
-                        "-fx-font-weight: bold;");
+        techTitle.getStyleClass().add("text-muted");
+        techTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
 
         Label tech = new Label(
                 "Backend  :  Java 21  •  Spring Boot 3.5  •  SQLite\n" +
                         "Frontend :  JavaFX 21  •  AtlantaFX PrimerDark\n" +
                         "Reports  :  Apache POI 5.2.3\n" +
                         "Styling  :  Custom CSS + Light/Dark theme");
-        tech.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 12px;" +
-                        "-fx-font-family: monospace;");
+        tech.getStyleClass().add("text-muted");
+        tech.setStyle("-fx-font-size: 12px; -fx-font-family: monospace;");
 
         Separator sep2 = new Separator();
 
@@ -426,30 +916,131 @@ public class SettingsView {
                 "Logged in as: " + SessionManager.get().getFullName()
                         + "  |  Role: " + SessionManager.get().getRole()
                         + "  |  User ID: " + SessionManager.get().getUserId());
-        loggedIn.setStyle(
-                "-fx-text-fill: #58a6ff; -fx-font-size: 11px;");
+        loggedIn.getStyleClass().add("breadcrumb-current");
+        loggedIn.setStyle("-fx-font-size: 11px;");
 
         return new VBox(10,
                 appName, version, desc, sep,
                 techTitle, tech, sep2, loggedIn);
     }
-    private VBox buildBackupSection() {
-        Label infoLabel = new Label("Loading database info...");
-        infoLabel.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+
+    private VBox buildMaintenanceSection() {
+        Label warningLabel = new Label(
+                "⚠ Stop/Resume only work when this Admin app is running on the actual VaultDesk server machine.");
+        warningLabel.setStyle("-fx-text-fill: #d29922; -fx-font-size: 11px; -fx-font-weight: bold;");
+        warningLabel.setWrapText(true);
+
+        // ── Advance warning (banner shown to everyone, server stays up) ──
+        Label scheduleLabel = new Label("Schedule advance warning:");
+        scheduleLabel.getStyleClass().add("login-label");
+        NumberField minutesField = new NumberField();
+        minutesField.setPromptText("Minutes from now, e.g. 10");
+        TextField messageField = new TextField("Scheduled maintenance is starting soon. Please save your work.");
+        messageField.setPrefWidth(320);
 
         Label statusLabel = new Label("");
         statusLabel.setStyle("-fx-font-size: 12px;");
 
-        // ── Load DB info ──────────────────────────────────────
+        Button scheduleBtn = new Button("Schedule Warning");
+        scheduleBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(scheduleBtn);
+        scheduleBtn.setOnAction(e -> {
+            try {
+                int mins = minutesField.getIntValue();
+                String scheduledAt = java.time.LocalDateTime.now().plusMinutes(mins).toString();
+                String body = "{\"scheduledAt\":\"" + scheduledAt + "\",\"message\":\""
+                        + messageField.getText().replace("\"", "'") + "\"}";
+                HttpResponse<String> resp = ApiClient.put(ConfigManager.getBaseUrl() + "/api/system-status/schedule", body);
+                statusLabel.setText(resp.statusCode() == 200
+                        ? "✔ Warning scheduled — banner will show for everyone." : "Error: " + resp.statusCode());
+                statusLabel.setStyle("-fx-text-fill: " + (resp.statusCode() == 200 ? "#3fb950" : "#f85149") + "; -fx-font-size: 12px;");
+            } catch (Exception ex) {
+                statusLabel.setText("Cannot connect: " + ex.getMessage());
+                statusLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+            }
+        });
+
+        Button cancelBtn = new Button("Cancel Warning");
+        cancelBtn.getStyleClass().add("btn-link-red");
+        cancelBtn.setOnAction(e -> {
+            try {
+                ApiClient.delete(ConfigManager.getBaseUrl() + "/api/system-status/schedule");
+                statusLabel.setText("✔ Warning cancelled.");
+                statusLabel.setStyle("-fx-text-fill: #3fb950; -fx-font-size: 12px;");
+            } catch (Exception ex) {
+                showAlert("Error", ex.getMessage());
+            }
+        });
+
+        // ── Actual stop / resume (real OS action, this machine only) ──
+        Button stopBtn = new Button("🛑 Start Maintenance Now (Stop Server)");
+        stopBtn.getStyleClass().add("btn-danger");
+        AnimationUtil.addHoverScale(stopBtn);
+        stopBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            ThemeManager.applyToDialog(confirm);
+            confirm.setContentText("This will stop the real VaultDesk server for everyone right now. Continue?");
+            confirm.showAndWait().ifPresent(btn -> {
+                if (btn == ButtonType.OK) {
+                    stopBtn.setDisable(true);
+                    statusLabel.setText("Working — stopping server, please wait...");
+                    statusLabel.setStyle("-fx-text-fill: #d29922; -fx-font-size: 12px;");
+                    MaintenanceControlUtil.startMaintenance(
+                            () -> javafx.application.Platform.runLater(() -> {
+                                statusLabel.setText("✔ Maintenance started — server is stopped.");
+                                statusLabel.setStyle("-fx-text-fill: #d29922; -fx-font-size: 12px;");
+                                stopBtn.setDisable(false);
+                            }),
+                            err -> javafx.application.Platform.runLater(() -> {
+                                stopBtn.setDisable(false);
+                                showAlert("Error", "Could not start maintenance: " + err);
+                            })
+                    );
+                }
+            });
+        });
+        Button resumeBtn = new Button("✔ Resume Server");
+        resumeBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(resumeBtn);
+        resumeBtn.setOnAction(e -> {
+            resumeBtn.setDisable(true);
+            statusLabel.setText("Working — resuming server, please wait...");
+            statusLabel.setStyle("-fx-text-fill: #d29922; -fx-font-size: 12px;");
+            MaintenanceControlUtil.resumeServer(
+                    () -> javafx.application.Platform.runLater(() -> {
+                        statusLabel.setText("✔ Server resumed successfully.");
+                        statusLabel.setStyle("-fx-text-fill: #3fb950; -fx-font-size: 12px;");
+                        resumeBtn.setDisable(false);
+                    }),
+                    err -> javafx.application.Platform.runLater(() -> {
+                        resumeBtn.setDisable(false);
+                        showAlert("Error", "Could not resume: " + err);
+                    })
+            );
+        });
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+        grid.getColumnConstraints().addAll(labelValueCols(160));
+        grid.add(scheduleLabel, 0, 0);   grid.add(minutesField, 1, 0);
+        grid.add(new Label("Message:"), 0, 1); grid.add(messageField, 1, 1);
+
+        HBox scheduleBtns = new HBox(10, scheduleBtn, cancelBtn);
+        HBox controlBtns = new HBox(10, stopBtn, resumeBtn);
+
+        return new VBox(12, warningLabel, grid, scheduleBtns, new Separator(), controlBtns, statusLabel);
+    }
+
+    private VBox buildBackupSection() {
+        Label infoLabel = new Label("Loading database info...");
+        infoLabel.getStyleClass().add("text-muted");
+        infoLabel.setStyle("-fx-font-size: 12px;");
+
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-size: 12px;");
+
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/backup/info"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/backup/info");
             if (resp.statusCode() == 200) {
                 String body = resp.body();
                 String size = extractValue(body, "sizeKb");
@@ -463,26 +1054,16 @@ public class SettingsView {
         }
 
         Button backupBtn = new Button("⬇  Download Backup");
-        backupBtn.getStyleClass().setAll("btn-primary");
-        backupBtn.setStyle(
-                "-fx-background-color: #238636; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        backupBtn.getStyleClass().add("btn-primary");
+        AnimationUtil.addHoverScale(backupBtn);
 
         backupBtn.setOnAction(e -> {
             LoadingUtil.setButtonLoading(backupBtn, "Downloading...");
             Thread t = new Thread(() -> {
                 try {
-                    HttpClient client = HttpClient.newHttpClient();
-                    HttpRequest req = HttpRequest.newBuilder()
-                            .uri(URI.create(ConfigManager.getBaseUrl()
-                                    + "/api/backup/download"))
-                            .GET().build();
-                    HttpResponse<byte[]> resp = client.send(req,
-                            HttpResponse.BodyHandlers.ofByteArray());
+                    HttpResponse<byte[]> resp = ApiClient.getBytes(ConfigManager.getBaseUrl() + "/api/backup/download");
 
                     if (resp.statusCode() == 200) {
-                        // ── Save to Downloads folder ──────────
                         String home = System.getProperty("user.home");
                         String timestamp = java.time.LocalDateTime
                                 .now().format(java.time.format
@@ -535,8 +1116,8 @@ public class SettingsView {
         Label noteLabel = new Label(
                 "Backup is saved to your Downloads folder.\n" +
                         "Keep backups regularly — recommended weekly.");
-        noteLabel.setStyle(
-                "-fx-text-fill: #484f58; -fx-font-size: 11px;");
+        noteLabel.getStyleClass().add("text-muted");
+        noteLabel.setStyle("-fx-font-size: 11px;");
         noteLabel.setWrapText(true);
 
         return new VBox(10, infoLabel, backupBtn,
@@ -547,7 +1128,6 @@ public class SettingsView {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
         if (start == -1) {
-            // Try without quotes (number)
             search = "\"" + key + "\":";
             start = json.indexOf(search);
             if (start == -1) return "";
@@ -561,7 +1141,6 @@ public class SettingsView {
         return json.substring(start, json.indexOf("\"", start));
     }
 
-    // ── Section card wrapper ──────────────────────────────
     private VBox sectionCard(String heading, VBox content) {
         Label headLabel = new Label(heading);
         headLabel.getStyleClass().add("section-title");
@@ -571,6 +1150,14 @@ public class SettingsView {
         VBox card = new VBox(12, headLabel, sep, content);
         card.getStyleClass().add("settings-card");
         return card;
+    }
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        ThemeManager.applyToDialog(alert);
+        alert.showAndWait();
     }
 
     private void applyThemeToAll() {

@@ -2,16 +2,23 @@ package com.vaultdesk.admin;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
-import java.net.URI;
 import java.net.http.*;
 import java.util.Optional;
 
 public class UserManagementView {
 
     public VBox getView() {
+        Label bcRoot = new Label("SYSTEM");
+        bcRoot.getStyleClass().add("breadcrumb-root");
+        Label bcSep = new Label("  /  ");
+        bcSep.getStyleClass().add("breadcrumb-sep");
+        Label bcCurrent = new Label("USER MANAGEMENT");
+        bcCurrent.getStyleClass().add("breadcrumb-current");
+        HBox breadcrumb = new HBox(bcRoot, bcSep, bcCurrent);
 
         Label title = new Label("User Management");
         title.getStyleClass().add("page-title");
@@ -20,6 +27,52 @@ public class UserManagementView {
 
         TableView<AdminUser> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        table.setRowFactory(tv -> {
+            TableRow<AdminUser> row = new TableRow<>();
+
+            ContextMenu rowMenu = new ContextMenu();
+            MenuItem editItem = new MenuItem("✏ Edit User");
+            editItem.setOnAction(e -> showEditDialog(row.getItem(), table));
+            rowMenu.getItems().add(editItem);
+
+            MenuItem permItem = new MenuItem("🔑 Permissions");
+            permItem.setOnAction(e -> showPermissionDialog(row.getItem()));
+            rowMenu.getItems().add(permItem);
+
+            MenuItem toggleItem = new MenuItem();
+            rowMenu.getItems().add(toggleItem);
+            rowMenu.setOnShowing(ev -> {
+                AdminUser u = row.getItem();
+                if (u == null) return;
+                if (u.getId() == SessionManager.get().getUserId()) {
+                    toggleItem.setText("(Cannot deactivate own account)");
+                    toggleItem.setDisable(true);
+                } else {
+                    toggleItem.setDisable(false);
+                    toggleItem.setText(u.isActive() ? "🚫 Deactivate" : "✔ Reactivate");
+                    toggleItem.setOnAction(e -> {
+                        if (u.isActive()) {
+                            showDeactivateConfirm(u, table);
+                        } else {
+                            reactivateUser(u, table);
+                        }
+                    });
+                }
+            });
+
+            row.contextMenuProperty().bind(
+                    javafx.beans.binding.Bindings.when(row.emptyProperty())
+                            .then((ContextMenu) null)
+                            .otherwise(rowMenu)
+            );
+
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty())
+                    showEditDialog(row.getItem(), table);
+            });
+            return row;
+        });
 
         TableColumn<AdminUser, String> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(d ->
@@ -30,12 +83,20 @@ public class UserManagementView {
         TableColumn<AdminUser, String> usernameCol = new TableColumn<>("Username");
         usernameCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getUsername()));
+        usernameCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); getStyleClass().remove("data-mono"); return; }
+                setText(item);
+                if (!getStyleClass().contains("data-mono")) getStyleClass().add("data-mono");
+            }
+        });
 
         TableColumn<AdminUser, String> fullNameCol = new TableColumn<>("Full Name");
         fullNameCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getFullName()));
 
-        // Role — colored
         TableColumn<AdminUser, String> roleCol = new TableColumn<>("Role");
         roleCol.setCellValueFactory(d ->
                 new SimpleStringProperty(d.getValue().getRole()));
@@ -57,7 +118,6 @@ public class UserManagementView {
             }
         });
 
-        // Status — colored
         TableColumn<AdminUser, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(d ->
                 new SimpleStringProperty(
@@ -76,102 +136,46 @@ public class UserManagementView {
         });
 
         TableColumn<AdminUser, String> createdCol = new TableColumn<>("Created");
-        createdCol.setCellValueFactory(d -> {
-            String ca = d.getValue().getCreatedAt();
-            return new SimpleStringProperty(
-                    ca != null && ca.length() >= 10
-                            ? ca.substring(0, 10) : ca);
-        });
+        createdCol.setCellValueFactory(d ->
+                new SimpleStringProperty(DateTimeFormatUtil.toIndianDateTime(d.getValue().getCreatedAt())));
 
         TableColumn<AdminUser, String> lastLoginCol = new TableColumn<>("Last Login");
         lastLoginCol.setCellValueFactory(d -> {
             String ll = d.getValue().getLastLogin();
             return new SimpleStringProperty(
-                    ll != null && ll.length() >= 10
-                            ? ll.substring(0, 10) : "Never");
-        });
-
-        // Actions
-        TableColumn<AdminUser, Void> actionCol = new TableColumn<>("Actions");
-        actionCol.setCellFactory(col -> new TableCell<>() {
-            private final Button editBtn       = new Button("Edit");
-            private final Button permBtn = new Button("Permissions");
-            private final Button deactivateBtn = new Button("Deactivate");
-            {
-                editBtn.getStyleClass().setAll("btn-warning");
-                editBtn.setStyle(
-                        "-fx-background-color: #b45309; -fx-text-fill: white;" +
-                                "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
-                                "-fx-font-size: 11px; -fx-font-weight: bold;");
-                permBtn.getStyleClass().setAll("btn-primary");
-                permBtn.setStyle(
-                        "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                                "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
-                                "-fx-font-size: 11px; -fx-font-weight: bold;");
-                permBtn.setOnAction(e -> {
-                    AdminUser u = getTableView().getItems().get(getIndex());
-                    showPermissionDialog(u);
-                });
-                deactivateBtn.getStyleClass().setAll("btn-danger");
-                deactivateBtn.setStyle(
-                        "-fx-background-color: #da3633; -fx-text-fill: white;" +
-                                "-fx-background-radius: 6; -fx-padding: 5 10 5 10;" +
-                                "-fx-font-size: 11px; -fx-font-weight: bold;");
-
-                editBtn.setOnAction(e -> {
-                    AdminUser u = getTableView().getItems().get(getIndex());
-                    showEditDialog(u, getTableView());
-                });
-                deactivateBtn.setOnAction(e -> {
-                    AdminUser u = getTableView().getItems().get(getIndex());
-                    // Prevent deactivating yourself
-                    if (u.getId() == SessionManager.get().getUserId()) {
-                        showAlert("Error",
-                                "You cannot deactivate your own account.");
-                        return;
-                    }
-                    showDeactivateConfirm(u, getTableView());
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null
-                        : new HBox(5, editBtn, deactivateBtn, permBtn));
-            }
+                    ll == null || ll.trim().isEmpty() ? "Never" : DateTimeFormatUtil.toIndianDateTime(ll));
         });
 
         table.getColumns().addAll(idCol, usernameCol, fullNameCol,
-                roleCol, statusCol, createdCol, actionCol);
+                roleCol, statusCol, createdCol, lastLoginCol);
 
-        // ── Add user button ───────────────────────────────
         Button addBtn = new Button("＋ Add User");
-        addBtn.getStyleClass().setAll("btn-primary");
-        addBtn.setStyle(
-                "-fx-background-color: #238636; -fx-text-fill: white;" +
-                        "-fx-background-radius: 6; -fx-padding: 8 16 8 16;" +
-                        "-fx-font-weight: bold; -fx-cursor: hand;");
+        addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> showAddDialog(table));
+        AnimationUtil.addHoverScale(addBtn);
 
-        HBox topBar = new HBox(10, addBtn);
+        Label rightClickHint = new Label("Right-click a row for Edit / Permissions / Deactivate.");
+        rightClickHint.getStyleClass().add("text-muted");
+        rightClickHint.setStyle("-fx-font-size: 11px;");
+        HBox topBar = new HBox(10, addBtn, rightClickHint);
+        topBar.setAlignment(Pos.CENTER_LEFT);
 
         loadUsers(table);
 
-        VBox root = new VBox(12, title, subtitle, topBar, table);
+        VBox tableWrapper = new VBox(table);
+        tableWrapper.getStyleClass().add("table-wrapper");
         VBox.setVgrow(table, Priority.ALWAYS);
+        VBox.setVgrow(tableWrapper, Priority.ALWAYS);
+
+        VBox root = new VBox(12, breadcrumb, new VBox(4, title, subtitle), topBar, tableWrapper);
         return root;
     }
 
-    // ── Load users ────────────────────────────────────────
+    // ── Load users (now includes inactive, so Reactivate is reachable) ──
     private void loadUsers(TableView<AdminUser> table) {
         table.getItems().clear();
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/users/all");
             String body = resp.body().trim();
             body = body.substring(1, body.length() - 1);
             if (!body.isEmpty()) {
@@ -193,9 +197,25 @@ public class UserManagementView {
         }
     }
 
+    private void reactivateUser(AdminUser user, TableView<AdminUser> table) {
+        try {
+            HttpResponse<String> resp = ApiClient.putNoBody(
+                    ConfigManager.getBaseUrl() + "/api/users/" + user.getId() + "/reactivate");
+            if (resp.statusCode() == 200) {
+                ToastUtil.success(user.getFullName() + " reactivated.");
+                loadUsers(table);
+            } else {
+                showAlert("Error", "Server returned: " + resp.statusCode());
+            }
+        } catch (Exception ex) {
+            showAlert("Error", ex.getMessage());
+        }
+    }
+
     // ── Add user dialog ───────────────────────────────────
     private void showAddDialog(TableView<AdminUser> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Add User");
         dialog.setHeaderText("Create a new system user");
         dialog.getDialogPane().getButtonTypes()
@@ -225,6 +245,12 @@ public class UserManagementView {
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
+        ColumnConstraints labelCol = new ColumnConstraints();
+        labelCol.setMinWidth(100);
+        ColumnConstraints valueCol = new ColumnConstraints();
+        valueCol.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labelCol, valueCol);
+
         grid.add(new Label("Email *:"),0,0);
         grid.add(emailField,1,0);
         grid.add(new Label("Username *:"),  0, 1);
@@ -252,6 +278,7 @@ public class UserManagementView {
                         || fullNameField.getText().trim().isEmpty()
                         || passwordField.getText().isEmpty());
 
+        emailField.textProperty().addListener((o, ov, nv) -> check.run());
         usernameField.textProperty().addListener((o, ov, nv) -> check.run());
         fullNameField.textProperty().addListener((o, ov, nv) -> check.run());
         passwordField.textProperty().addListener((o, ov, nv) -> check.run());
@@ -260,6 +287,7 @@ public class UserManagementView {
             String err = validateNewUser(
                     usernameField.getText(),
                     fullNameField.getText(),
+                    emailField.getText(),
                     passwordField.getText(),
                     confirmField.getText());
             if (err != null) {
@@ -272,22 +300,16 @@ public class UserManagementView {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 String body = "{" +
-                        "\"email\":\"" + emailField.getText().trim() + "\"," +
-                        "\"username\":\"" + usernameField.getText().trim() + "\"," +
+                        "\"email\":\"" + escapeJson(emailField.getText().trim()) + "\"," +
+                        "\"username\":\"" + escapeJson(usernameField.getText().trim()) + "\"," +
                         "\"password\":\"" + passwordField.getText() + "\"," +
-                        "\"fullName\":\"" + fullNameField.getText().trim() + "\"," +
+                        "\"fullName\":\"" + escapeJson(fullNameField.getText().trim()) + "\"," +
                         "\"role\":\"" + roleBox.getValue() + "\"," +
                         "\"deptId\":" + deptIdField.getIntValue() +
                         "}";
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(ConfigManager.getBaseUrl() + "/api/users"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(body)).build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = ApiClient.post(ConfigManager.getBaseUrl() + "/api/users", body);
                 if (resp.statusCode() == 201) {
-                    showAlert("Success", "User created successfully.");
+                    ToastUtil.success("User created successfully.");
                     loadUsers(table);
                 } else {
                     showAlert("Error", "Server returned: " + resp.statusCode());
@@ -298,10 +320,12 @@ public class UserManagementView {
         }
     }
 
-    private String validateNewUser(String username, String fullName,
+    private String validateNewUser(String username, String fullName, String email,
                                    String password, String confirm) {
-        if (username.trim().isEmpty())  return "Username is required.";
-        if (fullName.trim().isEmpty())  return "Full name is required.";
+        if (!ValidationUtil.isNotBlank(username))  return "Username is required.";
+        if (!ValidationUtil.isNotBlank(fullName))  return "Full name is required.";
+        if (!ValidationUtil.isNotBlank(email))     return "Email is required.";
+        if (!ValidationUtil.isValidEmail(email))   return "Please enter a valid email address.";
         if (password.length() < 6)
             return "Password must be at least 6 characters.";
         if (!password.equals(confirm))
@@ -310,41 +334,60 @@ public class UserManagementView {
     }
 
     // ── Edit dialog ───────────────────────────────────────
-    private void showEditDialog(AdminUser user,
-                                TableView<AdminUser> table) {
+    private void showEditDialog(AdminUser user, TableView<AdminUser> table) {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Edit User");
         dialog.setHeaderText("Editing: " + user.getUsername());
-        dialog.getDialogPane().getButtonTypes()
-                .addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         TextField fullNameField = new TextField(user.getFullName());
+        TextField username  =new TextField(user.getUsername());
+        TextField emailField = new TextField();
+        NumberField deptIdField = new NumberField();
         ComboBox<String> roleBox = new ComboBox<>();
-        roleBox.getItems().addAll("ADMIN", "ENGINEER", "CONTRACT");
+        roleBox.getItems().addAll("ADMIN", "ENGINEER", "DEPT_HOD");
         roleBox.setValue(user.getRole());
 
-        Label noteLabel = new Label(
-                "Note: password change not supported here.");
-        noteLabel.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 11px;");
         Label errorLabel = new Label("");
-        errorLabel.setStyle(
-                "-fx-text-fill: #f85149; -fx-font-size: 12px;");
+        errorLabel.setStyle("-fx-text-fill: #f85149; -fx-font-size: 12px;");
+
+        try {
+            HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/users/all");
+            String body = resp.body();
+            for (String obj : body.substring(1, body.length() - 1).split("\\},\\{")) {
+                String cleaned = obj.replace("{", "").replace("}", "");
+                if (extractInt(cleaned, "id") == user.getId()) {
+                    emailField.setText(extractValue(cleaned, "email"));
+                    deptIdField.setText(String.valueOf(extractInt(cleaned, "deptId")));
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10);
+        ColumnConstraints labelCol = new ColumnConstraints();
+        labelCol.setMinWidth(100);
+        ColumnConstraints valueCol = new ColumnConstraints();
+        valueCol.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labelCol, valueCol);
+
         grid.add(new Label("Full Name *:"), 0, 0); grid.add(fullNameField, 1, 0);
-        grid.add(new Label("Role:"),        0, 1); grid.add(roleBox,       1, 1);
-        grid.add(noteLabel,                 1, 2);
-        grid.add(errorLabel,                1, 3);
+        grid.add(new Label("Username *:"), 0, 1); grid.add(username, 1, 1);
+        grid.add(new Label("Email:"), 0, 2);       grid.add(emailField, 1, 2);
+        grid.add(new Label("Role:"), 0, 3);        grid.add(roleBox, 1, 3);
+        grid.add(new Label("Dept ID:"), 0, 4);     grid.add(deptIdField, 1, 4);
+        grid.add(errorLabel, 1, 5);
         dialog.getDialogPane().setContent(grid);
 
-        Button okButton = (Button) dialog.getDialogPane()
-                .lookupButton(ButtonType.OK);
-
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
         okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
-            if (fullNameField.getText().trim().isEmpty()) {
+            if (!ValidationUtil.isNotBlank(fullNameField.getText())) {
                 errorLabel.setText("Full name is required.");
+                event.consume();
+            } else if (!emailField.getText().trim().isEmpty() && !ValidationUtil.isValidEmail(emailField.getText())) {
+                errorLabel.setText("Please enter a valid email address.");
                 event.consume();
             }
         });
@@ -353,19 +396,15 @@ public class UserManagementView {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 String body = "{" +
-                        "\"fullName\":\"" + fullNameField.getText() + "\"," +
-                        "\"role\":\"" + roleBox.getValue() + "\"" +
+                        "\"fullName\":\"" + escapeJson(fullNameField.getText()) + "\"," +
+                        "\"username\":\"" + escapeJson(username.getText()) + "\"," +
+                        "\"email\":\"" + escapeJson(emailField.getText()) + "\"," +
+                        "\"role\":\"" + roleBox.getValue() + "\"," +
+                        "\"deptId\":" + deptIdField.getIntValue() +
                         "}";
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(
-                                ConfigManager.getBaseUrl() + "/api/users/" + user.getId()))
-                        .header("Content-Type", "application/json")
-                        .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = ApiClient.put(ConfigManager.getBaseUrl() + "/api/users/" + user.getId(), body);
                 if (resp.statusCode() == 200) {
-                    showAlert("Success", "User updated.");
+                    ToastUtil.success("User updated.");
                     loadUsers(table);
                 } else {
                     showAlert("Error", "Server returned: " + resp.statusCode());
@@ -376,10 +415,16 @@ public class UserManagementView {
         }
     }
 
+    private String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "'");
+    }
+
     // ── Deactivate confirm ────────────────────────────────
     private void showDeactivateConfirm(AdminUser user,
                                        TableView<AdminUser> table) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        ThemeManager.applyToDialog(confirm);
         confirm.setTitle("Deactivate User");
         confirm.setHeaderText(null);
         confirm.setContentText(
@@ -388,15 +433,10 @@ public class UserManagementView {
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(
-                                ConfigManager.getBaseUrl() + "/api/users/" + user.getId()))
-                        .DELETE().build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = ApiClient.delete(
+                        ConfigManager.getBaseUrl() + "/api/users/" + user.getId());
                 if (resp.statusCode() == 200) {
-                    showAlert("Success", "User deactivated.");
+                    ToastUtil.success("User deactivated.");
                     loadUsers(table);
                 } else {
                     showAlert("Error", "Server returned: " + resp.statusCode());
@@ -406,8 +446,10 @@ public class UserManagementView {
             }
         }
     }
+
     private void showPermissionDialog(AdminUser user) {
         Dialog<ButtonType> dialog = new Dialog<>();
+        ThemeManager.applyToDialog(dialog);
         dialog.setTitle("Permissions — " + user.getFullName());
         dialog.setHeaderText("Manage permissions for: "
                 + user.getUsername());
@@ -415,10 +457,9 @@ public class UserManagementView {
                 .addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.getDialogPane().setPrefWidth(520);
 
-        // ── Preset selector ───────────────────────────────
         Label presetLabel = new Label("Quick Preset:");
-        presetLabel.setStyle(
-                "-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        presetLabel.getStyleClass().add("text-muted");
+        presetLabel.setStyle("-fx-font-size: 12px;");
         ComboBox<String> presetBox = new ComboBox<>();
         presetBox.getItems().addAll(
                 "ADMIN", "ENGINEER", "DEPT_HOD", "VIEWER", "CUSTOM");
@@ -427,42 +468,35 @@ public class UserManagementView {
         HBox presetRow = new HBox(10, presetLabel, presetBox);
         presetRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        // ── Permission groups ─────────────────────────────
         java.util.Map<String, java.util.List<String>> groups =
                 new java.util.LinkedHashMap<>();
         groups.put("🎫 Tickets", java.util.List.of(
                 "VIEW_ALL_TICKETS", "VIEW_ASSIGNED_TICKETS",
-                "UPDATE_TICKET_STATUS", "ASSIGN_TICKET",
-                "DELETE_TICKET","VIEW_TICKET_DETAILS"));
+                "UPDATE_TICKET_STATUS", "ASSIGN_TICKET","VIEW_TICKET_DETAILS"));
         groups.put("▣ Assets", java.util.List.of(
                 "VIEW_ALL_ASSETS", "VIEW_DEPT_ASSETS",
                 "ADD_ASSET", "EDIT_ASSET", "IMPORT_ASSETS","VIEW_ASSET_DETAILS"));
         groups.put("👤 Employees", java.util.List.of(
                 "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
-                "EDIT_EMPLOYEE", "SET_LOGIN"));
+                "EDIT_EMPLOYEE", "IMPORT_EMPLOYEES", "SET_LOGIN"));
         groups.put("🏢 Departments", java.util.List.of(
                 "VIEW_DEPARTMENTS", "ADD_DEPARTMENT"));
-        groups.put("📊 Reports & Data", java.util.List.of(
-                "VIEW_REPORTS", "VIEW_LICENSES", "ADD_LICENSE",
-                "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
-                "VIEW_MAINTENANCE", "ADD_MAINTENANCE",
+        groups.put("🔑 Licenses", java.util.List.of(
+                "VIEW_LICENSES", "ADD_LICENSE"));
+        groups.put("📦 Consumables", java.util.List.of(
+                "VIEW_CONSUMABLES", "ADD_CONSUMABLE"));
+        groups.put("🔧 Maintenance", java.util.List.of(
+                "VIEW_MAINTENANCE", "ADD_MAINTENANCE"));
+        groups.put("🤝 Vendors", java.util.List.of(
                 "VIEW_VENDORS", "ADD_VENDOR"));
         groups.put("⚙ System", java.util.List.of(
                 "MANAGE_USERS", "MANAGE_SETTINGS"));
 
-        // ── Load current permissions from server ──────────
         java.util.Set<String> currentPerms = new java.util.HashSet<>();
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(ConfigManager.getBaseUrl()
-                            + "/api/users/" + user.getId()
-                            + "/permissions"))
-                    .GET().build();
-            HttpResponse<String> resp = client.send(req,
-                    HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = ApiClient.get(
+                    ConfigManager.getBaseUrl() + "/api/users/" + user.getId() + "/permissions");
             String body = resp.body();
-            // Parse permissions array
             String search = "\"permissions\":[";
             int start = body.indexOf(search);
             if (start != -1) {
@@ -483,7 +517,6 @@ public class UserManagementView {
                     + ex.getMessage());
         }
 
-        // ── Build checkboxes ──────────────────────────────
         java.util.Map<String, CheckBox> checkBoxMap =
                 new java.util.LinkedHashMap<>();
         VBox allGroups = new VBox(12);
@@ -491,9 +524,7 @@ public class UserManagementView {
         for (java.util.Map.Entry<String,
                 java.util.List<String>> entry : groups.entrySet()) {
             Label groupLabel = new Label(entry.getKey());
-            groupLabel.setStyle(
-                    "-fx-text-fill: #e6edf3; -fx-font-size: 13px;" +
-                            "-fx-font-weight: bold;");
+            groupLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
 
             javafx.scene.layout.GridPane grid =
                     new javafx.scene.layout.GridPane();
@@ -505,7 +536,6 @@ public class UserManagementView {
                 CheckBox cb = new CheckBox(
                         perm.replace("_", " ").toLowerCase());
                 cb.setSelected(currentPerms.contains(perm));
-                cb.setStyle("-fx-text-fill: #c9d1d9;");
                 checkBoxMap.put(perm, cb);
                 grid.add(cb, col, row);
                 col++;
@@ -513,22 +543,17 @@ public class UserManagementView {
             }
 
             VBox groupBox = new VBox(6, groupLabel, grid);
-            groupBox.setStyle(
-                    "-fx-background-color: #21262d;" +
-                            "-fx-background-radius: 6;" +
-                            "-fx-padding: 10;");
+            groupBox.getStyleClass().add("surface-card");
+            groupBox.setStyle("-fx-background-radius: 6; -fx-padding: 10;");
             allGroups.getChildren().add(groupBox);
         }
 
-        // ── Preset applies checkboxes ─────────────────────
         presetBox.setOnAction(e -> {
             String preset = presetBox.getValue();
             if ("CUSTOM".equals(preset)) return;
 
-            // Uncheck all first
             checkBoxMap.values().forEach(cb -> cb.setSelected(false));
 
-            // Apply preset
             java.util.List<String> presetPerms =
                     getPresetPermissions(preset);
             for (String perm : presetPerms) {
@@ -540,16 +565,14 @@ public class UserManagementView {
         ScrollPane scroll = new ScrollPane(allGroups);
         scroll.setFitToWidth(true);
         scroll.setPrefHeight(420);
-        scroll.setStyle(
-                "-fx-background-color: transparent;" +
-                        "-fx-background: transparent;");
+        scroll.getStyleClass().add("content-scroll");
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
 
         VBox content = new VBox(12, presetRow, scroll);
         dialog.getDialogPane().setContent(content);
 
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Collect selected permissions
             java.util.List<String> selected = new java.util.ArrayList<>();
             for (java.util.Map.Entry<String, CheckBox> entry
                     : checkBoxMap.entrySet()) {
@@ -557,7 +580,6 @@ public class UserManagementView {
                     selected.add(entry.getKey());
             }
 
-            // Build JSON array
             StringBuilder json = new StringBuilder(
                     "{\"permissions\":[");
             for (int i = 0; i < selected.size(); i++) {
@@ -567,21 +589,10 @@ public class UserManagementView {
             json.append("]}");
 
             try {
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(ConfigManager.getBaseUrl()
-                                + "/api/users/" + user.getId()
-                                + "/permissions"))
-                        .header("Content-Type", "application/json")
-                        .PUT(HttpRequest.BodyPublishers.ofString(
-                                json.toString()))
-                        .build();
-                HttpResponse<String> resp = client.send(req,
-                        HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = ApiClient.put(
+                        ConfigManager.getBaseUrl() + "/api/users/" + user.getId() + "/permissions", json.toString());
                 if (resp.statusCode() == 200) {
-                    showAlert("Success",
-                            "Permissions updated for "
-                                    + user.getFullName());
+                    ToastUtil.success("Permissions updated for " + user.getFullName());
                 } else {
                     showAlert("Error",
                             "Server returned: " + resp.statusCode());
@@ -597,9 +608,11 @@ public class UserManagementView {
             case "ADMIN" -> java.util.List.of(
                     "VIEW_ALL_TICKETS", "VIEW_ASSIGNED_TICKETS",
                     "UPDATE_TICKET_STATUS", "ASSIGN_TICKET",
-                    "DELETE_TICKET", "VIEW_ALL_ASSETS",
-                    "VIEW_DEPT_ASSETS", "ADD_ASSET", "EDIT_ASSET",
-                    "IMPORT_ASSETS", "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
+                    "DELETE_TICKET", "VIEW_TICKET_DETAILS",
+                    "VIEW_ALL_ASSETS", "VIEW_DEPT_ASSETS",
+                    "ADD_ASSET", "EDIT_ASSET", "IMPORT_ASSETS",
+                    "VIEW_ASSET_DETAILS",
+                    "VIEW_EMPLOYEES", "ADD_EMPLOYEE",
                     "EDIT_EMPLOYEE", "SET_LOGIN", "VIEW_DEPARTMENTS",
                     "ADD_DEPARTMENT", "VIEW_REPORTS", "VIEW_LICENSES",
                     "ADD_LICENSE", "VIEW_CONSUMABLES", "ADD_CONSUMABLE",
@@ -608,19 +621,23 @@ public class UserManagementView {
                     "MANAGE_USERS", "MANAGE_SETTINGS");
             case "ENGINEER" -> java.util.List.of(
                     "VIEW_ASSIGNED_TICKETS", "UPDATE_TICKET_STATUS",
-                    "VIEW_ALL_ASSETS", "VIEW_LICENSES",
+                    "VIEW_TICKET_DETAILS",
+                    "VIEW_ALL_ASSETS", "VIEW_ASSET_DETAILS",
+                    "VIEW_LICENSES",
                     "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
                     "VIEW_VENDORS");
             case "DEPT_HOD" -> java.util.List.of(
                     "VIEW_ALL_TICKETS", "UPDATE_TICKET_STATUS",
-                    "ASSIGN_TICKET", "VIEW_DEPT_ASSETS",
+                    "ASSIGN_TICKET", "VIEW_TICKET_DETAILS",
+                    "VIEW_DEPT_ASSETS", "VIEW_ASSET_DETAILS",
                     "ADD_ASSET", "EDIT_ASSET", "VIEW_EMPLOYEES",
                     "ADD_EMPLOYEE", "EDIT_EMPLOYEE", "SET_LOGIN",
                     "VIEW_REPORTS", "VIEW_LICENSES",
                     "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
                     "VIEW_VENDORS");
             case "VIEWER" -> java.util.List.of(
-                    "VIEW_ALL_TICKETS", "VIEW_ALL_ASSETS",
+                    "VIEW_ALL_TICKETS", "VIEW_TICKET_DETAILS",
+                    "VIEW_ALL_ASSETS", "VIEW_ASSET_DETAILS",
                     "VIEW_EMPLOYEES", "VIEW_DEPARTMENTS",
                     "VIEW_REPORTS", "VIEW_LICENSES",
                     "VIEW_CONSUMABLES", "VIEW_MAINTENANCE",
@@ -631,6 +648,7 @@ public class UserManagementView {
 
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        ThemeManager.applyToDialog(alert);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);

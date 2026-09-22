@@ -22,6 +22,35 @@ public class VendorContactDAO
     {
         try {
             List<Map<String,Object>> rows = jdbc.queryForList(
+                    "SELECT * FROM vendor_contacts WHERE active = 1");
+
+            List<VendorContact> vendorContacts = new ArrayList<>();
+
+            for (Map<String,Object> row : rows) {
+                vendorContacts.add(new VendorContact(
+                        ((Number) row.get("id")).intValue(),
+                        (String) row.get("name"),
+                        (String) row.get("contact_person"),
+                        (String) row.get("phone"),
+                        (String) row.get("email"),
+                        (String) row.get("category"),
+                        (String) row.get("address"),
+                        (String) row.get("notes"),
+                        ((Number) row.get("active")).intValue() == 1
+
+                ));
+            }
+            return vendorContacts;
+        }
+        catch (EmptyResultDataAccessException e)
+        {
+            return null;
+        }
+    }
+
+    public List<VendorContact> getAllVendorsAdmin() {
+        try {
+            List<Map<String,Object>> rows = jdbc.queryForList(
                     "SELECT * FROM vendor_contacts");
 
             List<VendorContact> vendorContacts = new ArrayList<>();
@@ -35,7 +64,8 @@ public class VendorContactDAO
                         (String) row.get("email"),
                         (String) row.get("category"),
                         (String) row.get("address"),
-                        (String) row.get("notes")
+                        (String) row.get("notes"),
+                        ((Number) row.get("active")).intValue() == 1
                 ));
             }
             return vendorContacts;
@@ -44,6 +74,14 @@ public class VendorContactDAO
         {
             return null;
         }
+    }
+
+    public int deactivateVendor(int id) {
+        return jdbc.update("UPDATE vendor_contacts SET active = 0 WHERE id = ?", id);
+    }
+
+    public int reactivateVendor(int id) {
+        return jdbc.update("UPDATE vendor_contacts SET active = 1 WHERE id = ?", id);
     }
 
     public VendorContact getVendorById(int id)
@@ -60,7 +98,8 @@ public class VendorContactDAO
                         (String) row.get("email"),
                         (String) row.get("category"),
                         (String) row.get("address"),
-                        (String) row.get("notes")
+                        (String) row.get("notes"),
+                    ((Number) row.get("active")).intValue() == 1
             );
         }
         catch (EmptyResultDataAccessException e)

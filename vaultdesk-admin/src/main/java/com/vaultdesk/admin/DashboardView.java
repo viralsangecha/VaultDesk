@@ -1,5 +1,6 @@
 package com.vaultdesk.admin;
 
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -7,12 +8,15 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
+import java.net.http.HttpResponse;
+
 
 public class DashboardView {
 
     private javafx.animation.Timeline sessionTimer;
     private long lastActivityTime = System.currentTimeMillis();
-    private static final long TIMEOUT_MS = 30 * 60 * 1000; // 30 min
+    private static final long TIMEOUT_MS = 30 * 60 * 1000;
+    private javafx.animation.Timeline permissionPoller;
 
     private String fullName;
     private String role;
@@ -80,16 +84,6 @@ public class DashboardView {
         Button btnLogout = new Button("→  Logout");
         btnLogout.getStyleClass().add("sidebar-logout");
 
-        Button btnNewAsset = new Button("＋  New Asset");
-        btnNewAsset.getStyleClass().setAll("sidebar-new-asset");
-        btnNewAsset.setStyle(
-                "-fx-background-color: #1f6feb; -fx-text-fill: white;" +
-                        "-fx-font-weight: bold; -fx-font-size: 13px;" +
-                        "-fx-background-radius: 6; -fx-padding: 10 16 10 16;" +
-                        "-fx-pref-width: 188px; -fx-cursor: hand;");
-        VBox newAssetBox = new VBox(btnNewAsset);
-        newAssetBox.setPadding(new Insets(16));
-
 
         // ── Sidebar ───────────────────────────────────────────
         VBox sidebar = new VBox();
@@ -146,7 +140,7 @@ public class DashboardView {
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        sidebar.getChildren().addAll(spacer, newAssetBox);
+        sidebar.getChildren().addAll(spacer);
 
 // Settings
         if (PermissionManager.canManageSettings()) {
@@ -171,6 +165,7 @@ public class DashboardView {
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         stage.setOnCloseRequest(e -> bell.stopPolling());
+        if (permissionPoller != null) permissionPoller.stop();
 
         // ── Search listener ───────────────────────────────
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
@@ -381,16 +376,6 @@ public class DashboardView {
             contentArea.getChildren().setAll(buildSupportView());
         });
 
-        btnNewAsset.setOnAction(e -> {
-            searchField.clear();
-            setActive(btnAssets);
-            currentView = "assets";
-            currentTicketView = null;
-            currentEmployeeView = null;
-            currentAssetView = new AssetView();
-            contentArea.getChildren().setAll(currentAssetView.getView());
-        });
-
         btnTheme.setOnAction(e -> {
             ThemeManager.toggle();
             Scene s = stage.getScene();
@@ -401,12 +386,21 @@ public class DashboardView {
         });
 
         btnLogout.setOnAction(e -> {
-            bell.stopPolling();
-            SessionStore.clear();
-            SessionManager.get().logout();
-            Scene loginScene = new LoginView().getScene(stage);
-            ThemeManager.apply(loginScene);
-            stage.setScene(loginScene);
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            ThemeManager.applyToDialog(confirm);
+            confirm.setTitle("Log Out");
+            confirm.setHeaderText(null);
+            confirm.setContentText("Are you sure you want to log out?");
+            java.util.Optional<ButtonType> result = confirm.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                bell.stopPolling();
+                SessionStore.clear();
+                SessionManager.get().logout();
+                Scene loginScene = new LoginView().getScene(stage);
+                ThemeManager.apply(loginScene);
+                if (permissionPoller != null) permissionPoller.stop();
+                stage.setScene(loginScene);
+            }
         });
 
         Scene scene = new Scene(mainLayout, 1200, 800);
@@ -422,10 +416,12 @@ public class DashboardView {
 
         // ── Start session timer ───────────────────────────────
         startSessionTimer(stage);
+        startPermissionPoller();
 
         // ── Stop timer on close ───────────────────────────────
         stage.setOnCloseRequest(e -> {
             if (sessionTimer != null) sessionTimer.stop();
+            if (permissionPoller != null) permissionPoller.stop();
             bell.stopPolling();
         });
 
@@ -453,8 +449,14 @@ public class DashboardView {
                     currentTicketView = new TicketView();
                     currentAssetView = null;
                     currentEmployeeView = null;
-                    contentArea.getChildren().setAll(
-                            currentTicketView.getView());
+                    if (PermissionManager.canViewAllTickets()) {
+                        contentArea.getChildren().setAll(
+                                currentTicketView.getView());
+                    } else {
+                        contentArea.getChildren().setAll(
+                                currentTicketView.getEngineerView(
+                                        SessionManager.get().getUserId()));
+                    }
                 }
                 case "licenses" -> {
                     setActive(btnLicenses);
@@ -504,10 +506,10 @@ public class DashboardView {
 
         VBox card1 = supportCard("📧  Email Support",
                 "IT Department internal support",
-                "it-support@saurashtracement.com", "#58a6ff");
+                "it-support@mehtagroup.com", "#58a6ff");
         VBox card2 = supportCard("📞  Phone Support",
                 "Call the IT helpdesk directly",
-                "Ext. 2100  |  Mon–Sat 9AM–6PM", "#3fb950");
+                "Ext. 4404 & 4237  |  Mon–Sat 9AM–6PM", "#3fb950");
         VBox card3 = supportCard("📋  Raise a Ticket",
                 "Create a formal support ticket",
                 "Go to Tickets → New Ticket", "#d29922");
@@ -534,12 +536,48 @@ public class DashboardView {
         sessionTimer.play();
     }
 
+    private void startPermissionPoller() {
+        permissionPoller = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(30), e -> refreshPermissions()));
+        permissionPoller.setCycleCount(javafx.animation.Timeline.INDEFINITE);
+        permissionPoller.play();
+    }
+
+    private void refreshPermissions() {
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                HttpResponse<String> resp = ApiClient.get(
+                        ConfigManager.getBaseUrl() + "/api/users/" + SessionManager.get().getUserId() + "/permissions");
+                String body = resp.body();
+                java.util.List<String> perms = new java.util.ArrayList<>();
+                String search = "\"permissions\":[";
+                int start = body.indexOf(search);
+                if (start != -1) {
+                    start += search.length();
+                    int end = body.indexOf("]", start);
+                    if (end != -1) {
+                        for (String item : body.substring(start, end).split(",")) {
+                            String cleaned = item.trim().replace("\"", "").trim();
+                            if (!cleaned.isEmpty()) perms.add(cleaned);
+                        }
+                    }
+                }
+                javafx.application.Platform.runLater(() -> PermissionManager.load(perms));
+                return null;
+            }
+        };
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
+    }
     private void checkSessionTimeout(Stage stage) {
         long elapsed = System.currentTimeMillis() - lastActivityTime;
         if (elapsed >= TIMEOUT_MS) {
             sessionTimer.stop();
             javafx.application.Platform.runLater(() -> {
                 Alert alert = new Alert(Alert.AlertType.WARNING);
+                ThemeManager.applyToDialog(alert);
                 alert.setTitle("Session Expired");
                 alert.setHeaderText(null);
                 alert.setContentText(

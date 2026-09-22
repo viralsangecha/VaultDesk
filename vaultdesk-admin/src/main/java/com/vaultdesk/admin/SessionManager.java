@@ -10,6 +10,10 @@ public class SessionManager {
     private String fullName;
     private String role;
     private int deptId;
+    private String token;
+
+    public void setToken(String token) { this.token = token; }
+    public String getToken() { return token; }
 
     private SessionManager() {}
 
@@ -42,6 +46,7 @@ public class SessionManager {
         fullName = "";
         role     = "";
         deptId   = 0;
+        token    = null;
         PermissionManager.clear();
     }
 
