@@ -31,7 +31,7 @@ public class TicketScheduler {
         System.out.println("Running auto-close job...");
 
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT t.*, e.name as reporter_name, e.email as reporter_email, u.full_name as engineer_name " +
+                "SELECT t.*, e.name as reporter_name, e.email as reporter_email, u.full_name as engineer_name, u.email as engineer_email " +
                         "FROM tickets t " +
                         "LEFT JOIN employees e ON e.id = t.reported_by " +
                         "LEFT JOIN users u ON u.id = t.assigned_to " +
@@ -70,12 +70,9 @@ public class TicketScheduler {
             String reporterEmail = (String) row.get("reporter_email");
             if (reporterEmail != null && !reporterEmail.isEmpty()) {
                 String reporterName = row.get("reporter_name") != null ? (String) row.get("reporter_name") : "Employee";
-                String engineerName = row.get("engineer_name") != null ? (String) row.get("engineer_name") : "IT Team";
                 String ticketNo = (String) row.get("ticket_no");
-                String description = row.get("description") != null ? (String) row.get("description") : "";
-                String resolution = row.get("resolution") != null ? (String) row.get("resolution") : "";
-
-                emailService.sendTicketAutoClosedToRecipients(reporterEmail, ticketNo, title, reporterName);
+                String assigneeEmail = (String) row.get("engineer_email");
+                emailService.sendTicketAutoClosedToRecipients(reporterEmail, assigneeEmail, ticketNo, title, reporterName);
             }
 
 

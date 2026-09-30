@@ -13,13 +13,14 @@ public class NotificationRuleDAO {
         this.jdbc = jdbc;
     }
 
-    public record Rule(String eventKey, boolean enabled, boolean notifyReporter) {}
+    public record Rule(String eventKey, boolean enabled, boolean notifyReporter, boolean notifyAssignee) {}
 
     private Rule mapRow(Map<String, Object> row) {
         return new Rule(
                 (String) row.get("event_key"),
                 ((Number) row.get("enabled")).intValue() == 1,
-                ((Number) row.get("notify_reporter")).intValue() == 1
+                ((Number) row.get("notify_reporter")).intValue() == 1,
+                ((Number) row.get("notify_assignee")).intValue() == 1
         );
     }
 
@@ -35,17 +36,17 @@ public class NotificationRuleDAO {
             Map<String, Object> row = jdbc.queryForMap("SELECT * FROM notification_rules WHERE event_key = ?", eventKey);
             return mapRow(row);
         } catch (Exception e) {
-            return new Rule(eventKey, true, true);
+            return new Rule(eventKey, true, true, false);
         }
     }
 
-    public void updateRule(String eventKey, boolean enabled, boolean notifyReporter) {
+    public void updateRule(String eventKey, boolean enabled, boolean notifyReporter, boolean notifyAssignee) {
         int rows = jdbc.update(
-                "UPDATE notification_rules SET enabled = ?, notify_reporter = ? WHERE event_key = ?",
-                enabled ? 1 : 0, notifyReporter ? 1 : 0, eventKey);
+                "UPDATE notification_rules SET enabled = ?, notify_reporter = ?, notify_assignee = ? WHERE event_key = ?",
+                enabled ? 1 : 0, notifyReporter ? 1 : 0, notifyAssignee ? 1 : 0, eventKey);
         if (rows == 0) {
-            jdbc.update("INSERT INTO notification_rules (event_key, enabled, notify_reporter) VALUES (?, ?, ?)",
-                    eventKey, enabled ? 1 : 0, notifyReporter ? 1 : 0);
+            jdbc.update("INSERT INTO notification_rules (event_key, enabled, notify_reporter, notify_assignee) VALUES (?, ?, ?, ?)",
+                    eventKey, enabled ? 1 : 0, notifyReporter ? 1 : 0, notifyAssignee ? 1 : 0);
         }
     }
 }

@@ -543,6 +543,9 @@ public class DatabaseInitializer implements CommandLineRunner {
         """);
                 System.out.println("✔ notification_rules table ready.");
 
+        addColumnIfMissing("notification_rules", "notify_assignee", "INTEGER DEFAULT 0");
+        jdbc.execute("UPDATE notification_rules SET notify_assignee = 1 WHERE event_key IN " +
+                "('TICKET_ASSIGNED','TICKET_STATUS_CHANGED','TICKET_AUTO_CLOSED')");
         jdbc.execute("""
             CREATE TABLE IF NOT EXISTS notification_groups (
                 id   INTEGER PRIMARY KEY AUTOINCREMENT,

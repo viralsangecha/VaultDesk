@@ -83,10 +83,8 @@ public class EmployeePortalController {
                 : user != null
                 ? user.fullName()
                 : "Unknown";
-        List<String> adminEmails = userDAO.getAdminEmails();
-        for (String email : adminEmails) {
-            emailService.sendTicketCreatedEmail(email, ticketNo, request.title(),request.description(), reporterName);
-        }
+        String reporterEmail = employee != null ? employee.email() : (user != null ? user.email() : null);
+        emailService.sendTicketCreatedEmail(reporterEmail, ticketNo, request.title(), request.description(), reporterName);
 
         return ResponseEntity.status(201).body("Ticket raised");
     }

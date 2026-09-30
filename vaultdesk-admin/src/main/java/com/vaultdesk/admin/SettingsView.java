@@ -514,20 +514,24 @@ public class SettingsView {
         try {
             HttpResponse<String> resp = ApiClient.get(ConfigManager.getBaseUrl() + "/api/notification-rules");
             String body = resp.body().trim();
-            Map<String, boolean[]> rules = new HashMap<>(); // eventKey -> [enabled, notifyReporter]
+            Map<String, boolean[]> rules = new HashMap<>(); // eventKey -> [enabled, notifyReporter, notifyAssignee]
             if (body.length() > 2) {
                 body = body.substring(1, body.length() - 1).trim();
                 for (String obj : body.split("\\},\\{")) {
                     String cleaned = obj.replace("{", "").replace("}", "");
                     String key = extractValue(cleaned, "eventKey");
-                    rules.put(key, new boolean[]{cleaned.contains("\"enabled\":true"), cleaned.contains("\"notifyReporter\":true")});
+                    rules.put(key, new boolean[]{
+                            cleaned.contains("\"enabled\":true"),
+                            cleaned.contains("\"notifyReporter\":true"),
+                            cleaned.contains("\"notifyAssignee\":true")
+                    });
                 }
             }
 
             container.getChildren().clear();
             for (Map.Entry<String, String> entry : eventLabels.entrySet()) {
-                boolean[] state = rules.getOrDefault(entry.getKey(), new boolean[]{true, true});
-                container.getChildren().add(buildRuleRow(entry.getKey(), entry.getValue(), state[0], state[1]));
+                boolean[] state = rules.getOrDefault(entry.getKey(), new boolean[]{true, true, false});
+                container.getChildren().add(buildRuleRow(entry.getKey(), entry.getValue(), state[0], state[1], state[2]));
             }
         } catch (Exception ex) {
             container.getChildren().setAll(new Label("Could not load notification rules: " + ex.getMessage()));
@@ -536,15 +540,17 @@ public class SettingsView {
         return container;
     }
 
-    private HBox buildRuleRow(String eventKey, String label, boolean enabled, boolean notifyReporter) {
+    private HBox buildRuleRow(String eventKey, String label, boolean enabled, boolean notifyReporter, boolean notifyAssignee) {
         Label title = new Label(label);
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-        title.setPrefWidth(220);
+        title.setPrefWidth(200);
 
         CheckBox enabledBox = new CheckBox("Send this email");
         enabledBox.setSelected(enabled);
-        CheckBox reporterBox = new CheckBox("Notify the person it's about");
+        CheckBox reporterBox = new CheckBox("Notify the reporter");
         reporterBox.setSelected(notifyReporter);
+        CheckBox assigneeBox = new CheckBox("Notify the assigned engineer");
+        assigneeBox.setSelected(notifyAssignee);
 
         Label statusLabel = new Label("");
         statusLabel.setStyle("-fx-font-size: 11px;");
@@ -553,7 +559,9 @@ public class SettingsView {
         saveBtn.getStyleClass().add("btn-primary");
         AnimationUtil.addHoverScale(saveBtn);
         saveBtn.setOnAction(e -> {
-            String json = "{\"enabled\":" + enabledBox.isSelected() + ",\"notifyReporter\":" + reporterBox.isSelected() + "}";
+            String json = "{\"enabled\":" + enabledBox.isSelected()
+                    + ",\"notifyReporter\":" + reporterBox.isSelected()
+                    + ",\"notifyAssignee\":" + assigneeBox.isSelected() + "}";
             try {
                 HttpResponse<String> resp = ApiClient.put(ConfigManager.getBaseUrl() + "/api/notification-rules/" + eventKey, json);
                 statusLabel.setText(resp.statusCode() == 200 ? "✔ Saved" : "Error: " + resp.statusCode());
@@ -564,7 +572,7 @@ public class SettingsView {
             }
         });
 
-        HBox row = new HBox(16, title, enabledBox, reporterBox, saveBtn, statusLabel);
+        HBox row = new HBox(16, title, enabledBox, reporterBox, assigneeBox, saveBtn, statusLabel);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().add("surface-card");
         row.setStyle("-fx-padding: 10 14; -fx-background-radius: 8;");

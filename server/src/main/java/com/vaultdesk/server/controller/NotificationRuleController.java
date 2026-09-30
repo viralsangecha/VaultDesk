@@ -28,7 +28,8 @@ public class NotificationRuleController {
         if (!isAdmin()) return ResponseEntity.status(403).body("Only admins can change notification rules.");
         boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
         boolean notifyReporter = Boolean.TRUE.equals(body.get("notifyReporter"));
-        ruleDAO.updateRule(eventKey, enabled, notifyReporter);
+        boolean notifyAssignee = Boolean.TRUE.equals(body.get("notifyAssignee"));
+        ruleDAO.updateRule(eventKey, enabled, notifyReporter, notifyAssignee);
         return ResponseEntity.ok("Updated");
     }
 

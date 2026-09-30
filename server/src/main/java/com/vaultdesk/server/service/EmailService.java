@@ -33,10 +33,11 @@ public class EmailService {
         this.recipientDAO = recipientDAO;
         this.ruleDAO = ruleDAO;
     }
+
     /** Every notifiable event goes through here — the DB rule decides who actually gets it. */
-    private void notifyForEvent(String eventKey, String reporterEmail, String subject, String htmlBody) {
+    private void notifyForEvent(String eventKey, String reporterEmail, String assigneeEmail, String subject, String htmlBody) {
         NotificationRuleDAO.Rule rule = ruleDAO.getRule(eventKey);
-        if (!rule.enabled()) return;
+        if (rule == null || !rule.enabled()) return;
 
         java.util.Set<String> alreadySent = new java.util.HashSet<>();
 
@@ -44,72 +45,81 @@ public class EmailService {
             send(reporterEmail, subject, htmlBody);
             alreadySent.add(reporterEmail.trim().toLowerCase());
         }
+        if (rule.notifyAssignee() && assigneeEmail != null && !assigneeEmail.isBlank()
+                && alreadySent.add(assigneeEmail.trim().toLowerCase())) {
+            send(assigneeEmail, subject, htmlBody);
+        }
         for (Map<String, Object> r : recipientDAO.getActiveSubscribers(eventKey)) {
             String email = (String) r.get("email");
-            if (email == null || !alreadySent.add(email.trim().toLowerCase())) continue; // already got it, or duplicate row
+            if (email == null || !alreadySent.add(email.trim().toLowerCase())) continue;
             send(email, subject, htmlBody);
         }
     }
 
     @Async
     public void sendTicketCreatedEmail(String reporterEmail, String ticketNo, String title, String description, String reporterName) {
-        String subject = "[VaultDesk] Ticket Created - " + ticketNo.trim();
+        String subject = "[VaultDesk] Ticket Created - " + safe(ticketNo);
         String body = wrap("🎫", "New ticket created.",
-                field("Ticket No", ticketNo.trim()) +
-                        field("Title", title.trim()) +
-                        field("Description", description.trim()) +
-                        field("Reporter", reporterName.trim()) +
+                field("Ticket No", ticketNo) +
+                        field("Title", title) +
+                        field("Description", description) +
+                        field("Reporter", reporterName) +
                         "<p style='color:" + GREY + ";font-size:12px;margin-top:12px;'>Log in to VaultDesk for updates.</p>",
                 BLUE);
-        notifyForEvent("TICKET_CREATED", reporterEmail, subject, body);
+        notifyForEvent("TICKET_CREATED", reporterEmail, null, subject, body);
     }
 
     @Async
-    public void sendTicketAssignedEmail(String reporterEmail, String ticketNo, String title, String description,
+    public void sendTicketAssignedEmail(String reporterEmail, String assigneeEmail, String ticketNo, String title, String description,
                                         String reporterName, String engineerName, String newStatus) {
-        String subject = "[VaultDesk] Ticket Assigned - " + ticketNo.trim();
+        String subject = "[VaultDesk] Ticket Assigned - " + safe(ticketNo);
         String body = wrap("👤", "Ticket has been assigned to an engineer.",
-                field("Ticket No", ticketNo.trim()) +
-                        field("Title", title.trim()) +
-                        field("Description", description.trim()) +
-                        field("Reporter", reporterName.trim()) +
-                        field("Assigned To", engineerName.trim()),
+                field("Ticket No", ticketNo) +
+                        field("Title", title) +
+                        field("Description", description) +
+                        field("Reporter", reporterName) +
+                        field("Assigned To", engineerName),
                 BLUE);
-        notifyForEvent("TICKET_ASSIGNED", reporterEmail, subject, body);
+        notifyForEvent("TICKET_ASSIGNED", reporterEmail, assigneeEmail, subject, body);
     }
 
     @Async
-    public void sendTicketStatusEmail(String reporterEmail, String ticketNo, String title, String reporterName,
+    public void sendTicketStatusEmail(String reporterEmail, String assigneeEmail, String ticketNo, String title, String reporterName,
                                       String engineerName, String description, String newStatus, String resolution) {
-        String statusColor = switch (newStatus) {
+        String safeStatus = safe(newStatus);
+        String statusColor = switch (safeStatus) {
             case "Resolved" -> GREEN;
             case "In Progress" -> BLUE;
             case "Closed" -> GREY;
             default -> AMBER;
         };
-        String subject = "[VaultDesk] Ticket Status Updated - " + ticketNo.trim();
+        String subject = "[VaultDesk] Ticket Status Updated - " + safe(ticketNo);
+        String resolutionHtml = (resolution != null && !resolution.isBlank())
+                ? field("Resolution", resolution)
+                : "";
+
         String body = wrap("🔄", "Your ticket status has been updated.",
-                field("Ticket No", ticketNo.trim()) +
-                        field("Title", title.trim()) +
-                        field("Description", description.trim()) +
-                        field("Reporter", reporterName.trim()) +
-                        field("Assigned To", engineerName.trim()) +
-                        field("Resolution", resolution.trim()) +
-                        "<p style='margin-top:10px;'>" + chip(newStatus, statusColor) + "</p>",
+                field("Ticket No", ticketNo) +
+                        field("Title", title) +
+                        field("Description", description) +
+                        field("Reporter", reporterName) +
+                        field("Assigned To", engineerName) +
+                        resolutionHtml +
+                        "<p style='margin-top:10px;'>" + chip(safeStatus, statusColor) + "</p>",
                 statusColor);
-        notifyForEvent("TICKET_STATUS_CHANGED", reporterEmail, subject, body);
+        notifyForEvent("TICKET_STATUS_CHANGED", reporterEmail, assigneeEmail, subject, body);
     }
 
     @Async
-    public void sendTicketAutoClosedToRecipients(String reporterEmail, String ticketNo, String title, String reporterName) {
-        String subject = "[VaultDesk] Ticket Auto-Closed - " + ticketNo.trim();
+    public void sendTicketAutoClosedToRecipients(String reporterEmail, String assigneeEmail, String ticketNo, String title, String reporterName) {
+        String subject = "[VaultDesk] Ticket Auto-Closed - " + safe(ticketNo);
         String body = wrap("⏰", "A ticket was automatically closed after 3 days with no response.",
-                field("Ticket No", ticketNo.trim()) +
-                        field("Title", title.trim()) +
-                        field("Reporter", reporterName.trim()) +
+                field("Ticket No", ticketNo) +
+                        field("Title", title) +
+                        field("Reporter", reporterName) +
                         "<p style='margin-top:10px;'>" + chip("Auto-Closed", GREY) + "</p>",
                 GREY);
-        notifyForEvent("TICKET_AUTO_CLOSED", reporterEmail, subject, body);
+        notifyForEvent("TICKET_AUTO_CLOSED", reporterEmail, assigneeEmail, subject, body);
     }
 
     private JavaMailSenderImpl buildSender(EmailSettingsDAO.EmailSettings s) {
@@ -174,9 +184,13 @@ public class EmailService {
                 "</td></tr></table>";
     }
 
+    private String safe(String value) {
+        return (value == null || value.isBlank()) ? "—" : value.trim();
+    }
+
     private String field(String label, String value) {
         return "<p style='margin:0 0 8px 0;'><span style='color:" + GREY + ";'>" + label + ":</span> "
-                + "<b style='color:" + INK + ";'>" + value + "</b></p>";
+                + "<b style='color:" + INK + ";'>" + safe(value) + "</b></p>";
     }
 
     private String chip(String text, String color) {
@@ -187,19 +201,19 @@ public class EmailService {
     // ── Forgot / reset password flow ──────────────────────
     @Async
     public void sendPasswordResetRequestedToAdmins(String username, String userType) {
-        String subject = "[VaultDesk] Password Reset Requested - " + username;
+        String subject = "[VaultDesk] Password Reset Requested - " + safe(username);
         String body = wrap("⚠️", "A password reset was requested.",
                 field("Username", username) +
                         field("Account Type", userType) +
                         "<p style='color:" + GREY + ";font-size:12px;margin-top:10px;'>If this wasn't expected, please investigate.</p>",
                 AMBER);
-        notifyForEvent("PASSWORD_RESET_REQUESTED", null, subject, body); // no single "reporter" here — purely fans out to whichever recipient groups the rule lists
+        notifyForEvent("PASSWORD_RESET_REQUESTED", null, null, subject, body);
     }
 
     @Async
     public void sendPasswordResetLink(String toEmail, String name, String resetLink) {
         String body = wrap("🔑", "You requested a password reset.",
-                "<p style='margin:0 0 10px 0;'>Hi " + name + ",</p>" +
+                "<p style='margin:0 0 10px 0;'>Hi " + safe(name) + ",</p>" +
                         "<p style='margin:0 0 14px 0;'>Click the button below to reset your password. This link expires in 30 minutes.</p>" +
                         "<p style='text-align:center;margin:0 0 14px 0;'>" +
                         "<a href='" + resetLink + "' style='display:inline-block;padding:10px 24px;border-radius:8px;" +
@@ -216,16 +230,16 @@ public class EmailService {
                         "<p style='color:" + GREY + ";" +
                         "font-size:12px;margin-top:10px;'>This user's password was just reset successfully.</p>",
                 GREEN);
-        send(toEmail, "[VaultDesk] Password Reset Successful - " + username, body);
+        send(toEmail, "[VaultDesk] Password Reset Successful - " + safe(username), body);
     }
 
     @Async
     public void notifyAllAboutSuccessfulReset(String userEmail, String username) {
-        String subject = "[VaultDesk] Password Reset Completed - " + username;
+        String subject = "[VaultDesk] Password Reset Completed - " + safe(username);
         String body = wrap("✔️", "Password reset successful.",
                 field("Username", username) +
                         "<p style='color:" + GREY + ";font-size:12px;margin-top:10px;'>This user's password was just reset successfully.</p>",
                 GREEN);
-        notifyForEvent("PASSWORD_RESET_COMPLETED", userEmail, subject, body); // reporter here = the user whose password just changed
+        notifyForEvent("PASSWORD_RESET_COMPLETED", userEmail, null, subject, body);
     }
 }
